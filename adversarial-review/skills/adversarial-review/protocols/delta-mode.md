@@ -10,7 +10,7 @@ Delta mode is activated **only** with the explicit `--delta` flag. It is never a
 
 ## Prior Report Detection
 
-When `--delta` is specified, the orchestrator searches `docs/superpowers/reviews/` for existing review reports that match the current review topic.
+When `--delta` is specified, the orchestrator searches `docs/reviews/` for existing review reports that match the current review topic.
 
 ## Report Integrity Verification
 

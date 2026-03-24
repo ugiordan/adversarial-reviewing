@@ -2,7 +2,7 @@
 
 ## Final Review Report Structure
 
-The final report contains 9 sections followed by a metadata block. The report is never auto-committed. Use `--save` to write to `docs/superpowers/reviews/YYYY-MM-DD-<topic>-review.md`.
+The final report contains 9 sections followed by a metadata block. The report is never auto-committed. Use `--save` to write to `docs/reviews/YYYY-MM-DD-<topic>-review.md`.
 
 ---
 
@@ -220,5 +220,5 @@ configuration: [iterations, convergence points, flags used]
 ### Output Rules
 
 - The report is **never auto-committed** to the repository.
-- When `--save` is specified, the report is written to `docs/superpowers/reviews/YYYY-MM-DD-<topic>-review.md`.
+- When `--save` is specified, the report is written to `docs/reviews/YYYY-MM-DD-<topic>-review.md`.
 - The metadata block MUST be the last element in the report file.

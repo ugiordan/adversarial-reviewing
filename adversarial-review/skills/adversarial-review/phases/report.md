@@ -123,8 +123,8 @@ If the `--save` flag is specified:
 1. **Determine topic:**
    - Default: derive from the shallowest common ancestor directory of all reviewed files, converted to kebab-case
    - Override: use `--topic <name>` if provided
-2. **Construct path:** `docs/superpowers/reviews/YYYY-MM-DD-<topic>-review.md`
-3. **Create directories** if they do not exist: `mkdir -p docs/superpowers/reviews/`
+2. **Construct path:** `docs/reviews/YYYY-MM-DD-<topic>-review.md`
+3. **Create directories** if they do not exist: `mkdir -p docs/reviews/`
 4. **Write the file** — the metadata block MUST be the last element in the file
 
 ### Step 5: Never Auto-Commit

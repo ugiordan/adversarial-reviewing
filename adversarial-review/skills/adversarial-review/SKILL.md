@@ -17,7 +17,7 @@ This skill spawns multiple specialist sub-agents in fully isolated environments 
 
 - Reviewing code, designs, or documentation from multiple perspectives
 - Pre-merge review requiring thoroughness beyond single-agent review
-- Verification step after implementation (integrates with `reflective-implementation` Phase 3)
+- Verification step after implementation
 - Security-sensitive changes needing dedicated specialist attention
 - Architecture decisions that benefit from adversarial challenge
 
@@ -216,7 +216,7 @@ Generate the final report using `templates/report-template.md` (or `templates/de
 - Co-located findings (Section 8)
 - **Remediation summary** (Section 9) — severity-sorted action list with remediation roadmap, blocked items, and top priorities. Always present, even without `--fix`.
 
-If `--save` was specified, write the report to `docs/superpowers/reviews/YYYY-MM-DD-<topic>-review.md`.
+If `--save` was specified, write the report to `docs/reviews/YYYY-MM-DD-<topic>-review.md`.
 
 **NEVER auto-commit.** The `--save` flag writes the file only.
 
@@ -394,6 +394,7 @@ skills/adversarial-review/
     convergence-detection.md            # Finding set stability detection
     delta-mode.md                       # Re-review protocol
     token-budget.md                     # Budget tracking protocol
+    injection-resistance.md             # Two-tier injection detection
   scripts/
     generate-delimiters.sh              # Produces unique code delimiters
     validate-output.sh                  # Validates agent output structure
@@ -408,15 +409,24 @@ skills/adversarial-review/
     sanitized-document-template.md      # Sanitized cross-agent message format
     jira-template.md                    # Jira ticket template (--fix)
   tests/
+    run-all-tests.sh                    # Test runner
     test-validation-script.sh           # Validation script tests
     test-single-agent.sh                # Single-agent pipeline integration tests
     test-injection-resistance.sh        # Injection resistance tests
+    test-coverage-gaps.sh               # Coverage gap and edge case tests
     fixtures/
       sample-code.py                    # Sample code for testing
       sample-code-with-injection.py     # Code with embedded injection attempts
       valid-finding.txt                 # Valid finding for test input
+      valid-finding-2.txt               # Second valid finding (different specialist)
+      valid-finding-perf.txt            # Valid PERF finding
       malformed-finding.txt             # Malformed finding for test input
       injection-finding.txt             # Finding containing injection patterns
+      provenance-injection-finding.txt  # Finding with provenance marker injection
+      no-findings.txt                   # Zero-finding output (NO_FINDINGS_REPORTED)
+      changed-finding.txt              # Modified finding for convergence tests
+      two-findings-overlap.txt          # Overlapping findings for dedup tests
+      two-findings-nonoverlap.txt       # Non-overlapping findings for dedup tests
       expected-findings.md              # Expected findings reference
       sample-prior-report.md            # Prior report for delta mode tests
 ```
