@@ -1,0 +1,25 @@
+# Adversarial Review — Multi-Model Configuration (Future v2)
+#
+# This file is NOT used in v1. It documents the interface for future
+# multi-model routing where different specialists can use different LLM providers.
+#
+# Security requirements:
+# - Endpoints validated against allowlist of known provider base URLs
+# - No raw API keys — only environment variable references
+# - This file must be git-tracked (untracked configs rejected)
+# - Endpoints are logged at invocation time for user verification
+#
+# agents:
+#   security-auditor:
+#     model: claude-opus-4-6
+#     provider: anthropic
+#   performance-analyst:
+#     model: gpt-4o
+#     provider: openai
+#   code-quality-reviewer:
+#     model: gemini-2.5-pro
+#     provider: google
+#   correctness-verifier:
+#     model: default  # uses host model
+#   architecture-reviewer:
+#     model: default

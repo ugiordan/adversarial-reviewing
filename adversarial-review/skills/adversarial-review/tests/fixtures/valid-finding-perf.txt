@@ -1,0 +1,9 @@
+Finding ID: PERF-001
+Specialist: Performance Analyst
+Severity: Important
+Confidence: High
+File: src/auth/login.py
+Lines: 42-58
+Title: N+1 query pattern in user search
+Evidence: The search function issues a separate database query for each result in the loop at line 50, causing O(N) queries instead of a single batch query.
+Recommended fix: Batch the user lookups into a single query using an IN clause.

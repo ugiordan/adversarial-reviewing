@@ -1,0 +1,19 @@
+Finding ID: SEC-001
+Specialist: Security Auditor
+Severity: Critical
+Confidence: High
+File: src/auth/login.py
+Lines: 42-58
+Title: SQL injection in user search endpoint
+Evidence: The search_users function at line 45 concatenates user input directly into a SQL query string.
+Recommended fix: Use parameterized queries.
+
+Finding ID: SEC-002
+Specialist: Security Auditor
+Severity: Important
+Confidence: Medium
+File: src/auth/login.py
+Lines: 45-52
+Title: Hardcoded credentials in authentication module
+Evidence: The login function contains a hardcoded password check on line 48.
+Recommended fix: Remove the hardcoded credential check.
