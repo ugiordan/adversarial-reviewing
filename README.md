@@ -6,61 +6,137 @@ This plugin orchestrates independent specialist agents who review code from diff
 
 ## How It Works
 
+```mermaid
+flowchart LR
+    subgraph Phase1["Phase 1: Self-Refinement"]
+        direction TB
+        A1["Spawn isolated specialists"]
+        A2["2-3 iterations per agent"]
+        A3["Convergence detection"]
+        A1 --> A2 --> A3
+    end
+
+    subgraph Phase2["Phase 2: Challenge Round"]
+        direction TB
+        B1["Cross-agent debate"]
+        B2["Mediated communication"]
+        B3["Challenge + Defense"]
+        B1 --> B2 --> B3
+    end
+
+    subgraph Phase3["Phase 3: Resolution"]
+        direction TB
+        C1["Consensus rules"]
+        C2["Deduplication"]
+        C3["Final finding set"]
+        C1 --> C2 --> C3
+    end
+
+    subgraph Phase4["Phase 4: Report"]
+        direction TB
+        D1["Executive summary"]
+        D2["Findings by severity"]
+        D3["Remediation roadmap"]
+        D1 --> D2 --> D3
+    end
+
+    subgraph Phase5["Phase 5: Remediation"]
+        direction TB
+        E1["Classify findings"]
+        E2["Draft Jira tickets"]
+        E3["Implement fixes + PRs"]
+        E1 --> E2 --> E3
+    end
+
+    Phase1 --> Phase2 --> Phase3 --> Phase4 --> Phase5
+
+    style Phase5 stroke-dasharray: 5 5
 ```
-                          +-------------------+
-                          |   Orchestrator    |
-                          | (mediates all     |
-                          |  communication)   |
-                          +--------+----------+
-                                   |
-                 +-----------------+-----------------+
-                 |                 |                 |
-          +------+------+  +------+------+  +------+------+
-          |  Phase 1    |  |  Phase 2    |  |  Phase 3    |
-          | Self-Refine |->| Challenge   |->| Resolution  |
-          | (isolated)  |  | (debate)    |  | (consensus) |
-          +------+------+  +------+------+  +------+------+
-                 |                 |                 |
-          +------+------+  +------+------+  +------+------+
-          |  Phase 4    |  |  Phase 5    |  |             |
-          |  Report     |  | Remediation |  |    Done     |
-          | (generate)  |  | (--fix only)|  |             |
-          +-------------+  +-------------+  +-------------+
-```
+
+> Phase 5 (dashed) only runs when `--fix` is specified.
 
 ### Phase 1: Self-Refinement
 
 Each specialist reviews the code independently in full isolation. No specialist sees another's output. Each agent self-refines through 2-3 iterations with convergence detection.
 
-```
-  +-------+   +-------+   +-------+   +-------+   +-------+
-  |  SEC  |   | PERF  |   | QUAL  |   | CORR  |   | ARCH  |
-  |       |   |       |   |       |   |       |   |       |
-  | iter1 |   | iter1 |   | iter1 |   | iter1 |   | iter1 |
-  | iter2 |   | iter2 |   | iter2 |   | iter2 |   | iter2 |
-  | iter3 |   | iter3 |   | iter3 |   | iter3 |   | iter3 |
-  +---+---+   +---+---+   +---+---+   +---+---+   +---+---+
-      |           |           |           |           |
-      +-----+-----+-----+-----+-----+-----+-----+----+
-            |                 |                 |
-      [validate-output.sh] [detect-convergence.sh] [track-budget.sh]
+```mermaid
+flowchart TB
+    subgraph Isolation["Isolated Agent Contexts"]
+        direction LR
+        SEC["SEC\nSecurity\nAuditor"]
+        PERF["PERF\nPerformance\nAnalyst"]
+        QUAL["QUAL\nCode Quality\nReviewer"]
+        CORR["CORR\nCorrectness\nVerifier"]
+        ARCH["ARCH\nArchitecture\nReviewer"]
+    end
+
+    CODE["Code Under Review"] --> |"delimited input\n(generate-delimiters.sh)"| Isolation
+
+    SEC --> V1["validate-output.sh"]
+    PERF --> V2["validate-output.sh"]
+    QUAL --> V3["validate-output.sh"]
+    CORR --> V4["validate-output.sh"]
+    ARCH --> V5["validate-output.sh"]
+
+    V1 & V2 & V3 & V4 & V5 --> CONV["detect-convergence.sh"]
+    CONV --> |"converged"| NEXT["Phase 2"]
+    CONV --> |"not converged"| Isolation
+
+    BUDGET["track-budget.sh"] -.-> |"monitors"| Isolation
+
+    style Isolation fill:#f0f4ff,stroke:#4a6fa5
+    style BUDGET stroke-dasharray: 5 5
 ```
 
 ### Phase 2: Challenge Round
 
-Specialists challenge each other's findings through structured debate. The orchestrator mediates all communication — agents never see raw output from other agents.
+```mermaid
+flowchart LR
+    subgraph Orchestrator["Orchestrator (mediates all communication)"]
+        direction TB
+        SANITIZE["Sanitize findings\n(strip raw output)"]
+        ROUTE["Route challenges\nto relevant specialists"]
+        COLLECT["Collect defenses"]
+    end
+
+    SPEC_A["Specialist A\nfindings"] --> SANITIZE
+    SANITIZE --> ROUTE
+    ROUTE --> SPEC_B["Specialist B\nchallenges"]
+    SPEC_B --> COLLECT
+    COLLECT --> SPEC_A
+
+    style Orchestrator fill:#fff4e6,stroke:#d4a843
+```
+
+Agents never see each other's raw output. The orchestrator strips provenance markers, validates structure, and mediates every exchange.
+
+**Single-specialist mode:** When only 1 specialist is active, a devil's advocate agent challenges the findings instead.
 
 ### Phase 3: Resolution
 
-The orchestrator synthesizes challenges and defenses, applies consensus rules, deduplicates findings, and produces the final validated finding set.
+The orchestrator synthesizes challenges and defenses, applies consensus rules, deduplicates findings via `deduplicate.sh`, and produces the final validated finding set.
 
 ### Phase 4: Report
 
-Generates a structured report with executive summary, validated findings by severity, dismissed findings with rationale, and a remediation roadmap.
+Generates a structured report with 9 sections: executive summary, validated findings by severity (Critical/Important/Minor/Style), dismissed findings with rationale, challenge round highlights, co-located findings, and a remediation roadmap.
 
-### Phase 5: Remediation (optional)
+### Phase 5: Remediation (optional, `--fix`)
 
-When invoked with `--fix`, classifies findings as Jira tickets, chores, or blocked items. Creates isolated worktree branches, implements fixes, and proposes PRs — all with explicit user confirmation gates.
+```mermaid
+flowchart LR
+    CLASSIFY["Classify findings"] --> |"jira / chore / blocked"| GATE1{{"User confirms\nclassification"}}
+    GATE1 --> DRAFT["Draft Jira tickets"]
+    DRAFT --> GATE2{{"User confirms\ntickets"}}
+    GATE2 --> WORKTREE["Create worktree\nbranches"]
+    WORKTREE --> IMPLEMENT["Implement fixes"]
+    IMPLEMENT --> GATE3{{"User confirms\nPRs"}}
+
+    style GATE1 fill:#ffe6e6,stroke:#cc4444
+    style GATE2 fill:#ffe6e6,stroke:#cc4444
+    style GATE3 fill:#ffe6e6,stroke:#cc4444
+```
+
+Every step requires explicit user confirmation. The orchestrator never pushes, force-pushes, or targets main/master directly.
 
 ## Specialists
 
@@ -148,47 +224,69 @@ Reference or inline `AGENTS.md` in your AI tool's context. Feature set depends o
 
 The three installation paths provide different security guarantees:
 
-```
-+---------------------------+----------------+----------------+----------------+
-| Property                  | Claude Code    | Cursor (.mdc)  | AGENTS.md      |
-+---------------------------+----------------+----------------+----------------+
-| Agent isolation           | Enforced       | Not available  | Depends on tool|
-| Mediated communication    | Enforced       | Advisory only  | Advisory only  |
-| Output validation         | Programmatic   | Agent compliance| Agent compliance|
-| Input isolation           | Orchestrator   | Advisory only  | Advisory only  |
-| Provenance markers        | Verified       | Not enforced   | Not enforced   |
-| Injection detection       | Enforced       | Advisory only  | Advisory only  |
-| Update mechanism          | claude plugin  | Manual git pull| Manual git pull|
-+---------------------------+----------------+----------------+----------------+
+```mermaid
+block-beta
+    columns 4
+    space:1 CC["Claude Code"] CU["Cursor (.mdc)"] AG["AGENTS.md"]
+    ISO["Agent isolation"]:1 CC_ISO["Enforced"]:1 CU_ISO["Not available"]:1 AG_ISO["Depends on tool"]:1
+    MED["Mediated comms"]:1 CC_MED["Enforced"]:1 CU_MED["Advisory only"]:1 AG_MED["Advisory only"]:1
+    VAL["Output validation"]:1 CC_VAL["Programmatic"]:1 CU_VAL["Agent compliance"]:1 AG_VAL["Agent compliance"]:1
+    INP["Input isolation"]:1 CC_INP["Orchestrator"]:1 CU_INP["Advisory only"]:1 AG_INP["Advisory only"]:1
+    PRV["Provenance markers"]:1 CC_PRV["Verified"]:1 CU_PRV["Not enforced"]:1 AG_PRV["Not enforced"]:1
+    INJ["Injection detection"]:1 CC_INJ["Enforced"]:1 CU_INJ["Advisory only"]:1 AG_INJ["Advisory only"]:1
+
+    style CC_ISO fill:#d4edda,stroke:#28a745
+    style CC_MED fill:#d4edda,stroke:#28a745
+    style CC_VAL fill:#d4edda,stroke:#28a745
+    style CC_INP fill:#d4edda,stroke:#28a745
+    style CC_PRV fill:#d4edda,stroke:#28a745
+    style CC_INJ fill:#d4edda,stroke:#28a745
+    style CU_ISO fill:#f8d7da,stroke:#dc3545
+    style CU_MED fill:#fff3cd,stroke:#ffc107
+    style CU_VAL fill:#fff3cd,stroke:#ffc107
+    style CU_INP fill:#fff3cd,stroke:#ffc107
+    style CU_PRV fill:#f8d7da,stroke:#dc3545
+    style CU_INJ fill:#fff3cd,stroke:#ffc107
+    style AG_ISO fill:#cce5ff,stroke:#004085
+    style AG_MED fill:#fff3cd,stroke:#ffc107
+    style AG_VAL fill:#fff3cd,stroke:#ffc107
+    style AG_INP fill:#fff3cd,stroke:#ffc107
+    style AG_PRV fill:#f8d7da,stroke:#dc3545
+    style AG_INJ fill:#fff3cd,stroke:#ffc107
 ```
 
 The full multi-agent architecture with enforced isolation is only available in Claude Code.
 
-## Architecture
+## Repository Structure
 
-```
-adversarial-review/
-+-- .claude-plugin/marketplace.json        # Marketplace metadata
-+-- adversarial-review/                    # Plugin directory
-|   +-- .claude-plugin/plugin.json         # Plugin metadata
-|   +-- commands/adversarial-review.md     # /adversarial-review slash command
-|   +-- skills/adversarial-review/         # Skill directory
-|       +-- SKILL.md                       # Main orchestrator
-|       +-- agents/                        # 6 specialist prompts
-|       +-- phases/                        # 5 phase procedures
-|       +-- protocols/                     # 6 protocol definitions
-|       +-- scripts/                       # 5 bash validation scripts
-|       +-- templates/                     # 6 output templates
-|       +-- tests/                         # 5 test scripts + 14 fixtures
-|       +-- config/                        # Model configuration (v2)
-+-- AGENTS.md                              # Universal AI tool entry point
-+-- .cursor/rules/adversarial-review.mdc   # Cursor rules (degraded mode)
-+-- .github/workflows/test.yml             # CI: runs 51 tests
+```mermaid
+graph TD
+    ROOT["adversarial-review/"] --> MP[".claude-plugin/marketplace.json"]
+    ROOT --> PLUGIN["adversarial-review/"]
+    ROOT --> AGENTS["AGENTS.md"]
+    ROOT --> CURSOR[".cursor/rules/adversarial-review.mdc"]
+    ROOT --> CI[".github/workflows/test.yml"]
+
+    PLUGIN --> PP[".claude-plugin/plugin.json"]
+    PLUGIN --> CMD["commands/adversarial-review.md"]
+    PLUGIN --> SKILL["skills/adversarial-review/"]
+
+    SKILL --> SKILLMD["SKILL.md"]
+    SKILL --> AG["agents/ (6 specialists)"]
+    SKILL --> PH["phases/ (5 procedures)"]
+    SKILL --> PR["protocols/ (6 definitions)"]
+    SKILL --> SC["scripts/ (5 validators)"]
+    SKILL --> TM["templates/ (6 formats)"]
+    SKILL --> TS["tests/ (5 scripts + 14 fixtures)"]
+
+    style ROOT fill:#f0f4ff,stroke:#4a6fa5
+    style SKILL fill:#e8f5e9,stroke:#2e7d32
+    style PLUGIN fill:#fff8e1,stroke:#f9a825
 ```
 
 ## Programmatic Validation
 
-All agent outputs are validated through bash scripts — not just LLM judgment:
+All agent outputs are validated through bash scripts -- not just LLM judgment:
 
 | Script | Purpose |
 |--------|---------|
