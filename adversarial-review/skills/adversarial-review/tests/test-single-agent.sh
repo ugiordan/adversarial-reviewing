@@ -104,6 +104,26 @@ else
     FAIL=$((FAIL + 1))
 fi
 
+# Test: budget estimate with --diff flag
+budget_diff_result=$(bash "$SCRIPT_DIR/scripts/track-budget.sh" estimate --diff 5 10000 3 0 5000 2>&1)
+if echo "$budget_diff_result" | python3 -c "import json,sys; d=json.load(sys.stdin); assert d['estimated_tokens'] > 0 and 'impact_graph' in d" 2>/dev/null; then
+    echo "  PASS: Budget estimate with --diff includes impact_graph"
+    PASS=$((PASS + 1))
+else
+    echo "  FAIL: Budget estimate with --diff should include impact_graph field"
+    FAIL=$((FAIL + 1))
+fi
+
+# Test: budget estimate without --diff still works
+budget_nodiff_result=$(bash "$SCRIPT_DIR/scripts/track-budget.sh" estimate 5 10000 3 0 2>&1)
+if echo "$budget_nodiff_result" | python3 -c "import json,sys; d=json.load(sys.stdin); assert d['estimated_tokens'] > 0" 2>/dev/null; then
+    echo "  PASS: Budget estimate without --diff still works"
+    PASS=$((PASS + 1))
+else
+    echo "  FAIL: Budget estimate without --diff should still work"
+    FAIL=$((FAIL + 1))
+fi
+
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
 [[ $FAIL -eq 0 ]] && exit 0 || exit 1
