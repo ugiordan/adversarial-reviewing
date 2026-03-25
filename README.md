@@ -154,15 +154,22 @@ Default: all 5 specialists. Use flags to select specific ones.
 
 ### Claude Code Plugin (Full Feature Set)
 
-```bash
+From inside a Claude Code session, run:
+
+```
 # One-time marketplace registration
-claude marketplace add --git https://github.com/ugiordan/adversarial-review.git
+/plugin marketplace add ugiordan/adversarial-review
 
 # Install globally (works in every project)
-claude plugin add adversarial-review --scope user
+/plugin install adversarial-review@ugiordan-adversarial-review
 ```
 
-After installation, invoke via `/adversarial-review` or through the Skill tool.
+After installation, start a new session. The skill activates automatically when relevant, or invoke directly via `/adversarial-review`.
+
+To update later:
+```
+/plugin update adversarial-review
+```
 
 ### Cursor (Degraded Single-Agent Mode)
 
