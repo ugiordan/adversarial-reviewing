@@ -511,13 +511,14 @@ Error: --triage requires a source. Usage:
 
 Triage Resolution Truth Table:
 
-| Fix votes | No-Fix votes | Investigate votes | Result |
-|-----------|-------------|-------------------|--------|
-| All | 0 | 0 | **Fix** (consensus) |
-| 0 | All | 0 | **No-Fix** (consensus) |
-| >= majority | < majority | any | **Fix** (majority, note dissent) |
-| < majority | >= majority | any | **No-Fix** (majority, note dissent) |
-| < majority | < majority | >= 1 | **Investigate** (no majority) |
+| Fix votes | No-Fix votes | Investigate votes | Quorum? | Result |
+|-----------|-------------|-------------------|---------|--------|
+| All | 0 | 0 | Yes | **Fix** (consensus) |
+| 0 | All | 0 | Yes | **No-Fix** (consensus) |
+| >= majority | < majority | any | Yes | **Fix** (majority, note dissent) |
+| < majority | >= majority | any | Yes | **No-Fix** (majority, note dissent) |
+| < majority | < majority | >= 1 | Yes | **Investigate** (no majority) |
+| any | any | many | No | **Investigate** (no quorum) |
 
 Low-confidence escalation: If ALL votes for the winning verdict are Low confidence,
 escalate to **Investigate** — unless a strict majority for the SAME verdict are High

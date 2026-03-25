@@ -38,11 +38,13 @@ extract_field() {
 SCRIPT_DIR_VALIDATE="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR_VALIDATE/_injection-check.sh"
 
-# Check for NO_TRIAGE_EVALUATIONS marker (valid zero-triage output)
+# Check for NO_TRIAGE_EVALUATIONS marker (zero triage verdicts, but discovery findings may follow)
+ZERO_TRIAGE=false
 if grep -qF "NO_TRIAGE_EVALUATIONS" <<< "$content"; then
-    echo '{"valid": true, "errors": [], "triage_count": 0, "discovery_count": 0, "zero_evaluations": true}'
-    exit 0
+    ZERO_TRIAGE=true
 fi
+
+if [[ "$ZERO_TRIAGE" == false ]]; then
 
 # Extract triage IDs (TRIAGE-ROLE-NNN format)
 triage_ids=$(echo "$content" | sed -n 's/^Triage ID: \(TRIAGE-[A-Z]*-[0-9]*\).*/\1/p')
@@ -161,6 +163,8 @@ while IFS= read -r tid; do
 
 done <<< "$triage_ids"
 
+fi  # end ZERO_TRIAGE check
+
 # Extract and process discovery findings (ROLE-NNN format, not TRIAGE-ROLE-NNN)
 finding_ids=$(echo "$content" | sed -n 's/^Finding ID: \([A-Z]*-[0-9]*\).*/\1/p' | grep -v '^TRIAGE-' || true)
 
@@ -250,7 +254,7 @@ done <<< "$finding_ids"
 
 # Build JSON output with proper escaping via python3
 if [[ ${#ERRORS[@]} -eq 0 ]]; then
-    python3 -c "import json; print(json.dumps({'valid': True, 'errors': [], 'triage_count': int('$TRIAGE_COUNT'), 'discovery_count': int('$DISCOVERY_COUNT')}))"
+    python3 -c "import json; d={'valid': True, 'errors': [], 'triage_count': int('$TRIAGE_COUNT'), 'discovery_count': int('$DISCOVERY_COUNT')}; d.update({'zero_evaluations': True} if '$ZERO_TRIAGE' == 'true' else {}); print(json.dumps(d))"
     exit 0
 else
     errors_json=$(python3 -c "

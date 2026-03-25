@@ -49,19 +49,39 @@ PRIVILEGED_MARKERS = [
     "ADMIN_OVERRIDE",
 ]
 
-# GitHub author association to role mapping
+# Injection patterns (mirrors _injection-check.sh high-confidence patterns)
+INJECTION_PATTERNS = [
+    r"ignore all previous",
+    r"ignore prior instructions",
+    r"disregard (?:all |the )?(?:above|previous)",
+    r"you are now",
+    r"new system prompt",
+    r"override (?:system|instructions)",
+    r"act as (?:a |an )?(?:different|new)",
+    r"forget (?:all |everything)",
+]
+
+# GitHub author association to role mapping (spec: maintainer, collaborator, contributor, bot)
 GITHUB_ROLE_MAP = {
-    "OWNER": "owner",
-    "MEMBER": "member",
+    "OWNER": "maintainer",
+    "MEMBER": "maintainer",
     "COLLABORATOR": "collaborator",
     "CONTRIBUTOR": "contributor",
     "FIRST_TIME_CONTRIBUTOR": "contributor",
     "FIRST_TIMER": "contributor",
-    "NONE": "external",
+    "NONE": "contributor",
 }
 
+def scan_injection_patterns(text: str) -> bool:
+    """Scan text for injection patterns (mirrors _injection-check.sh)"""
+    text_lower = text.lower()
+    for pattern in INJECTION_PATTERNS:
+        if re.search(pattern, text_lower):
+            return True
+    return False
+
 def strip_markers(text: str) -> tuple[str, bool]:
-    """Strip privileged markers from text and return (cleaned_text, has_injection)"""
+    """Strip privileged markers and scan for injection patterns"""
     has_injection = False
     cleaned = text
 
@@ -69,6 +89,10 @@ def strip_markers(text: str) -> tuple[str, bool]:
         if marker in cleaned:
             has_injection = True
             cleaned = cleaned.replace(marker, "[MARKER_STRIPPED]")
+
+    # Also check for injection patterns
+    if scan_injection_patterns(cleaned):
+        has_injection = True
 
     return cleaned, has_injection
 
@@ -80,7 +104,7 @@ def is_bot(user_login: str, user_type: Optional[str] = None) -> bool:
 
 def map_github_role(association: str) -> str:
     """Map GitHub author association to role"""
-    return GITHUB_ROLE_MAP.get(association, "external")
+    return GITHUB_ROLE_MAP.get(association, "contributor")
 
 def auto_categorize(comment: str, file: Optional[str] = None) -> str:
     """Auto-categorize comment based on content (spec categories: correctness, security, performance, design, style, unknown)"""
@@ -222,7 +246,7 @@ def parse_structured(data: List[Dict]) -> List[Dict]:
             "file": file_path,
             "line": line_num,
             "author": author,
-            "author_role": "external",
+            "author_role": "contributor",
             "comment": cleaned_comment,
             "category": category,
         }
@@ -269,7 +293,7 @@ def parse_freeform(text: str) -> List[Dict]:
             "file": file_path,
             "line": line_num,
             "author": "unknown",
-            "author_role": "external",
+            "author_role": "contributor",
             "comment": cleaned_comment,
             "category": auto_categorize(cleaned_comment, file_path),
         }

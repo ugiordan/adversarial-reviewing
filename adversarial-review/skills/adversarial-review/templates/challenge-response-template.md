@@ -64,3 +64,33 @@ Response to ARCH-002:
 Action: Abstain
 Evidence: This finding concerns database schema normalization which is outside my area of expertise as a performance specialist. Unable to provide a qualified assessment.
 ```
+
+## Triage Mode
+
+When reviewing triage verdicts (not standard findings), use this adapted format:
+
+```
+Response to TRIAGE-<ROLE>-NNN (re: EXT-NNN):
+Action: [Agree | Challenge | Abstain]
+Verdict assessment: [Fix | No-Fix | Investigate]
+Evidence: [supporting or counter-evidence, max 2000 chars]
+```
+
+### Field Constraints (Triage Mode)
+
+| Field               | Constraint                                                        |
+|---------------------|-------------------------------------------------------------------|
+| TRIAGE-ID           | Must reference an existing Triage ID (e.g., `TRIAGE-SEC-001`)    |
+| EXT-ID              | Must reference the associated External Comment ID (e.g., `EXT-003`) |
+| Action              | One of: `Agree`, `Challenge`, `Abstain`                           |
+| Verdict assessment  | One of: `Fix`, `No-Fix`, `Investigate` — **required** if Action is `Agree` or `Challenge` |
+| Evidence            | Max 2000 characters — supporting or counter-evidence              |
+
+### Example (Triage Mode)
+
+```
+Response to TRIAGE-SEC-001 (re: EXT-003):
+Action: Challenge
+Verdict assessment: No-Fix
+Evidence: The reviewer flagged unsanitized input on line 42, but the input passes through the sanitize() middleware at route registration (src/routes/api.ts:15). The middleware applies HTML encoding and SQL parameterization before any handler receives the request. The comment is a false positive in this architecture.
+```
