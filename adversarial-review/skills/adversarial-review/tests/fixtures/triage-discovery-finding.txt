@@ -1,0 +1,23 @@
+Triage ID: TRIAGE-CORR-001
+External Comment ID: EXT-001
+Specialist: Correctness Verifier
+Verdict: Fix
+Confidence: High
+Severity-If-Fix: Important
+File: pkg/reconciler/component.go
+Lines: 155-158
+Comment Summary: Early return issue
+Analysis: Valid issue confirmed by code analysis.
+Recommended Action: Fix the early return.
+
+Finding ID: CORR-001
+Specialist: Correctness Verifier
+Severity: Critical
+Confidence: High
+File: pkg/reconciler/component.go
+Lines: 160-164
+Title: ResetBaseline never called for disabled components
+Evidence: When a component transitions to disabled state, the early return prevents baseline cleanup.
+Recommended fix: Add explicit baseline reset in the disabled path.
+Source: Triage-Discovery
+Related-Comment: EXT-001

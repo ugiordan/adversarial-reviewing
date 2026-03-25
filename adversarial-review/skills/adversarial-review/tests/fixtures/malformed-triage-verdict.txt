@@ -1,0 +1,11 @@
+Triage ID: TRIAGE-CORR-001
+External Comment ID: EXT-001
+Specialist: Correctness Verifier
+Verdict: Maybe
+Confidence: High
+Severity-If-Fix: Important
+File: pkg/reconciler/component.go
+Lines: 155-158
+Comment Summary: Some comment
+Analysis: Some analysis
+Recommended Action: Some action
