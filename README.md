@@ -154,7 +154,7 @@ Default: all 5 specialists. Use flags to select specific ones.
 
 ### Claude Code Plugin (Full Feature Set)
 
-From inside a Claude Code session, run:
+**Option A: Via `/plugin` commands** (from inside a Claude Code session):
 
 ```
 # One-time marketplace registration
@@ -162,6 +162,54 @@ From inside a Claude Code session, run:
 
 # Install globally (works in every project)
 /plugin install adversarial-review@ugiordan-adversarial-review
+```
+
+**Option B: Manual setup** (if `/plugin` commands are unavailable):
+
+1. Clone the marketplace repo:
+```bash
+git clone https://github.com/ugiordan/adversarial-review.git \
+  $HOME/.claude/plugins/marketplaces/ugiordan-adversarial-review
+```
+
+2. Copy the plugin to the cache:
+```bash
+mkdir -p $HOME/.claude/plugins/cache/ugiordan-adversarial-review/adversarial-review/1.0.0
+rsync -a $HOME/.claude/plugins/marketplaces/ugiordan-adversarial-review/adversarial-review/ \
+  $HOME/.claude/plugins/cache/ugiordan-adversarial-review/adversarial-review/1.0.0/
+cp $HOME/.claude/plugins/marketplaces/ugiordan-adversarial-review/.claude-plugin/marketplace.json \
+  $HOME/.claude/plugins/cache/ugiordan-adversarial-review/adversarial-review/1.0.0/.claude-plugin/
+```
+
+3. Add to `~/.claude/settings.json`:
+```json
+{
+  "enabledPlugins": {
+    "adversarial-review@ugiordan-adversarial-review": true
+  },
+  "extraKnownMarketplaces": {
+    "ugiordan-adversarial-review": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/ugiordan/adversarial-review.git"
+      }
+    }
+  }
+}
+```
+
+4. Add to `~/.claude/plugins/installed_plugins.json` (inside the `"plugins"` object):
+```json
+"adversarial-review@ugiordan-adversarial-review": [
+  {
+    "scope": "user",
+    "installPath": "<HOME>/.claude/plugins/cache/ugiordan-adversarial-review/adversarial-review/1.0.0",
+    "version": "1.0.0",
+    "installedAt": "<ISO-8601-timestamp>",
+    "lastUpdated": "<ISO-8601-timestamp>",
+    "gitCommitSha": "<current-commit-sha>"
+  }
+]
 ```
 
 After installation, start a new session. The skill activates automatically when relevant, or invoke directly via `/adversarial-review`.
