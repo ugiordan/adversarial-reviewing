@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Generate cryptographically random delimiters for input isolation.
-# Usage: generate-delimiters.sh <input_file>
+# Usage: generate-delimiters.sh [--category CATEGORY] <input_file> [extra_files...]
 # Output: JSON with start_delimiter, end_delimiter, field_start, field_end
 # Exit 0 on success, 1 on error.
 
@@ -11,7 +11,14 @@ if ! command -v python3 &>/dev/null; then
     exit 2
 fi
 
-INPUT_FILE="${1:?Usage: generate-delimiters.sh <input_file>}"
+CATEGORY="REVIEW_TARGET"
+if [[ "${1:-}" == "--category" ]]; then
+    CATEGORY="${2:?Usage: generate-delimiters.sh [--category CATEGORY] <input_file> [extra_files...]}"
+    shift 2
+fi
+
+INPUT_FILE="${1:?Usage: generate-delimiters.sh [--category CATEGORY] <input_file> [extra_files...]}"
+shift || true
 
 if [[ ! -f "$INPUT_FILE" ]]; then
     echo '{"error": "Input file not found"}' >&2
@@ -31,6 +38,11 @@ generate_hex() {
 }
 
 INPUT_CONTENT=$(cat "$INPUT_FILE")
+for extra in "$@"; do
+    if [[ -f "$extra" ]]; then
+        INPUT_CONTENT="$INPUT_CONTENT$(cat "$extra")"
+    fi
+done
 
 # Generate collision-free hex with retry loop
 generate_collision_free_hex() {
@@ -51,8 +63,8 @@ generate_collision_free_hex() {
 
 # Generate input delimiters with collision detection
 HEX=$(generate_collision_free_hex)
-START_DELIM="===REVIEW_TARGET_${HEX}_START==="
-END_DELIM="===REVIEW_TARGET_${HEX}_END==="
+START_DELIM="===${CATEGORY}_${HEX}_START==="
+END_DELIM="===${CATEGORY}_${HEX}_END==="
 
 # Generate field-level isolation markers with full 128-bit entropy and collision detection
 FIELD_HEX=$(generate_collision_free_hex)
