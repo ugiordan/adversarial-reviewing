@@ -33,6 +33,10 @@ extract_field() {
     echo "$text" | sed -n "s/^${label} *//p" | head -1 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
 }
 
+# Source shared injection detection (once, outside the loop)
+SCRIPT_DIR_VALIDATE="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR_VALIDATE/_injection-check.sh"
+
 # Check for NO_FINDINGS_REPORTED marker (valid zero-finding output)
 if grep -qF "NO_FINDINGS_REPORTED" <<< "$content"; then
     echo '{"valid": true, "errors": [], "finding_count": 0, "zero_findings": true}'
@@ -117,48 +121,7 @@ while IFS= read -r fid; do
 
     # Injection heuristic — check ALL free-text fields (Title, Evidence, Recommended fix)
     freetext="$title $evidence $fix"
-    freetext_lower=$(echo "$freetext" | tr '[:upper:]' '[:lower:]')
-
-    # Two-tier injection detection: high-confidence patterns always flag,
-    # context-sensitive patterns require 2+ matches to flag
-    injection_patterns_high=(
-        "ignore all previous" "ignore all instructions" "disregard previous"
-        "disregard all" "system prompt" "discard previous" "new instructions"
-        "real task" "you are now" "forget your" "ignore the above"
-    )
-    injection_patterns_context=(
-        "you must" "you should" "override" "set aside" "supersede"
-        "abandon" "authoritative" "ignore all" "disregard"
-    )
-
-    for pattern in "${injection_patterns_high[@]}"; do
-        if grep -qF "$pattern" <<< "$freetext_lower"; then
-            ERRORS+=("Finding $fid: injection pattern detected: '$pattern'")
-        fi
-    done
-
-    # Context-sensitive: require 2+ matches to reduce false positives
-    context_hits=0
-    context_matched=()
-    for pattern in "${injection_patterns_context[@]}"; do
-        if grep -qF "$pattern" <<< "$freetext_lower"; then
-            context_hits=$((context_hits + 1))
-            context_matched+=("$pattern")
-        fi
-    done
-    if (( context_hits >= 2 )); then
-        ERRORS+=("Finding $fid: multiple injection patterns detected: ${context_matched[*]}")
-    fi
-
-    # Check for provenance marker patterns
-    if grep -qF "[PROVENANCE::" <<< "$freetext"; then
-        ERRORS+=("Finding $fid: contains provenance marker pattern in field content")
-    fi
-
-    # Check for field isolation marker patterns
-    if grep -qF "[FIELD_DATA_" <<< "$freetext"; then
-        ERRORS+=("Finding $fid: contains field isolation marker pattern in field content")
-    fi
+    check_injection "$freetext" "$fid"
 
 done <<< "$finding_ids"
 
