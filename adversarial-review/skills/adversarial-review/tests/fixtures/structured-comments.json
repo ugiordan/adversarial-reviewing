@@ -1,0 +1,12 @@
+[
+  {
+    "file": "src/auth/login.py",
+    "line": 42,
+    "comment": "SQL injection in user search endpoint",
+    "author": "security-reviewer",
+    "category": "security"
+  },
+  {
+    "comment": "Consider adding rate limiting to the API"
+  }
+]

@@ -1,0 +1,23 @@
+[
+  {
+    "user": {"login": "coderabbitai", "type": "Bot"},
+    "body": "Early return before baseline reset leaves stale conditions",
+    "path": "pkg/reconciler/component.go",
+    "line": 155,
+    "author_association": "NONE"
+  },
+  {
+    "user": {"login": "reviewer1", "type": "User"},
+    "body": "Have you considered using the Builder pattern here?",
+    "path": null,
+    "line": null,
+    "author_association": "COLLABORATOR"
+  },
+  {
+    "user": {"login": "reviewer2", "type": "User"},
+    "body": "IsEnabled guard silently drops ConditionFalse for disabled components",
+    "path": "pkg/reconciler/controller.go",
+    "line": 198,
+    "author_association": "MEMBER"
+  }
+]
