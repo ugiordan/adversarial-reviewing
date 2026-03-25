@@ -1,0 +1,15 @@
+diff --git a/pkg/reconciler/component.go b/pkg/reconciler/component.go
+index abcdef1..1234567 100644
+--- a/pkg/reconciler/component.go
++++ b/pkg/reconciler/component.go
+@@ -140,6 +140,10 @@ func ReconcileComponent(ctx context.Context, comp Component) error {
+     if comp.Spec == nil {
+         return nil
+     }
++    if comp.Status.Phase == "disabled" {
++        return nil
++    }
++
+     err := SetCondition(ctx, comp, ConditionReady)
+     if err != nil {
+         return err
