@@ -83,7 +83,7 @@ def map_github_role(association: str) -> str:
     return GITHUB_ROLE_MAP.get(association, "external")
 
 def auto_categorize(comment: str, file: Optional[str] = None) -> str:
-    """Auto-categorize comment based on content"""
+    """Auto-categorize comment based on content (spec categories: correctness, security, performance, design, style, unknown)"""
     comment_lower = comment.lower()
 
     # Security-related keywords
@@ -100,27 +100,30 @@ def auto_categorize(comment: str, file: Optional[str] = None) -> str:
     ]):
         return "performance"
 
-    # Architecture keywords
-    if any(kw in comment_lower for kw in [
-        "architecture", "design", "pattern", "structure",
-        "dependency injection", "coupling"
-    ]):
-        return "architecture"
-
-    # Error handling keywords
+    # Correctness keywords (logic errors, error handling, edge cases)
     if any(kw in comment_lower for kw in [
         "error", "exception", "panic", "crash", "nil pointer",
-        "null pointer", "undefined"
+        "null pointer", "undefined", "bug", "incorrect", "wrong",
+        "race condition", "edge case", "off-by-one"
     ]):
-        return "error-handling"
+        return "correctness"
 
-    # Testing keywords
+    # Design keywords (architecture, patterns, structure)
     if any(kw in comment_lower for kw in [
-        "test", "coverage", "mock", "assertion"
+        "architecture", "design", "pattern", "structure",
+        "dependency injection", "coupling", "cohesion",
+        "abstraction", "interface", "refactor"
     ]):
-        return "testing"
+        return "design"
 
-    return "general"
+    # Style keywords (formatting, naming, readability)
+    if any(kw in comment_lower for kw in [
+        "style", "naming", "format", "indent", "whitespace",
+        "readability", "convention", "lint", "nit"
+    ]):
+        return "style"
+
+    return "unknown"
 
 def calculate_word_overlap(text1: str, text2: str) -> float:
     """Calculate word overlap percentage between two texts"""

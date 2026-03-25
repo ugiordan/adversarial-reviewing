@@ -99,22 +99,22 @@ while IFS= read -r tid; do
 
     # Validate Severity-If-Fix conditional
     severity_if_fix=$(extract_field "Severity-If-Fix:" "$block")
-    if [[ "$verdict" == "Fix" || "$verdict" == "Investigate" ]]; then
-        # When verdict is Fix or Investigate, Severity-If-Fix must be a valid severity
+    if [[ "$verdict" == "Fix" ]]; then
+        # When verdict is Fix, Severity-If-Fix must be a valid severity
         if [[ "$severity_if_fix" != "Critical" && "$severity_if_fix" != "Important" && "$severity_if_fix" != "Minor" ]]; then
-            ERRORS+=("Triage $tid: Verdict=$verdict requires Severity-If-Fix to be Critical|Important|Minor, got '$severity_if_fix'")
+            ERRORS+=("Triage $tid: Verdict=Fix requires Severity-If-Fix to be Critical|Important|Minor, got '$severity_if_fix'")
         fi
-    elif [[ "$verdict" == "No-Fix" ]]; then
-        # When verdict is No-Fix, Severity-If-Fix must be N/A
+    elif [[ "$verdict" == "No-Fix" || "$verdict" == "Investigate" ]]; then
+        # When verdict is No-Fix or Investigate, Severity-If-Fix must be N/A
         if [[ "$severity_if_fix" != "N/A" ]]; then
-            ERRORS+=("Triage $tid: Verdict=No-Fix requires Severity-If-Fix to be N/A, got '$severity_if_fix'")
+            ERRORS+=("Triage $tid: Verdict=$verdict requires Severity-If-Fix to be N/A, got '$severity_if_fix'")
         fi
     fi
 
-    # Check Lines format
+    # Check Lines format (N/A valid for general/file-level comments)
     lines_val=$(extract_field "Lines:" "$block")
-    if [[ -n "$lines_val" ]] && ! [[ "$lines_val" =~ ^[0-9]+(-[0-9]+)?$ ]]; then
-        ERRORS+=("Triage $tid: invalid Lines format '$lines_val' (must be NNN or NNN-NNN)")
+    if [[ -n "$lines_val" ]] && ! [[ "$lines_val" =~ ^([0-9]+(-[0-9]+)?|N/A)$ ]]; then
+        ERRORS+=("Triage $tid: invalid Lines format '$lines_val' (must be NNN, NNN-NNN, or N/A)")
     fi
 
     # Check length caps
@@ -220,10 +220,10 @@ while IFS= read -r fid; do
         ERRORS+=("Finding $fid: invalid confidence '$confidence' (must be High|Medium|Low)")
     fi
 
-    # Check Lines format
+    # Check Lines format (N/A valid for general/file-level comments)
     lines_val=$(extract_field "Lines:" "$block")
-    if [[ -n "$lines_val" ]] && ! [[ "$lines_val" =~ ^[0-9]+(-[0-9]+)?$ ]]; then
-        ERRORS+=("Finding $fid: invalid Lines format '$lines_val' (must be NNN or NNN-NNN)")
+    if [[ -n "$lines_val" ]] && ! [[ "$lines_val" =~ ^([0-9]+(-[0-9]+)?|N/A)$ ]]; then
+        ERRORS+=("Finding $fid: invalid Lines format '$lines_val' (must be NNN, NNN-NNN, or N/A)")
     fi
 
     # Check length caps

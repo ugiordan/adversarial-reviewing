@@ -61,7 +61,8 @@ extract_triage_signature() {
     while IFS= read -r tid; do
         [[ -z "$tid" ]] && continue
         verdict=$(awk -v target="Triage ID: $tid" '
-            index($0, target) == 1 {found=1; next}
+            index($0, target) == 1 && length($0) == length(target) {found=1; next}
+            index($0, target) == 1 && substr($0, length(target)+1, 1) !~ /[0-9]/ {found=1; next}
             found && /^Triage ID:/ {exit}
             found && /^Verdict:/ {print; exit}
         ' "$file" | sed -n 's/^Verdict: *\([A-Za-z-]*\).*/\1/p' | head -1)

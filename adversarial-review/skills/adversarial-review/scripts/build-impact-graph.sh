@@ -9,11 +9,11 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 GENERATE_DELIMITERS="$SCRIPT_DIR/generate-delimiters.sh"
 
-# Default limits
-MAX_SYMBOLS=50
-MAX_CALLERS=100
-MAX_CALLEES=50
-TOKEN_LIMIT=8000  # Progressive cap
+# Default limits (per spec: max 10 symbols, 20 callers, 50K token cap)
+MAX_SYMBOLS=10
+MAX_CALLERS=20
+MAX_CALLEES=20
+TOKEN_LIMIT=50000  # 50K token cap
 
 # Parse arguments
 DIFF_FILE=""
@@ -94,18 +94,26 @@ fi
 extract_symbols() {
     local diff="$1"
 
-    # Go functions: func FunctionName(
-    echo "$diff" | grep -E '^\+.*func [A-Z][a-zA-Z0-9_]*\(' | \
-        sed -E 's/.*func ([A-Z][a-zA-Z0-9_]*)\(.*/\1/' | sort -u
+    # Go functions (exported and unexported): func FunctionName( or func functionName(
+    echo "$diff" | grep -E '^\+.*func [a-zA-Z_][a-zA-Z0-9_]*\(' | \
+        sed -E 's/.*func ([a-zA-Z_][a-zA-Z0-9_]*)\(.*/\1/' | sort -u
 
     # Python functions/methods: def function_name(
     echo "$diff" | grep -E '^\+.*def [a-zA-Z_][a-zA-Z0-9_]*\(' | \
         sed -E 's/.*def ([a-zA-Z_][a-zA-Z0-9_]*)\(.*/\1/' | sort -u
 
+    # TypeScript/JavaScript: function name(, const name =, export function name(
+    echo "$diff" | grep -E '^\+.*(function |const |let |export function )[a-zA-Z_][a-zA-Z0-9_]*[( =]' | \
+        sed -E 's/.*(function |const |let |export function )([a-zA-Z_][a-zA-Z0-9_]*).*/\2/' | sort -u
+
+    # Java/Rust: public/fn keyword before identifier
+    echo "$diff" | grep -E '^\+.*(public |private |protected |fn )[a-zA-Z_][a-zA-Z0-9_]*\(' | \
+        sed -E 's/.*(public |private |protected |fn )([a-zA-Z_][a-zA-Z0-9_]*)\(.*/\2/' | sort -u
+
     # Also look for functions that are being modified (not just added)
     # Extract the function context from diff headers
-    echo "$diff" | grep -E '^@@.*@@.*func [A-Z][a-zA-Z0-9_]*\(' | \
-        sed -E 's/.*func ([A-Z][a-zA-Z0-9_]*)\(.*/\1/' | sort -u
+    echo "$diff" | grep -E '^@@.*@@.*(func |def |function |fn )[a-zA-Z_][a-zA-Z0-9_]*\(' | \
+        sed -E 's/.*(func |def |function |fn )([a-zA-Z_][a-zA-Z0-9_]*)\(.*/\2/' | sort -u
 }
 
 SYMBOLS=$(extract_symbols "$DIFF_CONTENT")
