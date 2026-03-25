@@ -155,6 +155,19 @@ When only 1 specialist is active:
 | New finding in iteration 3 | Validation rejects it; log the violation |
 | All agents fail in an iteration | Use previous iteration's positions; proceed to Phase 3 |
 
+## Triage Mode Adaptation (active when --triage is used)
+
+In triage mode, specialists debate **verdicts** rather than finding validity. The challenge response template is adapted:
+
+```
+Response to TRIAGE-<ROLE>-NNN (re: EXT-NNN):
+Action: [Agree | Challenge | Abstain]
+Verdict assessment: [Fix | No-Fix | Investigate]    (required if Agree or Challenge)
+Evidence: [supporting or counter-evidence, max 2000 chars]
+```
+
+Triage-Discovery findings are debated using the standard challenge response template.
+
 ## References
 
 - `protocols/mediated-communication.md` — sanitization, provenance, and field isolation rules

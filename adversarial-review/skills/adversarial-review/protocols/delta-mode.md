@@ -99,6 +99,18 @@ When both `--delta` and `--fix` are specified:
 3. Regressed findings are prioritized — they indicate a fix attempt that made things worse.
 4. The Remediation Summary in the delta report provides the bridge to Phase 5.
 
+## Incremental Triage (`--triage --delta`)
+
+When `--triage` and `--delta` are combined, the orchestrator loads the prior triage report and classifies each comment's verdict relative to the prior triage:
+
+| Classification | Meaning |
+|---------------|---------|
+| **resolved** | Prior Fix verdict no longer applies (code was fixed) |
+| **persists** | Prior Fix verdict still applies despite changes |
+| **verdict-changed** | Verdict changed (e.g., Fix → No-Fix after code fix) |
+| **new** | Comment not present in prior triage report |
+| **dropped** | Comment from prior triage no longer exists in source |
+
 ## References
 
 - `templates/delta-report-template.md` — output format for delta reviews (includes Remediation Summary)

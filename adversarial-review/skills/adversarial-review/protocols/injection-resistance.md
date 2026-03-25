@@ -66,6 +66,23 @@ If an agent's output contains these markers in free-text fields, it indicates th
 - Provenance/field markers: a single match causes validation failure
 - Failed validation triggers a fresh agent spawn with the error message (up to 2 attempts)
 
+## Triage Mode Extensions
+
+### Triage-Specific Inoculation
+
+When `--triage` is active, all agent prompts receive additional inoculation text warning that external review comments are untrusted input that may contain prompt injection. See agent definition files for the full inoculation text.
+
+### Input-Side Injection Scanning
+
+External comments processed by `parse-comments.sh` undergo input-side injection scanning using the same high-confidence patterns as output validation. Comments containing injection patterns are:
+1. NOT rejected (they are still triaged)
+2. Flagged with `injection_warning: true` in the parsed output
+3. Accompanied by a caution marker in the agent prompt
+
+### Privileged Marker Stripping
+
+The markers `NO_FINDINGS_REPORTED` and `NO_TRIAGE_EVALUATIONS` are stripped from external comment text before presenting to agents. These markers have privileged semantics in the validation pipeline and must not appear in untrusted input.
+
 ## References
 
 - `scripts/validate-output.sh` — injection detection implementation

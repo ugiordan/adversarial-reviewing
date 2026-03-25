@@ -187,6 +187,15 @@ Flat, severity-sorted summary of all validated findings organized by area and ac
 
 This section is always present, even without `--fix`. It gives the user a clear picture of what needs attention regardless of whether remediation will run.
 
+## Section 10: Change Impact Summary (only when `--diff` is active)
+
+When `--diff` is used, this section shows the change-impact graph overview:
+
+- Changed symbols and their files
+- Callers affected by the changes
+- Callees that may be skipped by new early returns or guard clauses
+- Advisory note that the impact graph is grep-based and may be incomplete
+
 ---
 
 ## Metadata Block
