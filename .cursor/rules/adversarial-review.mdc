@@ -79,8 +79,20 @@ Role-play a devil's advocate using the prompt at
 | `--fix`          | Propose concrete fixes alongside findings           |
 | `--quick`        | Reduce depth: skip Phase 2, shorter analysis        |
 | `--thorough`     | Increase depth: more detailed analysis per finding  |
+| `--diff`           | Enable change-impact analysis with caller/callee graph |
+| `--triage <source>`| Evaluate external comments (pr:<N>, file:<path>, -)   |
+| `--gap-analysis`   | Coverage gap analysis in triage report                |
 
 Multiple specialist flags can be combined (e.g. `--security --performance`).
+
+---
+
+### Triage Mode (when `--triage` is used)
+
+Instead of finding issues, evaluate each external comment by adopting each specialist
+persona and producing a verdict (Fix/No-Fix/Investigate) with confidence and analysis.
+Use the triage finding template at
+`$HOME/.adversarial-review/adversarial-review/templates/triage-finding-template.md`.
 
 ---
 

@@ -55,6 +55,14 @@ flowchart LR
 
 > Phase 5 (dashed) only runs when `--fix` is specified.
 
+### Change-Impact Analysis (`--diff`)
+
+When `--diff` is specified, agents receive enriched input: the git diff, changed files, and a grep-based change-impact graph showing callers and callees of modified symbols. This helps specialists trace side effects of changes across the codebase.
+
+### Triage Mode (`--triage`)
+
+When `--triage <source>` is specified, agents evaluate external review comments (from CodeRabbit, human reviewers, or PR conversations) instead of performing independent review. Each comment receives a verdict (Fix/No-Fix/Investigate) with confidence levels and technical analysis.
+
 ### Phase 1: Self-Refinement
 
 Each specialist reviews the code independently in full isolation. No specialist sees another's output. Each agent self-refines through 2-3 iterations with convergence detection.
@@ -258,6 +266,10 @@ Reference or inline `AGENTS.md` in your AI tool's context. Feature set depends o
 | `--fix` | Enable Phase 5 (remediation with Jira drafts, worktree branches, PRs) |
 | `--budget <N>` | Override default 500K token budget |
 | `--force` | Override 200-file hard ceiling |
+| `--diff` | Enable diff-augmented input with change-impact graph |
+| `--diff --range <range>` | Specify git commit range (e.g., `main..HEAD`) |
+| `--triage <source>` | Evaluate external review comments (`pr:<N>`, `file:<path>`, `-`) |
+| `--gap-analysis` | Include coverage gap analysis in triage report |
 
 ### Examples
 
@@ -273,6 +285,18 @@ Reference or inline `AGENTS.md` in your AI tool's context. Feature set depends o
 
 # Thorough review with report saved and fixes proposed
 /adversarial-review src/ --thorough --save --fix
+
+# Triage PR review comments
+/adversarial-review --triage pr:42
+
+# Triage comments from a file
+/adversarial-review --triage file:reviews/comments.json
+
+# Review with change-impact analysis
+/adversarial-review src/ --diff
+
+# Combined: triage PR comments with diff context
+/adversarial-review --triage pr:42 --diff --thorough
 ```
 
 ## Security Properties by Install Path
@@ -330,8 +354,8 @@ graph TD
     SKILL --> AG["agents/ (6 specialists)"]
     SKILL --> PH["phases/ (5 procedures)"]
     SKILL --> PR["protocols/ (6 definitions)"]
-    SKILL --> SC["scripts/ (5 validators)"]
-    SKILL --> TM["templates/ (6 formats)"]
+    SKILL --> SC["scripts/ (8 validators)"]
+    SKILL --> TM["templates/ (9 formats)"]
     SKILL --> TS["tests/ (5 scripts + 14 fixtures)"]
 
     style ROOT fill:#f0f4ff,stroke:#4a6fa5
@@ -350,6 +374,10 @@ All agent outputs are validated through bash scripts -- not just LLM judgment:
 | `deduplicate.sh` | Removes duplicate findings across specialists |
 | `track-budget.sh` | Token budget initialization, tracking, and estimation |
 | `generate-delimiters.sh` | Produces unique delimiters for code isolation |
+| `build-impact-graph.sh` | Builds change-impact graph from git diff (callers/callees of changed symbols) |
+| `parse-comments.sh` | Normalizes external review comments into structured format |
+| `validate-triage-output.sh` | Validates triage finding format (verdicts, confidence, severity) |
+| `_injection-check.sh` | Shared injection detection logic (sourced by both validators) |
 
 ## Testing
 
@@ -358,12 +386,14 @@ cd adversarial-review/skills/adversarial-review
 bash tests/run-all-tests.sh
 ```
 
-Test suite: **51 tests** covering validation, injection resistance, convergence detection, budget tracking, deduplication, and single-agent pipeline integration.
+Test suite: **99 tests** covering validation, injection resistance, convergence detection, budget tracking, deduplication, and single-agent pipeline integration.
 
 ## Dependencies
 
 - `bash` 4.0+
 - `python3` (JSON serialization and unicode normalization)
+- `git` (for `--diff` change-impact analysis)
+- GitHub MCP tools (optional, for `--triage pr:<N>`)
 - Claude Code Agent tool (for full multi-agent feature set)
 - No npm or pip packages required
 
