@@ -57,6 +57,12 @@ Evidence: [supporting or counter-evidence, max 2000 chars]
 
 **New findings:** Agents may raise new findings in **iterations 1 and 2 only**. New findings are **prohibited in the final iteration** (iteration 3). New findings must use the standard finding template with `Source: Challenge Round` marker.
 
+### Reference Module Injection (Challenge Round)
+
+When reference modules are available, they are included in the challenge round prompts using the same `REFERENCE_DATA` delimiter wrapping as Phase 1 iteration 2+. Challengers evaluating findings benefit from reference material to identify false positives or missed severity classifications.
+
+The same specialist-filtered modules and delimiter isolation apply. See `protocols/input-isolation.md` for the REFERENCE_DATA delimiter specification and `scripts/discover-references.sh` for module discovery.
+
 ### Step 5: Validate Responses
 
 Run `scripts/validate-output.sh` on each agent's challenge response.
@@ -171,10 +177,11 @@ Triage-Discovery findings are debated using the standard challenge response temp
 ## References
 
 - `protocols/mediated-communication.md` — sanitization, provenance, and field isolation rules
-- `protocols/input-isolation.md` — delimiter generation for field-level markers
+- `protocols/input-isolation.md` — delimiter generation for field-level markers and REFERENCE_DATA delimiter specification
 - `protocols/convergence-detection.md` — Phase 2 convergence criteria
 - `protocols/token-budget.md` — budget tracking and per-iteration context cap
 - `scripts/deduplicate.sh` — pre-debate deduplication
+- `scripts/discover-references.sh` — reference module discovery and filtering
 - `scripts/generate-delimiters.sh` — field-level isolation marker generation
 - `scripts/validate-output.sh` — response validation
 - `scripts/detect-convergence.sh` — convergence detection
