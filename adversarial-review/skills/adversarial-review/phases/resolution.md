@@ -41,7 +41,7 @@ For each finding, tally positions and apply rules in order:
 
 **Condition:** All specialists who took a position chose Agree, and no challenges exist.
 
-**Result:** Include in report Section 2 (Consensus Findings).
+**Result:** Include in report Section 3 (Consensus Findings).
 
 #### 3b. Strict Majority (Quorum Met)
 
@@ -49,7 +49,7 @@ For each finding, tally positions and apply rules in order:
 - Quorum is met: `(agree_count + challenge_count) >= quorum`
 - Strict majority agrees: `agree_count >= strict_majority`
 
-**Result:** Include in report Section 3 (Majority Findings). Note all dissenting positions and any severity disputes.
+**Result:** Include in report Section 4 (Majority Findings). Note all dissenting positions and any severity disputes.
 
 #### 3c. No Majority (Quorum Met)
 
@@ -57,7 +57,7 @@ For each finding, tally positions and apply rules in order:
 - Quorum is met: `(agree_count + challenge_count) >= quorum`
 - Strict majority NOT reached: `agree_count < strict_majority`
 
-**Result:** Escalate to user. Include in report Section 4 (Escalated Disagreements) with all positions presented.
+**Result:** Escalate to user. Include in report Section 5 (Escalated Disagreements) with all positions presented.
 
 #### 3d. Quorum Not Met
 
@@ -65,19 +65,19 @@ For each finding, tally positions and apply rules in order:
 - Quorum is NOT met: `(agree_count + challenge_count) < quorum`
 - Too many abstentions to reach a valid decision
 
-**Result:** Escalate to user. Include in report Section 5 (Escalated - Quorum Not Met).
+**Result:** Escalate to user. Include in report Section 6 (Escalated - Quorum Not Met).
 
 #### 3e. Persistent Disagreement
 
 **Condition:** Finding went through all 3 challenge round iterations without reaching consensus or majority.
 
-**Result:** Escalate to user. Include in report Section 4 (Escalated Disagreements).
+**Result:** Escalate to user. Include in report Section 5 (Escalated Disagreements).
 
 #### 3f. Dismissed
 
 **Condition:** Strict majority chose Challenge (i.e., `challenge_count >= strict_majority`).
 
-**Result:** Include in report Section 6 (Dismissed Findings) with rejection reasoning.
+**Result:** Include in report Section 7 (Dismissed Findings) with rejection reasoning.
 
 ### Step 4: Resolve Severity
 
@@ -104,11 +104,11 @@ Identify cross-specialist findings that target **overlapping file and line range
 - Same file path
 - Overlapping or adjacent line ranges
 
-Co-located findings are **not merged** — they remain separate findings. They are flagged and grouped in report Section 8 (Co-located Findings) so the user can see how different specialist perspectives relate to the same code region.
+Co-located findings are **not merged** — they remain separate findings. They are flagged and grouped in report Section 9 (Co-located Findings) so the user can see how different specialist perspectives relate to the same code region.
 
 ### Step 7: Classify Challenge Round Findings
 
-New findings raised during Phase 2 are resolved using the same rules above. They are additionally reported in Section 7 (Challenge Round Findings) with their mini self-refinement results from Phase 2, Step 9.
+New findings raised during Phase 2 are resolved using the same rules above. They are additionally reported in Section 8 (Challenge Round Findings) with their mini self-refinement results from Phase 2, Step 9.
 
 ## Single-Specialist Mode
 
