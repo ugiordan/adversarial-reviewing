@@ -119,7 +119,7 @@ adversarial-review/skills/adversarial-review/references/<specialist>/
 
 **specialist subdirectories**: `security/`, `performance/`, `quality/`, `correctness/`, `architecture/`
 
-**`specialist: all` modules**: placed in `references/all/` subdirectory at any layer (e.g., `references/all/my-module.md`). Both `references/all/*.md` and root-level `references/*.md` are scanned at each layer.
+**`specialist: all` modules**: placed in `references/all/` subdirectory at any layer (e.g., `references/all/my-module.md`). Both `references/all/*.md` and root-level `references/*.md` are scanned at each layer. Modules placed at root-level `references/*.md` are only discovered for `specialist: all` matching; specialist-specific modules must be placed in their specialist subdirectory (e.g., `references/security/`).
 
 ### B.3 Discovery and Loading
 
