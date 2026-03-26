@@ -54,6 +54,8 @@ All scripts use the `$AR_HOME/` prefix:
 - `bash $AR_HOME/scripts/build-impact-graph.sh` -- build change-impact graph from git diff
 - `bash $AR_HOME/scripts/parse-comments.sh` -- normalize external review comments
 - `bash $AR_HOME/scripts/validate-triage-output.sh` -- validate triage output format
+- `bash $AR_HOME/scripts/discover-references.sh` -- discover and filter reference modules (3-layer: built-in, user, project)
+- `bash $AR_HOME/scripts/update-references.sh` -- update reference modules from remote `source_url`
 
 ## Degraded Single-Agent Mode
 
@@ -97,6 +99,9 @@ Mode flags:
 - `--diff --range <range>` -- Specify git commit range for diff analysis
 - `--triage <source>` -- Evaluate external review comments (pr:<N>, file:<path>, -)
 - `--gap-analysis` -- Include coverage gap analysis in triage report
+- `--list-references` -- List all discovered reference modules with metadata
+- `--update-references` -- Update modules that have a `source_url` (interactive)
+- `--update-references --check-only` -- Check for updates without applying
 
 ## Report Save Path
 
@@ -124,6 +129,7 @@ Companion files in `$AR_HOME/`:
 - Protocols: `$AR_HOME/protocols/`
 - Templates: `$AR_HOME/templates/`
 - Scripts: `$AR_HOME/scripts/`
+- Reference modules: `$AR_HOME/references/` (built-in), `~/.adversarial-review/references/` (user), `.adversarial-review/references/` (project)
 
 ## Dependencies
 

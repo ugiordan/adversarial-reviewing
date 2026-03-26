@@ -271,6 +271,14 @@ Reference or inline `AGENTS.md` in your AI tool's context. Feature set depends o
 | `--triage <source>` | Evaluate external review comments (`pr:<N>`, `file:<path>`, `-`) |
 | `--gap-analysis` | Include coverage gap analysis in triage report |
 
+### Reference Module Flags
+
+| Flag | Effect |
+|------|--------|
+| `--list-references` | List all discovered reference modules with metadata |
+| `--update-references` | Update modules that have a `source_url` (interactive) |
+| `--update-references --check-only` | Check for available updates without applying |
+
 ### Examples
 
 ```bash
@@ -297,6 +305,40 @@ Reference or inline `AGENTS.md` in your AI tool's context. Feature set depends o
 
 # Combined: triage PR comments with diff context
 /adversarial-review --triage pr:42 --diff --thorough
+```
+
+## Reference Modules
+
+The review is enriched with pluggable reference modules — curated knowledge bases that specialists cross-check their findings against during self-refinement (iteration 2+).
+
+### Built-in Modules (Security)
+
+| Module | Description |
+|--------|-------------|
+| `owasp-top10-2025` | OWASP Top 10:2025 vulnerability verification patterns |
+| `agentic-ai-security` | OWASP Agentic AI risks ASI01-ASI10 |
+| `asvs-5-highlights` | ASVS 5.0 key requirements by verification level |
+| `k8s-security` | Kubernetes/operator security patterns with false positive checklists |
+
+### Custom Modules
+
+Add your own modules at:
+- **User-level** (all projects): `~/.adversarial-review/references/<specialist>/`
+- **Project-level** (repo-specific): `.adversarial-review/references/<specialist>/`
+
+See `references/README.md` for the module format and authoring guidelines.
+
+### Updating Modules
+
+```bash
+# Check for updates
+/adversarial-review --update-references --check-only
+
+# Update interactively
+/adversarial-review --update-references
+
+# List all discovered modules
+/adversarial-review --list-references
 ```
 
 ## Security Properties by Install Path
@@ -354,9 +396,10 @@ graph TD
     SKILL --> AG["agents/ (6 specialists)"]
     SKILL --> PH["phases/ (5 procedures)"]
     SKILL --> PR["protocols/ (6 definitions)"]
-    SKILL --> SC["scripts/ (8 validators)"]
+    SKILL --> RF["references/ (built-in modules)"]
+    SKILL --> SC["scripts/ (10 validators)"]
     SKILL --> TM["templates/ (9 formats)"]
-    SKILL --> TS["tests/ (5 scripts + 14 fixtures)"]
+    SKILL --> TS["tests/ (8 scripts + 20 fixtures)"]
 
     style ROOT fill:#f0f4ff,stroke:#4a6fa5
     style SKILL fill:#e8f5e9,stroke:#2e7d32
@@ -378,6 +421,8 @@ All agent outputs are validated through bash scripts -- not just LLM judgment:
 | `parse-comments.sh` | Normalizes external review comments into structured format |
 | `validate-triage-output.sh` | Validates triage finding format (verdicts, confidence, severity) |
 | `_injection-check.sh` | Shared injection detection logic (sourced by both validators) |
+| `discover-references.sh` | Module discovery, frontmatter parsing, filtering, dedup, staleness, token counting |
+| `update-references.sh` | Fetch remote modules by `source_url`, compare versions, interactive update |
 
 ## Testing
 
@@ -386,7 +431,7 @@ cd adversarial-review/skills/adversarial-review
 bash tests/run-all-tests.sh
 ```
 
-Test suite: **99 tests** covering validation, injection resistance, convergence detection, budget tracking, deduplication, and single-agent pipeline integration.
+Test suite covering validation, injection resistance, convergence detection, budget tracking, deduplication, reference module discovery, and single-agent pipeline integration.
 
 ## Dependencies
 

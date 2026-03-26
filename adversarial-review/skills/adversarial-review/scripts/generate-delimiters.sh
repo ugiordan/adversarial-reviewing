@@ -11,6 +11,7 @@ if ! command -v python3 &>/dev/null; then
     exit 2
 fi
 
+# Supported categories: REVIEW_TARGET (default), IMPACT_GRAPH, EXTERNAL_COMMENT, REFERENCE_DATA
 CATEGORY="REVIEW_TARGET"
 if [[ "${1:-}" == "--category" ]]; then
     CATEGORY="${2:?Usage: generate-delimiters.sh [--category CATEGORY] <input_file> [extra_files...]}"
