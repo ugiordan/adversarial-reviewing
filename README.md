@@ -126,7 +126,7 @@ The orchestrator synthesizes challenges and defenses, applies consensus rules, d
 
 ### Phase 4: Report
 
-Generates a structured report with 9 sections: executive summary, validated findings by severity (Critical/Important/Minor/Style), dismissed findings with rationale, challenge round highlights, co-located findings, and a remediation roadmap.
+Generates a structured report with 9 sections: executive summary, validated findings by severity (Critical/Important/Minor), dismissed findings with rationale, challenge round highlights, co-located findings, and a remediation roadmap.
 
 ### Phase 5: Remediation (optional, `--fix`)
 

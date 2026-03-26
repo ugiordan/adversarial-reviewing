@@ -81,9 +81,10 @@ Add project-specific security patterns at `.adversarial-review/references/securi
 
 ```markdown
 ---
-title: Internal Auth Patterns
+name: Internal Auth Patterns
 specialist: security
-version: "1.0"
+version: "1.0.0"
+enabled: true
 ---
 
 ## Custom OAuth Flow

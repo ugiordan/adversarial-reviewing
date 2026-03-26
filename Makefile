@@ -14,6 +14,7 @@ lint: ## Run ShellCheck on all scripts
 	@echo "ShellCheck passed."
 
 install: ## Install plugin to Claude Code cache
-	@mkdir -p $(HOME)/.claude/plugins/cache/ugiordan-adversarial-review
+	@mkdir -p $(HOME)/.claude/plugins/cache/ugiordan-adversarial-review/.claude-plugin
 	@rsync -a adversarial-review/ $(HOME)/.claude/plugins/cache/ugiordan-adversarial-review/
+	@cp .claude-plugin/marketplace.json $(HOME)/.claude/plugins/cache/ugiordan-adversarial-review/.claude-plugin/
 	@echo "Installed to ~/.claude/plugins/cache/ugiordan-adversarial-review/"

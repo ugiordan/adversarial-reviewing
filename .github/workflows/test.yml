@@ -21,7 +21,7 @@ jobs:
           cd adversarial-review/skills/adversarial-review
           bash tests/run-all-tests.sh 2>&1 | tee test-output.txt
           # Assert no failures
-          grep -q "0 failed" test-output.txt
+          grep -qE '\b0 failed\b' test-output.txt
 
   shellcheck:
     runs-on: ubuntu-latest

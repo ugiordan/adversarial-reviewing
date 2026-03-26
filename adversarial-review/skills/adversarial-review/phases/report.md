@@ -13,7 +13,7 @@ Assemble and present the final review report. All findings are categorized by th
 
 ### Step 1: Assemble Report
 
-Build the report using `templates/report-template.md` with the following 9 sections:
+Build the report using `templates/report-template.md` with up to 14 sections (some conditional). The core sections are:
 
 #### Section 1: Executive Summary
 
@@ -23,13 +23,17 @@ Build the report using `templates/report-template.md` with the following 9 secti
 - Configuration parameters: iterations completed, convergence status (achieved/not achieved per phase), token budget (used/total)
 - If budget was exceeded, include: **"Review truncated due to token budget"**
 
-#### Section 2: Consensus Findings
+#### Section 2: Review Configuration (conditional)
+
+Human-readable summary of review parameters (date, scope, specialists, mode flags, iterations, budget, reference modules). See `templates/report-template.md` Section 2.
+
+#### Section 3: Consensus Findings
 
 Findings where all specialists unanimously agreed on validity and severity. Include:
 - Finding details (ID, severity, confidence, file, lines, title, evidence, fix)
 - Agreement count: Unanimous (N/N specialists)
 
-#### Section 3: Majority Findings
+#### Section 4: Majority Findings
 
 Findings that achieved strict majority agreement. Include:
 - Finding details
@@ -37,21 +41,21 @@ Findings that achieved strict majority agreement. Include:
 - Agreement count: M/N specialists
 - Dissenting positions with specialist name, action (Challenge/Abstain), and reasoning summary
 
-#### Section 4: Escalated Disagreements
+#### Section 5: Escalated Disagreements
 
 Findings with unresolved disagreements requiring user decision. Include:
 - Finding details (file, lines)
 - All specialist positions with reasoning
 - Combined evidence summary from all positions
 
-#### Section 5: Escalated (Quorum Not Met)
+#### Section 6: Escalated (Quorum Not Met)
 
 Findings that could not reach quorum due to excessive abstentions. Include:
 - Finding details (file, lines)
 - Vote breakdown: agree/challenge/abstain counts
 - Quorum threshold: `ceil((N+1)/2) = <value>`
 
-#### Section 6: Dismissed Findings
+#### Section 7: Dismissed Findings
 
 Findings rejected during the challenge round. Include:
 - Original severity
@@ -59,24 +63,24 @@ Findings rejected during the challenge round. Include:
 - Rejection reasoning summary
 - List of challengers
 
-#### Section 7: Challenge Round Findings
+#### Section 8: Challenge Round Findings
 
 New findings raised during Phase 2. Include:
 - Source iteration (which challenge round iteration)
 - Finding details
 - Mini self-refinement result (passed unchanged, or refined with summary of changes)
 
-#### Section 8: Co-located Findings
+#### Section 9: Co-located Findings
 
 Cross-specialist findings targeting overlapping file/line ranges. Present as grouped tables showing:
 - Finding IDs, specialists, severities, and titles for each co-location group
 - Interaction notes describing how the findings relate
 
-#### Section 9: Remediation Summary
+#### Section 10: Remediation Summary
 
-A flat, severity-sorted table of ALL validated findings (from Sections 2, 3, 4, 5, and 7) organized by area, not consensus mechanism. This is the actionable reference. Include:
+A flat, severity-sorted table of ALL validated findings (from Sections 3, 4, 5, 6, and 8) organized by area, not consensus mechanism. This is the actionable reference. Include:
 
-- **All Findings table:** Every validated finding sorted by severity (Critical first), then by area. Columns: ID, Severity, Area, File, Title. For findings from Sections 4 and 5 (escalated/unresolved), add a `(unresolved)` marker in the Title column to distinguish them from fully validated findings.
+- **All Findings table:** Every validated finding sorted by severity (Critical first), then by area. Columns: ID, Severity, Area, File, Title. For findings from Sections 5 and 6 (escalated/unresolved), add a `(unresolved)` marker in the Title column to distinguish them from fully validated findings.
 - **Remediation Roadmap:** Categorize each finding's actionability status:
   - `Actionable (Jira)` — needs a tracked work item with design decisions, backward compat, or cross-team review
   - `Actionable (Chore)` — self-contained fix, direct PR without Jira
@@ -84,7 +88,15 @@ A flat, severity-sorted table of ALL validated findings (from Sections 2, 3, 4, 
   - `Already Fixed` — fix branch already exists (reference the branch name)
 - **Top Priorities:** Numbered list of the 3-5 most urgent findings with a 1-line rationale for urgency.
 
-This section is always generated, even without `--fix`. It provides the bridge between "what we found" (Sections 2-8) and "what to do about it" (Phase 5).
+This section is always generated, even without `--fix`. It provides the bridge between "what we found" (Sections 3-9) and "what to do about it" (Phase 5).
+
+#### Sections 11-14 (conditional)
+
+These sections are defined in `templates/report-template.md` and rendered when applicable:
+- **Section 11: Change Impact** — when `--diff` is active
+- **Section 12: Review Metrics** — challenge round statistics (findings raised/surviving/dismissed)
+- **Section 13: Guardrails Triggered** — populated from the guardrail trip log
+- **Section 14: Audit Log** — external actions taken during `--fix` and `--triage`
 
 ### Step 2: Generate Metadata Block
 
@@ -168,7 +180,7 @@ When `--delta` is active, use `templates/delta-report-template.md` instead of th
 
 ## References
 
-- `templates/report-template.md` — standard report template with 9 sections
+- `templates/report-template.md` — standard report template with up to 14 sections
 - `templates/delta-report-template.md` — delta mode report template (also includes Remediation Summary)
 - `protocols/token-budget.md` — budget truncation behavior
 - `protocols/delta-mode.md` — delta mode execution and report rules
