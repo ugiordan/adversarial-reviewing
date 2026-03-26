@@ -102,6 +102,8 @@ Mode flags:
 - `--list-references` -- List all discovered reference modules with metadata
 - `--update-references` -- Update modules that have a `source_url` (interactive)
 - `--update-references --check-only` -- Check for updates without applying
+- `--strict-scope` -- Reject (not demote) out-of-scope findings and patches
+- `--fix --dry-run` -- Preview remediation without writing anything
 
 ## Report Save Path
 

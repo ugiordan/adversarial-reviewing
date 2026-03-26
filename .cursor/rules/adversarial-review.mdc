@@ -85,6 +85,8 @@ Role-play a devil's advocate using the prompt at
 | `--list-references`  | List all discovered reference modules with metadata     |
 | `--update-references`| Update modules from remote `source_url` (interactive)   |
 | `--update-references --check-only` | Check for updates without applying        |
+| `--strict-scope` | Reject (not demote) out-of-scope findings and patches |
+| `--fix --dry-run` | Preview remediation without writing anything         |
 
 Multiple specialist flags can be combined (e.g. `--security --performance`).
 
