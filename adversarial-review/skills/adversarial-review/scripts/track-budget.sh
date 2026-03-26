@@ -73,6 +73,21 @@ print(json.dumps({'limit': limit, 'consumed': 0, 'remaining': limit, 'exceeded':
         validate_int "$chars" "char_count"
         tokens=$((chars / 4))  # char/4 heuristic
 
+        # Parse optional --agent and --per-agent-cap flags
+        AGENT_NAME=""
+        PER_AGENT_CAP=0
+        shift 2  # past ACTION and INPUT
+        while [[ $# -gt 0 ]]; do
+            case "$1" in
+                --agent) AGENT_NAME="${2:?--agent requires a name}"; shift 2 ;;
+                --per-agent-cap) PER_AGENT_CAP="${2:?--per-agent-cap requires a number}"; shift 2 ;;
+                *) echo "{\"error\": \"Unknown flag: $1\"}" >&2; exit 2 ;;
+            esac
+        done
+        if [[ -n "$AGENT_NAME" ]]; then
+            validate_int "$PER_AGENT_CAP" "per_agent_cap"
+        fi
+
         if [[ ! -f "$STATE_FILE" ]]; then
             echo '{"error": "Budget not initialized. Run init first."}' >&2
             exit 1
@@ -92,10 +107,35 @@ import json, sys
 limit, consumed, remaining, added = int(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4])
 exceeded = sys.argv[5] == 'true'
 state_file = sys.argv[6]
+agent_name = sys.argv[7]
+per_agent_cap = int(sys.argv[8])
+
+with open(state_file) as f:
+    state = json.load(f)
+
+state['limit'] = limit
+state['consumed'] = consumed
+
+agent_exceeded = False
+agent_consumed = 0
+
+if agent_name:
+    agents = state.setdefault('agents', {})
+    agent_state = agents.setdefault(agent_name, {'consumed': 0})
+    agent_state['consumed'] += added
+    agent_consumed = agent_state['consumed']
+    if per_agent_cap > 0 and agent_consumed > per_agent_cap:
+        agent_exceeded = True
+
 with open(state_file, 'w') as f:
-    json.dump({'limit': limit, 'consumed': consumed}, f)
-print(json.dumps({'limit': limit, 'consumed': consumed, 'remaining': remaining, 'exceeded': exceeded, 'added': added}))
-" "$limit" "$new_consumed" "$remaining" "$tokens" "$exceeded" "$STATE_FILE"
+    json.dump(state, f)
+
+result = {'limit': limit, 'consumed': consumed, 'remaining': remaining, 'exceeded': exceeded, 'added': added}
+if agent_name:
+    result['agent_exceeded'] = agent_exceeded
+    result['agent_consumed'] = agent_consumed
+print(json.dumps(result))
+" "$limit" "$new_consumed" "$remaining" "$tokens" "$exceeded" "$STATE_FILE" "$AGENT_NAME" "$PER_AGENT_CAP"
         ;;
     estimate)
         # Parse optional --diff flag

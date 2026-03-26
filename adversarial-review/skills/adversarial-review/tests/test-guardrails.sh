@@ -189,5 +189,36 @@ else
 fi
 
 echo ""
+echo "=== Guardrail tests: per-agent budget ==="
+
+echo "Test 8: track-budget.sh add with --agent tracks per-agent consumption"
+export BUDGET_STATE_FILE="$TMPDIR/budget-agent.json"
+bash "$AR_HOME/scripts/track-budget.sh" init 500000 > /dev/null
+result=$(bash "$AR_HOME/scripts/track-budget.sh" add 100000 --agent SEC --per-agent-cap 50000 2>&1)
+if printf '%s' "$result" | python3 -c "import json,sys; d=json.load(sys.stdin); exit(0 if not d.get('agent_exceeded', False) else 1)"; then
+    pass "Per-agent add succeeds"
+else
+    fail "Per-agent add succeeds"
+fi
+
+echo "Test 9: Agent exceeding per-agent cap reports agent_exceeded"
+# SEC already has 25K tokens (100K chars / 4). Adding 200K chars = 50K tokens. Total = 75K > 50K cap.
+result=$(bash "$AR_HOME/scripts/track-budget.sh" add 200000 --agent SEC --per-agent-cap 50000 2>&1)
+if printf '%s' "$result" | python3 -c "import json,sys; d=json.load(sys.stdin); exit(0 if d.get('agent_exceeded', False) else 1)"; then
+    pass "Agent exceeded reported"
+else
+    fail "Agent exceeded reported"
+fi
+
+echo "Test 10: Different agents tracked independently"
+result=$(bash "$AR_HOME/scripts/track-budget.sh" add 50000 --agent PERF --per-agent-cap 50000 2>&1)
+if printf '%s' "$result" | python3 -c "import json,sys; d=json.load(sys.stdin); exit(0 if not d.get('agent_exceeded', False) else 1)"; then
+    pass "PERF agent not exceeded"
+else
+    fail "PERF agent not exceeded"
+fi
+unset BUDGET_STATE_FILE
+
+echo ""
 echo "Results: $PASS passed, $FAIL failed"
 if [[ $FAIL -gt 0 ]]; then exit 1; fi
