@@ -57,6 +57,16 @@ Evidence: [supporting or counter-evidence, max 2000 chars]
 
 **New findings:** Agents may raise new findings in **iterations 1 and 2 only**. New findings are **prohibited in the final iteration** (iteration 3). New findings must use the standard finding template with `Source: Challenge Round` marker.
 
+### Step 4.5: Budget Enforcement Check
+
+After each challenge exchange, check budget status:
+
+```bash
+scripts/track-budget.sh status
+```
+
+If `exceeded: true`, complete the current exchange but skip subsequent rounds. Emit `BUDGET_EXCEEDED` to the guardrail trip log. Proceed to Phase 3 with findings as-is.
+
 ### Reference Module Injection (Challenge Round)
 
 When reference modules are available, they are included in the challenge round prompts using the same `REFERENCE_DATA` delimiter wrapping as Phase 1 iteration 2+. Challengers evaluating findings benefit from reference material to identify false positives or missed severity classifications.
@@ -180,6 +190,7 @@ Triage-Discovery findings are debated using the standard challenge response temp
 - `protocols/input-isolation.md` — delimiter generation for field-level markers and REFERENCE_DATA delimiter specification
 - `protocols/convergence-detection.md` — Phase 2 convergence criteria
 - `protocols/token-budget.md` — budget tracking and per-iteration context cap
+- `protocols/guardrails.md` — guardrail definitions, constants, enforcement behavior
 - `scripts/deduplicate.sh` — pre-debate deduplication
 - `scripts/discover-references.sh` — reference module discovery and filtering
 - `scripts/generate-delimiters.sh` — field-level isolation marker generation
