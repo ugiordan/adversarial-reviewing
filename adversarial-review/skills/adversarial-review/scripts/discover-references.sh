@@ -20,6 +20,11 @@ SPECIALIST=""
 LIST_ALL="false"
 CHECK_STALENESS="false"
 TOKEN_COUNT="false"
+BUDGET_CHECK="false"
+TOTAL_BUDGET=0
+TRUNCATE_BUDGET="false"
+PER_ITERATION_BUDGET=0
+IMPACT_GRAPH_TOKENS_ARG=0
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -46,6 +51,17 @@ while [[ $# -gt 0 ]]; do
         --project-dir)
             PROJECT_DIR="${2:?--project-dir requires a path}"
             shift 2
+            ;;
+        --budget-check)
+            BUDGET_CHECK="true"
+            TOTAL_BUDGET="${2:?--budget-check requires total budget}"
+            shift 2
+            ;;
+        --truncate-budget)
+            TRUNCATE_BUDGET="true"
+            PER_ITERATION_BUDGET="${2:?--truncate-budget requires per-iteration budget}"
+            IMPACT_GRAPH_TOKENS_ARG="${3:?--truncate-budget requires impact_graph_tokens}"
+            shift 3
             ;;
         -*)
             echo "Error: Unknown option: $1" >&2
@@ -74,7 +90,7 @@ if [[ "$LIST_ALL" == "false" && -z "$SPECIALIST" ]]; then
 fi
 
 # Delegate to Python for YAML parsing and JSON output
-python3 - "$SPECIALIST" "$LIST_ALL" "$CHECK_STALENESS" "$TOKEN_COUNT" "$BUILTIN_DIR" "$USER_DIR" "$PROJECT_DIR" <<'PYTHON_SCRIPT'
+python3 - "$SPECIALIST" "$LIST_ALL" "$CHECK_STALENESS" "$TOKEN_COUNT" "$BUILTIN_DIR" "$USER_DIR" "$PROJECT_DIR" "$BUDGET_CHECK" "$TOTAL_BUDGET" "$TRUNCATE_BUDGET" "$PER_ITERATION_BUDGET" "$IMPACT_GRAPH_TOKENS_ARG" <<'PYTHON_SCRIPT'
 import json
 import sys
 import os
@@ -216,7 +232,7 @@ def scan_directory(directory: str, layer_priority: int) -> List[Tuple[Dict, str,
     return modules
 
 def main():
-    if len(sys.argv) < 8:
+    if len(sys.argv) < 13:
         print("Error: Missing arguments", file=sys.stderr)
         sys.exit(1)
 
@@ -227,6 +243,11 @@ def main():
     builtin_dir = sys.argv[5]
     user_dir = sys.argv[6]
     project_dir = sys.argv[7]
+    budget_check = sys.argv[8] == "true"
+    total_budget = int(sys.argv[9])
+    truncate_budget = sys.argv[10] == "true"
+    per_iteration_budget = int(sys.argv[11])
+    impact_graph_tokens = int(sys.argv[12])
 
     # Discover modules from all three layers
     all_modules = []
@@ -278,6 +299,7 @@ def main():
             'enabled': enabled,
             'path': file_path,
             'layer_priority': layer_priority,
+            '_body': content,  # Store for budget calculations
         }
 
         # Add optional fields
@@ -327,9 +349,57 @@ def main():
     # Sort by filename (basename of path)
     final_modules.sort(key=lambda m: os.path.basename(m['path']))
 
+    # Budget warning logic (B.10)
+    if budget_check and total_budget > 0:
+        specialist_tokens = {}
+        for mod in final_modules:
+            spec = mod.get('specialist', 'unknown')
+            body_tokens = len(mod.get('_body', '')) // 4
+            specialist_tokens[spec] = specialist_tokens.get(spec, 0) + body_tokens
+
+        threshold_3pct = total_budget * 0.03
+        threshold_10pct = total_budget * 0.10
+        total_ref_tokens = sum(specialist_tokens.values())
+
+        for spec, tokens in specialist_tokens.items():
+            if tokens > threshold_3pct:
+                print(f"Warning: Reference tokens for {spec} ({tokens}) exceed "
+                      f"3% of total budget ({int(threshold_3pct)})", file=sys.stderr)
+
+        if total_ref_tokens > threshold_10pct:
+            print(f"Warning: Total reference tokens ({total_ref_tokens}) exceed "
+                  f"10% of total budget ({int(threshold_10pct)})", file=sys.stderr)
+
+    # Truncation logic (B.8)
+    if truncate_budget and per_iteration_budget > 0:
+        total_ref_tokens = sum(len(m.get('_body', '')) // 4 for m in final_modules)
+        threshold_80pct = per_iteration_budget * 0.80
+        combined = total_ref_tokens + impact_graph_tokens
+
+        if combined > threshold_80pct:
+            available = max(0, int(threshold_80pct - impact_graph_tokens))
+            sorted_mods = sorted(final_modules, key=lambda m: len(m.get('_body', '')), reverse=True)
+            running_total = 0
+            for mod in sorted_mods:
+                body_tokens = len(mod.get('_body', '')) // 4
+                if running_total + body_tokens > available:
+                    mod['_truncated'] = True
+                    mod['_body'] = (f"[Reference truncated due to token budget constraints. "
+                                    f"Module: {mod['name']} v{mod.get('version', '0.0.0')} "
+                                    f"— {mod.get('description', '')}]")
+                else:
+                    running_total += body_tokens
+
     # Output as JSON lines
     for module in final_modules:
-        print(json.dumps(module))
+        # Build output object (exclude internal fields)
+        output = {k: v for k, v in module.items() if not k.startswith('_')}
+
+        # Add truncated flag if present
+        if module.get('_truncated'):
+            output['truncated'] = True
+
+        print(json.dumps(output))
 
 if __name__ == "__main__":
     main()
