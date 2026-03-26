@@ -184,4 +184,4 @@ When `--delta` is active, use `templates/delta-report-template.md` instead of th
 - `templates/delta-report-template.md` — delta mode report template (also includes Remediation Summary)
 - `protocols/token-budget.md` — budget truncation behavior
 - `protocols/delta-mode.md` — delta mode execution and report rules
-- `phases/remediation.md` — Phase 5 classification that Section 9 feeds into
+- `phases/remediation.md` — Phase 5 classification that Section 10 feeds into

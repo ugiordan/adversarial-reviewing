@@ -92,8 +92,8 @@ Mode flags:
 - `--delta` -- Review only changed lines (diff mode)
 - `--save` -- Save report to disk
 - `--fix` -- Generate and apply remediation patches
-- `--quick` -- Reduced iteration count for faster reviews
-- `--thorough` -- Increased iteration count for deeper analysis
+- `--quick` -- 2 specialists (SEC + CORR), 2 iterations, 200K budget
+- `--thorough` -- All 5 specialists, 3 iterations, 800K budget
 - `--budget <tokens>` -- Set token budget cap
 - `--diff` -- Enable change-impact analysis (diff + caller/callee graph)
 - `--diff --range <range>` -- Specify git commit range for diff analysis
