@@ -2,7 +2,7 @@
 
 ## Final Review Report Structure
 
-The final report contains 9 sections followed by a metadata block. The report is never auto-committed. Use `--save` to write to `docs/reviews/YYYY-MM-DD-<topic>-review.md`.
+The final report contains up to 14 sections followed by a metadata block. Some sections (Section 2, Section 11, Sections 12-14) are conditional based on review mode and events. The report is never auto-committed. Use `--save` to write to `docs/reviews/YYYY-MM-DD-<topic>-review.md`.
 
 ---
 
@@ -30,7 +30,22 @@ Summary of the review including:
 | **Total**| **N** |
 ```
 
-## Section 2: Consensus Findings
+## Section 2: Review Configuration
+
+Human-readable summary of review parameters. Distinct from the machine-readable metadata block at the end of the report.
+
+```
+## Review Configuration
+- **Date:** YYYY-MM-DDTHH:MM:SSZ
+- **Scope:** [directories/files] ([N] files, [N] lines)
+- **Specialists:** [list of active specialist tags]
+- **Mode flags:** [flags used]
+- **Iterations:** [TAG: N, TAG: N, ...]
+- **Budget:** [used]K / [total]K consumed ([N]%)
+- **Reference modules:** [N] loaded ([list])
+```
+
+## Section 3: Consensus Findings
 
 Findings where all specialists agree on both validity and severity.
 
@@ -48,7 +63,7 @@ All specialists agree on the following findings.
 - **Agreement:** Unanimous ([N]/[N] specialists)
 ```
 
-## Section 3: Majority Findings
+## Section 4: Majority Findings
 
 Findings where at least `ceil((N+1)/2)` specialists agree. Includes dissenting positions and any severity disputes.
 
@@ -68,7 +83,7 @@ The following findings achieved majority agreement.
   - [Specialist]: [Challenge/Abstain] — [reasoning summary]
 ```
 
-## Section 4: Escalated Disagreements
+## Section 5: Escalated Disagreements
 
 Findings with unresolved disagreements that require user decision. All positions are presented.
 
@@ -86,7 +101,7 @@ The following findings have unresolved disagreements and require your decision.
 - **Evidence summary:** [combined evidence from all positions]
 ```
 
-## Section 5: Escalated (Quorum Not Met)
+## Section 6: Escalated (Quorum Not Met)
 
 Findings where too many abstentions prevented reaching quorum.
 
@@ -102,7 +117,7 @@ The following findings could not reach quorum due to abstentions.
 - **Reason:** Insufficient qualified assessments
 ```
 
-## Section 6: Dismissed Findings
+## Section 7: Dismissed Findings
 
 Findings rejected during the challenge debate, with reasoning.
 
@@ -118,7 +133,7 @@ The following findings were rejected during the challenge round.
 - **Challengers:** [list of specialists who challenged]
 ```
 
-## Section 7: Challenge Round Findings
+## Section 8: Challenge Round Findings
 
 New findings raised during Phase 2 (challenge rounds), including mini self-refinement results.
 
@@ -137,7 +152,7 @@ The following findings were raised during the challenge round.
 - **Self-refinement result:** [passed | refined — summary of changes]
 ```
 
-## Section 8: Co-located Findings
+## Section 9: Co-located Findings
 
 Cross-specialist findings at overlapping file and line ranges.
 
@@ -155,7 +170,7 @@ The following findings from different specialists target overlapping file/line r
 **Interaction notes:** [description of how these findings relate or interact]
 ```
 
-## Section 9: Remediation Summary
+## Section 10: Remediation Summary
 
 Flat, severity-sorted summary of all validated findings organized by area and actionability. This is the "what do I do next" reference — it strips away consensus mechanics and presents findings as a prioritized action list.
 
@@ -187,7 +202,7 @@ Flat, severity-sorted summary of all validated findings organized by area and ac
 
 This section is always present, even without `--fix`. It gives the user a clear picture of what needs attention regardless of whether remediation will run.
 
-## Section 10: Change Impact Summary (only when `--diff` is active)
+## Section 11: Change Impact Summary (only when `--diff` is active)
 
 When `--diff` is used, this section shows the change-impact graph overview:
 
@@ -195,6 +210,37 @@ When `--diff` is used, this section shows the change-impact graph overview:
 - Callers affected by the changes
 - Callees that may be skipped by new early returns or guard clauses
 - Advisory note that the impact graph is grep-based and may be incomplete
+
+## Section 12: Review Metrics
+
+Challenge round statistics for calibrating trust in results.
+
+```
+## Review Metrics
+- Findings raised: [N]
+- Findings surviving challenge: [N] ([N]%)
+- Findings dismissed: [N] ([N]%)
+- Consensus rate: [N]% (findings where all challengers agreed)
+- Forced convergence: [N] agents
+```
+
+## Section 13: Guardrails Triggered
+
+Record of all guardrails that activated during the review. If none: "None."
+
+```
+## Guardrails Triggered
+- `GUARDRAIL_ID` — [agent] [details]
+```
+
+## Section 14: Audit Log
+
+External actions taken during --fix and --triage. If no external actions: "No external actions taken." See `protocols/audit-log.md` for format.
+
+```
+## Audit Log
+[timestamp] ACTION: service.operation key=value
+```
 
 ---
 
