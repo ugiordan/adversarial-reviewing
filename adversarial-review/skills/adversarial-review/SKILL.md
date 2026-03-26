@@ -73,6 +73,8 @@ If no specialist flags are provided, activate **all 5 specialists**.
 | `--diff --range <range>` | Specify git commit range for diff (e.g., `main..HEAD`, `HEAD~3..HEAD`) |
 | `--triage <source>` | Evaluate external review comments. Source: `pr:<N>`, `file:<path>`, or `-` (stdin) |
 | `--gap-analysis` | Include coverage gap analysis in triage report (auto-enabled by `--thorough --triage`) |
+| `--update-references` | Run `scripts/update-references.sh` before starting review. If used alone (without files/dirs), runs update and exits. If combined with review flags, runs update then proceeds with review. |
+| `--list-references` | Show all discovered reference modules and exit. Ignores all other flags. |
 
 ### Preset Profiles
 
@@ -88,6 +90,18 @@ If no specialist flags are provided, activate **all 5 specialists**.
 - **Iterations:** 3 self-refinement rounds (with convergence-based early exit, minimum 2)
 - **Budget:** 500K tokens
 - **Topic:** Auto-derived from scope (primary directory or file name)
+
+---
+
+### Reference Staleness Check
+
+Before proceeding to scope resolution, run staleness check for each active specialist:
+
+```bash
+scripts/discover-references.sh <specialist> --check-staleness
+```
+
+Staleness warnings are informational only — they never block the review.
 
 ---
 
@@ -167,6 +181,9 @@ For each active specialist:
    - The code under review wrapped in the generated delimiters
    - Reference to `templates/finding-template.md` for output format
    - Self-refinement instructions from the phase file
+   - **Iteration 2+ only:** Reference modules discovered by `scripts/discover-references.sh`, each wrapped in `REFERENCE_DATA` delimiters with anti-instruction text. See `protocols/input-isolation.md`.
+   - **Iteration 2+ only:** Verification gate instructions (see `phases/self-refinement.md`)
+   - **Iteration 2+ only:** Reference cross-check instructions (see `phases/self-refinement.md`)
 
 3. **Spawn agent** — Dispatch via the host platform's subagent mechanism (e.g., Agent tool in Claude Code, agent spawn in other platforms). Each agent runs in isolation — agents never see each other's output during this phase.
 
@@ -379,6 +396,13 @@ skills/adversarial-review/
   SKILL.md                              # This file — main orchestrator
   config/
     model-config.yml.example            # Future multi-model routing (v2)
+  references/
+    README.md                           # Authoring guidelines
+    security/
+      owasp-top10-2025.md               # OWASP Top 10:2025 verification patterns
+      agentic-ai-security.md            # OWASP Agentic AI ASI01-ASI10
+      asvs-5-highlights.md              # ASVS 5.0 key requirements
+      k8s-security.md                   # Kubernetes/operator security patterns
   agents/
     security-auditor.md                 # SEC specialist prompt
     performance-analyst.md              # PERF specialist prompt
@@ -405,6 +429,8 @@ skills/adversarial-review/
     detect-convergence.sh               # Checks finding set stability
     deduplicate.sh                      # Removes duplicate findings
     track-budget.sh                     # Token budget tracking
+    discover-references.sh              # Reference module discovery and filtering
+    update-references.sh                # Reference module auto-update
   templates/
     finding-template.md                 # Required output format for findings
     challenge-response-template.md      # Challenge/defense exchange format
@@ -418,6 +444,9 @@ skills/adversarial-review/
     test-single-agent.sh                # Single-agent pipeline integration tests
     test-injection-resistance.sh        # Injection resistance tests
     test-coverage-gaps.sh               # Coverage gap and edge case tests
+    test-discover-references.sh         # Reference discovery tests
+    test-update-references.sh           # Reference update tests
+    test-reference-injection.sh         # Reference injection resistance tests
     fixtures/
       sample-code.py                    # Sample code for testing
       sample-code-with-injection.py     # Code with embedded injection attempts
@@ -433,6 +462,12 @@ skills/adversarial-review/
       two-findings-nonoverlap.txt       # Non-overlapping findings for dedup tests
       expected-findings.md              # Expected findings reference
       sample-prior-report.md            # Prior report for delta mode tests
+      sample-reference-valid.md         # Valid reference module fixture
+      sample-reference-malformed.md     # Malformed frontmatter fixture
+      sample-reference-injection.md     # Reference with injection patterns
+      sample-reference-disabled.md      # Disabled reference module
+      sample-reference-stale.md         # Stale reference module
+      sample-reference-missing-field.md # Missing required field fixture
 ```
 
 ---
