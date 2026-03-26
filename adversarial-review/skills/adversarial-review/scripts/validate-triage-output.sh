@@ -36,6 +36,7 @@ extract_field() {
 
 # Source shared injection detection (once, outside the loop)
 SCRIPT_DIR_VALIDATE="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=_injection-check.sh
 source "$SCRIPT_DIR_VALIDATE/_injection-check.sh"
 
 # Check for NO_TRIAGE_EVALUATIONS marker (zero triage verdicts, but discovery findings may follow)
@@ -179,7 +180,7 @@ while IFS= read -r fid; do
     fi
 
     # Check role prefix
-    prefix=$(echo "$fid" | sed 's/-.*//')
+    prefix="${fid%%-*}"
     if [[ "$prefix" != "$ROLE_PREFIX" ]]; then
         ERRORS+=("Finding $fid: prefix '$prefix' does not match expected '$ROLE_PREFIX'")
     fi

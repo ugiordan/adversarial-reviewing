@@ -1,7 +1,29 @@
+# macOS
 .DS_Store
+
+# Editors
 *.swp
 *.swo
 *~
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Environment
+.env
+.env.*
+
+# Logs
+*.log
+
+# Temp
 /tmp/
+
+# Internal planning docs (not published)
 /docs/specs/
 /docs/plans/

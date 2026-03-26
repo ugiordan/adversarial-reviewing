@@ -56,7 +56,8 @@ assert_exit "detect-convergence.sh detects convergence" "0" "$?"
 # Test 4: budget tracking pipeline — capture state_file from init JSON output
 init_result=$("$SCRIPTS/track-budget.sh" init 500000 2>&1)
 assert_exit "track-budget.sh init succeeds" "0" "$?"
-export BUDGET_STATE_FILE=$(echo "$init_result" | python3 -c "import json,sys; print(json.load(sys.stdin)['state_file'])")
+BUDGET_STATE_FILE=$(echo "$init_result" | python3 -c "import json,sys; print(json.load(sys.stdin)['state_file'])")
+export BUDGET_STATE_FILE
 TEMP_FILES+=("$BUDGET_STATE_FILE")
 
 budget_result=$("$SCRIPTS/track-budget.sh" add "$FIXTURES/sample-code.py")

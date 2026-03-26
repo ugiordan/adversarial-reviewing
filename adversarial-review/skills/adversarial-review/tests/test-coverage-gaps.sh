@@ -86,7 +86,8 @@ echo ""
 echo "-- Budget exhaustion --"
 
 # T3a: Budget exceeded after adding more than limit
-export BUDGET_STATE_FILE=$(mktemp /tmp/test-budget-exhaust-XXXXXX)
+BUDGET_STATE_FILE=$(mktemp /tmp/test-budget-exhaust-XXXXXX)
+export BUDGET_STATE_FILE
 TEMP_FILES+=("$BUDGET_STATE_FILE")
 "$SCRIPTS/track-budget.sh" init 100 >/dev/null 2>&1
 result=$("$SCRIPTS/track-budget.sh" add 2000 2>&1)  # 2000 chars = 500 tokens > 100 limit
@@ -98,7 +99,8 @@ result=$("$SCRIPTS/track-budget.sh" status 2>&1)
 assert_contains "Status reports exceeded" '"exceeded": true' "$result"
 
 # T3c: Budget at exact limit
-export BUDGET_STATE_FILE=$(mktemp /tmp/test-budget-exact-XXXXXX)
+BUDGET_STATE_FILE=$(mktemp /tmp/test-budget-exact-XXXXXX)
+export BUDGET_STATE_FILE
 TEMP_FILES+=("$BUDGET_STATE_FILE")
 "$SCRIPTS/track-budget.sh" init 100 >/dev/null 2>&1
 result=$("$SCRIPTS/track-budget.sh" add 400 2>&1)  # 400 chars = 100 tokens = exact limit
