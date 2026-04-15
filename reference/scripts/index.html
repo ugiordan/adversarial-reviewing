@@ -1288,6 +1288,39 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#fingerprint_findingspy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        fingerprint_findings.py
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#normalize_findingspy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        normalize_findings.py
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#prompt_versionpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        prompt_version.py
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1892,6 +1925,39 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#fingerprint_findingspy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        fingerprint_findings.py
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#normalize_findingspy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        normalize_findings.py
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#prompt_versionpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        prompt_version.py
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1998,6 +2064,35 @@
 <p>Converts structured finding text output to JSON for downstream processing.</p>
 <h3 id="generate-visualspy">generate-visuals.py<a class="headerlink" href="#generate-visualspy" title="Permanent link">&para;</a></h3>
 <p>Generates review visualization charts (severity distribution, funnel, convergence, budget).</p>
+<h3 id="fingerprint_findingspy">fingerprint_findings.py<a class="headerlink" href="#fingerprint_findingspy" title="Permanent link">&para;</a></h3>
+<p>Cross-run finding persistence via content-based fingerprinting.</p>
+<p><strong>Subcommands</strong>:</p>
+<ul>
+<li><code>fingerprint &lt;findings_json&gt;</code>: Compute stable SHA-256 fingerprints for findings based on specialist prefix, file, line bucket (nearest 5), title, and category. Tolerates small line shifts between runs.</li>
+<li><code>compare &lt;current&gt; &lt;previous&gt;</code>: Classify findings as new, recurring, resolved, or regressed. Outputs JSON summary.</li>
+<li><code>history append &lt;findings_json&gt;</code>: Append fingerprinted findings to <code>.adversarial-review/findings-history.jsonl</code>.</li>
+<li><code>history query &lt;fingerprint&gt;</code>: Look up a finding's history (first seen, last seen, run count).</li>
+<li><code>history summary</code>: Stats on unique findings, active count, resolved count, recurrence rate.</li>
+</ul>
+<p><strong>Activation</strong>: <code>--persist</code> flag.</p>
+<h3 id="normalize_findingspy">normalize_findings.py<a class="headerlink" href="#normalize_findingspy" title="Permanent link">&para;</a></h3>
+<p>Output stability through finding normalization and cross-run comparison.</p>
+<p><strong>Subcommands</strong>:</p>
+<ul>
+<li><code>normalize &lt;findings_file&gt;</code>: Sort findings canonically (specialist, file, line), standardize formatting (severity/confidence casing, line range format, path normalization).</li>
+<li><code>diff &lt;file_a&gt; &lt;file_b&gt;</code>: Compare normalized finding sets and compute stability metrics (overall stability score, per-field stability for severity/confidence/evidence/title).</li>
+<li><code>canonical-order &lt;findings_json&gt;</code>: Output findings JSON in deterministic order.</li>
+</ul>
+<p><strong>Activation</strong>: <code>--normalize</code> flag.</p>
+<h3 id="prompt_versionpy">prompt_version.py<a class="headerlink" href="#prompt_versionpy" title="Permanent link">&para;</a></h3>
+<p>Prompt versioning system for tracking which agent prompt version produced which findings.</p>
+<p><strong>Subcommands</strong>:</p>
+<ul>
+<li><code>compute &lt;file_or_dir&gt;</code>: Compute content-based SHA-256 hashes for agent prompt files (excluding frontmatter).</li>
+<li><code>verify &lt;prompt_file&gt;</code>: Check if frontmatter content_hash matches actual content.</li>
+<li><code>stamp &lt;prompt_file&gt;</code>: Add or update version frontmatter (version, content_hash, last_modified).</li>
+<li><code>manifest &lt;dir&gt;</code>: Generate version manifest for all agent prompts in a profile directory.</li>
+</ul>
 
 
 
@@ -2020,7 +2115,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="April 15, 2026 08:55:05 UTC">April 15, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="April 15, 2026 09:11:55 UTC">April 15, 2026</span>
   </span>
 
     

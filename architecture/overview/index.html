@@ -1275,6 +1275,39 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#why-finding-persistence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why finding persistence?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-output-normalization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why output normalization?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-prompt-versioning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why prompt versioning?
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1638,6 +1671,39 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#why-finding-persistence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why finding persistence?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-output-normalization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why output normalization?
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-prompt-versioning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why prompt versioning?
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1755,6 +1821,12 @@
 <p>During the challenge round, agents receive a domain affinity hint that maps finding categories to their primary and adjacent domains. This reduces unnecessary Tier 2 reads (full finding files) by guiding agents to focus on findings in their domain. Agents can still challenge any finding, but the routing hint saves 40-60% of cross-agent token consumption compared to agents reading every finding in full.</p>
 <h3 id="why-finding-aware-reference-selection">Why finding-aware reference selection?<a class="headerlink" href="#why-finding-aware-reference-selection" title="Permanent link">&para;</a></h3>
 <p>Reference modules are filtered by specialist, but when truncation is needed under budget constraints, modules relevant to actual findings are prioritized. The <code>--finding-categories</code> flag lets the orchestrator pass Phase 1 finding categories to <code>discover_references.py</code>, which then truncates non-matching modules first. This keeps the most relevant reference material available even under tight budgets.</p>
+<h3 id="why-finding-persistence">Why finding persistence?<a class="headerlink" href="#why-finding-persistence" title="Permanent link">&para;</a></h3>
+<p>Without cross-run tracking, each review is a fresh start. Finding persistence fingerprints each finding based on its content (file, line bucket, title, specialist) and stores history in <code>.adversarial-review/findings-history.jsonl</code>. On subsequent runs, findings are classified as new, recurring, resolved, or regressed. This lets teams track whether issues are actually getting fixed and detect regressions.</p>
+<h3 id="why-output-normalization">Why output normalization?<a class="headerlink" href="#why-output-normalization" title="Permanent link">&para;</a></h3>
+<p>LLM outputs are non-deterministic. Running the same review twice produces findings with slightly different wording, ordering, and formatting. Normalization canonicalizes the output (consistent ordering, standardized formatting) so meaningful differences stand out from noise. Stability metrics quantify how much variance exists between runs.</p>
+<h3 id="why-prompt-versioning">Why prompt versioning?<a class="headerlink" href="#why-prompt-versioning" title="Permanent link">&para;</a></h3>
+<p>Agent prompts evolve over time. Without version tracking, there's no way to know which prompt version produced which findings. Content-based hashing in prompt frontmatter enables reproducibility analysis: if findings changed between runs, was it the code or the prompt that changed?</p>
 <h2 id="component-map">Component map<a class="headerlink" href="#component-map" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -1840,7 +1912,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="April 15, 2026 08:55:05 UTC">April 15, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="April 15, 2026 09:11:55 UTC">April 15, 2026</span>
   </span>
 
     
