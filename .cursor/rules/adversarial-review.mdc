@@ -82,6 +82,9 @@ Role-play a devil's advocate using the prompt at
 | `--diff`           | Enable change-impact analysis with caller/callee graph |
 | `--triage <source>`| Evaluate external comments (pr:<N>, file:<path>, -)   |
 | `--gap-analysis`   | Coverage gap analysis in triage report                |
+| `--list-references`  | List all discovered reference modules with metadata     |
+| `--update-references`| Update modules from remote `source_url` (interactive)   |
+| `--update-references --check-only` | Check for updates without applying        |
 
 Multiple specialist flags can be combined (e.g. `--security --performance`).
 

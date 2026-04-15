@@ -3,3 +3,5 @@
 *.swo
 *~
 /tmp/
+/docs/specs/
+/docs/plans/

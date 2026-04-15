@@ -3,7 +3,7 @@
 # Usage: track-budget.sh <action> [args]
 #   init <budget_limit>          — initialize budget tracking (prints state_file path in JSON)
 #   add <file_or_chars>          — add token consumption (file or char count)
-#   estimate <num_agents> <code_tokens> <iterations> [num_work_items] — estimate total cost
+#   estimate <num_agents> <code_tokens> <iterations> [num_work_items] [impact_graph_tokens] [reference_tokens] — estimate total cost
 #   status                       — show remaining budget
 #   cleanup                      — remove state file
 # State stored via mktemp; caller must capture state_file from init output and set BUDGET_STATE_FILE
@@ -109,13 +109,17 @@ print(json.dumps({'limit': limit, 'consumed': consumed, 'remaining': remaining, 
         ITERATIONS="${4:?}"
         NUM_WORK_ITEMS="${5:-0}"
         IMPACT_GRAPH_TOKENS="${6:-0}"
+        REFERENCE_TOKENS="${7:-0}"
         validate_int "$NUM_AGENTS" "num_agents"
         validate_int "$CODE_TOKENS" "code_tokens"
         validate_int "$ITERATIONS" "iterations"
         validate_int "$NUM_WORK_ITEMS" "num_work_items"
         validate_int "$IMPACT_GRAPH_TOKENS" "impact_graph_tokens"
-        # Phase 1: agents * (code_tokens + impact_graph) * iterations
-        phase1=$((NUM_AGENTS * (CODE_TOKENS + IMPACT_GRAPH_TOKENS) * ITERATIONS))
+        validate_int "$REFERENCE_TOKENS" "reference_tokens"
+        # Phase 1: agents * ((code + impact_graph) * iterations + reference_tokens * (iterations - 1))
+        # References only injected at iteration 2+, so (iterations - 1) factor
+        ref_iterations=$((ITERATIONS > 1 ? ITERATIONS - 1 : 0))
+        phase1=$((NUM_AGENTS * ((CODE_TOKENS + IMPACT_GRAPH_TOKENS) * ITERATIONS + REFERENCE_TOKENS * ref_iterations)))
         # Phase 2: agents * (agents * avg_findings * finding_size) * iterations
         avg_findings=5
         finding_size=500
@@ -137,8 +141,10 @@ result = {
 }
 if sys.argv[6] == 'true':
     result['impact_graph'] = int(sys.argv[7])
+if int(sys.argv[8]) > 0:
+    result['reference_tokens'] = int(sys.argv[8])
 print(json.dumps(result))
-" "$total" "$phase1" "$phase2" "$phase34" "$phase5" "$DIFF_MODE" "$IMPACT_GRAPH_TOKENS"
+" "$total" "$phase1" "$phase2" "$phase34" "$phase5" "$DIFF_MODE" "$IMPACT_GRAPH_TOKENS" "$REFERENCE_TOKENS"
         ;;
     status)
         if [[ ! -f "$STATE_FILE" ]]; then

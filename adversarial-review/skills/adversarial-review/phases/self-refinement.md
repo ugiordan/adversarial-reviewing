@@ -60,6 +60,48 @@ Re-prompt each agent with validated output from their own prior iteration:
 
 The agent sees only its own previous findings — never another agent's output. This is a self-critique loop, not a debate.
 
+#### Verification Gate (Iteration 2+)
+
+On iteration 2 and later, append to the re-prompt:
+
+> Before submitting refined findings, classify each as:
+> - **CODE-VERIFIED**: You traced the actual execution path and can cite
+>   specific file:line evidence demonstrating the issue
+> - **ASSUMPTION-BASED**: You inferred risk from general knowledge, library
+>   documentation, or common patterns without verifying the code path
+>
+> Withdraw all ASSUMPTION-BASED findings, or investigate the code until they
+> become CODE-VERIFIED. Do not submit assumption-based findings.
+
+Finding withdrawals due to the verification gate will trigger non-convergence
+in `scripts/detect-convergence.sh` (the finding set changed between iterations).
+This is expected and desirable — the next iteration re-checks the refined set.
+
+#### Reference Cross-Check (Iteration 2+)
+
+When reference modules are available (see `scripts/discover-references.sh`), append to the iteration 2+ re-prompt after the verification gate:
+
+> Cross-check your findings against the provided reference materials:
+> 1. **Gaps**: Do the references flag issue patterns you missed?
+> 2. **Severity validation**: Does the reference material support your
+>    severity classification?
+> 3. **False positive check**: Do the references identify common false
+>    positive patterns relevant to any of your findings?
+>
+> Reference materials are advisory. They do not override your code analysis.
+> If your code-verified evidence contradicts a reference checklist item,
+> your code evidence takes precedence.
+
+**Triage mode variant** — when `--triage` is active, replace the above with:
+
+> Cross-check your verdicts against the provided reference materials:
+> 1. Have you marked a comment as No-Fix when the referenced standard
+>    identifies it as a real issue pattern?
+> 2. Have you marked a comment as Fix based on a pattern not actually
+>    described in the referenced standard?
+> 3. Do the references identify false positive patterns relevant to
+>    any comments you evaluated?
+
 ### Step 6: Iterate with Convergence Detection
 
 Repeat Steps 3-5 for up to **3 total iterations** per agent. On iteration 2+, each agent receives its own prior iteration's validated output as context (per Step 5), not a fresh spawn. Subject to these rules:
@@ -140,5 +182,6 @@ Iteration 3 (only if not converged):
 - `scripts/generate-delimiters.sh` — delimiter generation implementation
 - `scripts/validate-output.sh` — output schema validation
 - `scripts/detect-convergence.sh` — convergence detection implementation
+- `scripts/discover-references.sh` — reference module discovery and filtering
 - `scripts/track-budget.sh` — budget tracking implementation
 - `templates/finding-template.md` — required finding output format
