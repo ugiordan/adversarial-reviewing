@@ -177,12 +177,12 @@ flowchart TB
 
 | Feature | Claude Code | Cursor | AGENTS.md |
 |---------|------------|--------|-----------|
-| Multi-agent isolation | Enforced | Not available | Depends on tool |
-| Strategy profile | Full support | Not available | Advisory only |
+| Multi-agent isolation | Enforced | Degraded (sequential) | Depends on tool |
+| Strategy profile | Full support | Degraded (sequential) | Depends on tool |
 | Mediated communication | Enforced | Advisory only | Advisory only |
 | Output validation | Programmatic | Agent compliance | Agent compliance |
 | Injection detection | Enforced | Advisory only | Advisory only |
 | Phase 5 remediation | Full support | Limited | Limited |
 
-!!! warning "Cursor limitations"
-    Cursor cannot spawn isolated sub-agents, so it runs in **degraded single-agent mode**: the agent role-plays each specialist sequentially without enforcement boundaries. Only the code profile is supported. See [Installation](getting-started/installation.md) for details.
+!!! note "Cursor and AGENTS.md limitations"
+    Cursor and most AGENTS.md-compatible tools cannot spawn isolated sub-agents. The plugin adapts to a **sequential persona mode** where the agent role-plays each specialist one at a time without enforcement boundaries. Both code and strategy profiles work, but isolation between specialists is advisory only. See [Installation](getting-started/installation.md) for details.

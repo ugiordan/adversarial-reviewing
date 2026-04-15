@@ -52,16 +52,16 @@ Not all installation paths provide the same security guarantees. Claude Code enf
 
 | Property | Claude Code | Cursor (.mdc) | AGENTS.md |
 |----------|------------|---------------|-----------|
-| Agent isolation | **Enforced** | Not available | Depends on tool |
+| Agent isolation | **Enforced** | Advisory (sequential) | Depends on tool |
 | Mediated comms | **Enforced** | Advisory only | Advisory only |
 | Output validation | **Programmatic** | Agent compliance | Agent compliance |
 | Input isolation | **Orchestrator** | Advisory only | Advisory only |
 | Provenance markers | **Verified** | Not enforced | Not enforced |
 | Injection detection | **Enforced** | Advisory only | Advisory only |
-| Strategy profile | **Full support** | Not available | Advisory only |
+| Strategy profile | **Full support** | Degraded (sequential) | Depends on tool |
 | Fix verification | **Re-invokes specialist** | Advisory only | Advisory only |
 
-The full security model is only enforced when running as a Claude Code plugin with the Agent tool available. Strategy profile and fix verification require multi-agent capabilities that Cursor cannot provide.
+The full security model is only enforced when running as a Claude Code plugin with the Agent tool available. Cursor and AGENTS.md tools support both profiles but without enforced isolation between specialists.
 
 ## Guardrails as defense-in-depth
 

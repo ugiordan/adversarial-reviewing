@@ -55,7 +55,7 @@ Human-readable summary of review parameters. Distinct from the machine-readable 
 - **Specialists:** [list of active specialist tags]
 - **Mode flags:** [flags used]
 - **Iterations:** [TAG: N, TAG: N, ...]
-- **Budget:** [used]K / [total]K consumed ([N]%)
+- **Budget:** [used]K / [total]K consumed ([N]%) (~$[cost_usd])
 - **Reference modules:** [N] loaded ([list])
 - **Constraints:** [pack name] ([N] active) | none
 ```

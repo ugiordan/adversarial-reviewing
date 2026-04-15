@@ -10,7 +10,13 @@
 
 set -euo pipefail
 
-ACTION="${1:?Usage: track-budget.sh <init|add|estimate|status> [args]}"
+ACTION="${1:?Usage: track-budget.sh <init|add|estimate|status|rebalance> [args]}"
+
+# Cost per 1M tokens (USD). Blended rate based on Claude Sonnet 4 pricing
+# (~60% input at $3/1M, ~40% output at $15/1M). Update when pricing changes.
+COST_PER_1M_TOKENS_BLENDED=7.80
+# Agent budget multiplier (matches guardrails.md AGENT_BUDGET_MULTIPLIER)
+AGENT_BUDGET_MULTIPLIER=1.5
 
 if [[ -n "${BUDGET_STATE_FILE:-}" ]]; then
     STATE_FILE="$BUDGET_STATE_FILE"
@@ -58,10 +64,15 @@ case "$ACTION" in
 import json, sys
 limit = int(sys.argv[1])
 state_file = sys.argv[2]
+cost_per_1m = float(sys.argv[3])
 with open(state_file, 'w') as f:
     json.dump({'limit': limit, 'consumed': 0}, f)
-print(json.dumps({'limit': limit, 'consumed': 0, 'remaining': limit, 'exceeded': False, 'state_file': state_file}))
-" "$LIMIT" "$STATE_FILE"
+print(json.dumps({
+    'limit': limit, 'consumed': 0, 'remaining': limit, 'exceeded': False,
+    'state_file': state_file,
+    'budget_cost_usd': round(limit / 1_000_000 * cost_per_1m, 2)
+}))
+" "$LIMIT" "$STATE_FILE" "$COST_PER_1M_TOKENS_BLENDED"
         ;;
     add)
         INPUT="${2:?Usage: track-budget.sh add <file_or_char_count>}"
@@ -176,20 +187,23 @@ print(json.dumps(result))
 
         python3 -c "
 import json, sys
+total = int(sys.argv[1])
+cost_per_1m = float(sys.argv[10])
 result = {
-    'estimated_tokens': int(sys.argv[1]),
+    'estimated_tokens': total,
     'prompt_overhead': int(sys.argv[2]),
     'phase1': int(sys.argv[3]),
     'phase2': int(sys.argv[4]),
     'phase34': int(sys.argv[5]),
-    'phase5_remediation': int(sys.argv[6])
+    'phase5_remediation': int(sys.argv[6]),
+    'estimated_cost_usd': round(total / 1_000_000 * cost_per_1m, 2)
 }
 if sys.argv[7] == 'true':
     result['impact_graph'] = int(sys.argv[8])
 if int(sys.argv[9]) > 0:
     result['reference_tokens'] = int(sys.argv[9])
 print(json.dumps(result))
-" "$total" "$prompt_overhead" "$phase1" "$phase2" "$phase34" "$phase5" "$DIFF_MODE" "$IMPACT_GRAPH_TOKENS" "$REFERENCE_TOKENS"
+" "$total" "$prompt_overhead" "$phase1" "$phase2" "$phase34" "$phase5" "$DIFF_MODE" "$IMPACT_GRAPH_TOKENS" "$REFERENCE_TOKENS" "$COST_PER_1M_TOKENS_BLENDED"
         ;;
     status)
         if [[ ! -f "$STATE_FILE" ]]; then
@@ -206,13 +220,92 @@ print(json.dumps(result))
 
         python3 -c "
 import json, sys
+consumed = int(sys.argv[2])
+cost_per_1m = float(sys.argv[5])
 print(json.dumps({
     'limit': int(sys.argv[1]),
-    'consumed': int(sys.argv[2]),
+    'consumed': consumed,
     'remaining': int(sys.argv[3]),
-    'exceeded': sys.argv[4] == 'true'
+    'exceeded': sys.argv[4] == 'true',
+    'consumed_cost_usd': round(consumed / 1_000_000 * cost_per_1m, 2)
 }))
-" "$limit" "$consumed" "$remaining" "$exceeded"
+" "$limit" "$consumed" "$remaining" "$exceeded" "$COST_PER_1M_TOKENS_BLENDED"
+        ;;
+    rebalance)
+        # Redistribute unused budget from low-activity agents to high-activity ones.
+        # Call after Phase 1 completes to give high-finding-count agents more room in Phase 2.
+        # Usage: track-budget.sh rebalance
+        if [[ ! -f "$STATE_FILE" ]]; then
+            echo '{"error": "Budget not initialized"}' >&2
+            exit 1
+        fi
+
+        python3 -c "
+import json, sys, math
+
+state_file = sys.argv[1]
+multiplier = float(sys.argv[2])
+
+with open(state_file) as f:
+    state = json.load(f)
+
+agents = state.get('agents', {})
+if len(agents) < 2:
+    print(json.dumps({'rebalanced': False, 'reason': 'need at least 2 agents'}))
+    sys.exit(0)
+
+limit = state['limit']
+num_agents = len(agents)
+fair_share = math.ceil(limit / num_agents)
+original_cap = math.ceil(fair_share * multiplier)
+
+# Calculate usage ratio for each agent
+usage = {}
+for name, data in agents.items():
+    consumed = data.get('consumed', 0)
+    usage[name] = consumed / max(fair_share, 1)
+
+# Agents below 50% usage after Phase 1 are 'low-activity'
+# Their unused portion (up to 50% of their fair share) is pooled
+pool = 0
+low_agents = []
+high_agents = []
+for name, ratio in usage.items():
+    if ratio < 0.5:
+        low_agents.append(name)
+        donatable = int(fair_share * 0.5 * (1 - ratio))
+        pool += donatable
+    elif ratio > 0.75:
+        high_agents.append(name)
+
+if pool == 0 or len(high_agents) == 0:
+    print(json.dumps({'rebalanced': False, 'reason': 'no rebalancing needed', 'usage': usage}))
+    sys.exit(0)
+
+# Distribute pool evenly to high-activity agents
+bonus_per_agent = pool // len(high_agents)
+new_caps = {}
+for name in agents:
+    if name in high_agents:
+        new_caps[name] = original_cap + bonus_per_agent
+    elif name in low_agents:
+        new_caps[name] = max(int(original_cap * 0.75), agents[name].get('consumed', 0) + 1000)
+    else:
+        new_caps[name] = original_cap
+
+state['agent_caps'] = new_caps
+with open(state_file, 'w') as f:
+    json.dump(state, f)
+
+print(json.dumps({
+    'rebalanced': True,
+    'pool_tokens': pool,
+    'bonus_per_high_agent': bonus_per_agent,
+    'low_agents': low_agents,
+    'high_agents': high_agents,
+    'new_caps': new_caps
+}))
+" "$STATE_FILE" "$AGENT_BUDGET_MULTIPLIER"
         ;;
     cleanup)
         if [[ -n "$STATE_FILE" && -f "$STATE_FILE" ]]; then

@@ -17,25 +17,45 @@ Phase 5 generates and applies fixes for confirmed findings. It requires explicit
 The remediation pipeline is a linear sequence of classify, draft, implement, verify steps with user confirmation gates between each stage. Nothing happens without your explicit approval. If a fix doesn't fully resolve the finding, you decide whether to retry (once), accept the partial fix, or revert.
 
 ```mermaid
-flowchart LR
-    CLASSIFY["Classify findings"] --> |"jira / chore / blocked"| GATE1{{"User confirms\nclassification"}}
-    GATE1 --> DRAFT["Draft Jira tickets"]
-    DRAFT --> GATE2{{"User confirms\ntickets"}}
-    GATE2 --> WORKTREE["Create worktree\nbranches"]
-    WORKTREE --> IMPLEMENT["Implement fixes"]
-    IMPLEMENT --> VERIFY["Fix verification\n(re-invoke specialist)"]
-    VERIFY --> |"verified"| GATE3{{"User confirms\nPRs"}}
-    VERIFY --> |"incomplete"| RETRY{{"User decides:\nretry / accept / revert"}}
+flowchart TD
+    subgraph classify["1. Classify"]
+        CLASSIFY["Classify each finding\nas jira / chore / blocked"]
+    end
+
+    subgraph draft["2. Draft"]
+        DRAFT["Draft Jira tickets\nfor jira-classified findings"]
+    end
+
+    subgraph fix["3. Fix"]
+        WORKTREE["Create worktree branch\nfix/finding-id-description"]
+        IMPLEMENT["Implement fix\n(scoped to single finding)"]
+        WORKTREE --> IMPLEMENT
+    end
+
+    subgraph verify["4. Verify"]
+        VERIFY["Re-invoke original specialist\non modified files"]
+    end
+
+    classify --> GATE1{{"User confirms"}}
+    GATE1 --> draft
+    draft --> GATE2{{"User confirms"}}
+    GATE2 --> fix
+    fix --> verify
+    verify --> |"verified"| GATE3{{"User confirms PRs"}}
+    verify --> |"incomplete"| RETRY{{"Retry / accept / revert"}}
     RETRY --> |"retry (max 1)"| IMPLEMENT
 
     style GATE1 fill:#ffe6e6,stroke:#cc4444
     style GATE2 fill:#ffe6e6,stroke:#cc4444
     style GATE3 fill:#ffe6e6,stroke:#cc4444
     style RETRY fill:#fff3cd,stroke:#ffc107
-    style VERIFY fill:#e8f5e9,stroke:#28a745
+    style classify fill:#f0f4ff,stroke:#4a6fa5
+    style draft fill:#f0f4ff,stroke:#4a6fa5
+    style fix fill:#f0f4ff,stroke:#4a6fa5
+    style verify fill:#e8f5e9,stroke:#28a745
 ```
 
-Every red gate requires explicit user confirmation before proceeding. The green verification step re-invokes the original specialist to confirm the fix resolves the finding. Yellow gates appear only when a fix is incomplete.
+Red hexagons are user confirmation gates: nothing proceeds without your explicit approval. The green verify stage re-invokes the original specialist to confirm the fix actually resolves the finding. The yellow gate only appears when verification is incomplete.
 
 ## Step 1: Classification
 

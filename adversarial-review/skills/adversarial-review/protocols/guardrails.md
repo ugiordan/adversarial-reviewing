@@ -51,6 +51,7 @@ Defines enforceable guardrails that the orchestrator checks programmatically dur
 - **Check:** `track-budget.sh add <chars> --agent <name>` returns `agent_exceeded: true`.
 - **Action:** Skip remaining iterations for that agent.
 - **Formula:** `per_agent_cap = ceil(total_budget / num_active_agents * 1.5)`
+- **Adaptive rebalancing:** After Phase 1 completes, the orchestrator calls `track-budget.sh rebalance` to redistribute unused budget from low-activity agents (< 50% usage) to high-activity agents (> 75% usage). This prevents high-finding-count specialists from hitting their cap during Phase 2 while low-activity specialists leave tokens unused.
 
 ### WEAK_EVIDENCE / EVIDENCE_DEMOTED
 

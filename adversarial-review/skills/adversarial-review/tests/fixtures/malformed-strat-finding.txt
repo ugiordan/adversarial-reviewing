@@ -1,0 +1,8 @@
+Finding ID: SEC-001
+Specialist: Security Analyst
+Severity: Critical
+Confidence: High
+Title: Missing auth
+Evidence: No auth.
+Recommended fix: Add auth.
+Verdict: Reject

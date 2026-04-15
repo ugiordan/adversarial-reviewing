@@ -44,7 +44,7 @@ When the agreement level is **Split Decision** or **No Agreement**, add a promin
 - **Specialists:** [list of active specialist tags]
 - **Mode flags:** [flags used]
 - **Iterations:** [TAG: N, TAG: N, ...]
-- **Budget:** [used]K / [total]K consumed ([N]%)
+- **Budget:** [used]K / [total]K consumed ([N]%) (~$[cost_usd])
 - **Architecture context:** [loaded from <source> | not available]
 - **Reference modules:** [N] loaded ([list])
 - **Constraints:** [pack name] ([N] active) | none
@@ -70,7 +70,7 @@ For each strategy reviewed, include a dedicated section:
 ```
 ## STRAT-NNN: [Title]
 
-### Verdict: [Approve | Revise | Reject] ([Agreement type], [N]/[N])
+### Verdict: [Approve | Revise | Reject] ([Agreement type], [N]/[N]) [escalated from X — if applicable]
 
 | Agent | Verdict | Rationale |
 |-------|---------|-----------|
@@ -175,7 +175,9 @@ reference_modules: [list]
 
 ## Verdict Resolution Rules
 
-Per-strategy verdict is resolved after Phase 3:
+Per-strategy verdict is resolved after Phase 3 in two passes:
+
+### Pass 1: Agent Vote Resolution
 
 | Condition | Result |
 |-----------|--------|
@@ -183,4 +185,25 @@ Per-strategy verdict is resolved after Phase 3:
 | Strict majority agrees | Majority verdict |
 | No majority (e.g., 2-2-1) | Most conservative verdict wins (reject > revise > approve) |
 
-The conservative tiebreaker ensures strategies with split opinions are not approved. A strategy where specialists can't agree needs revision at minimum.
+The conservative tiebreaker ensures strategies with split opinions are not approved.
+
+### Pass 2: Severity-Based Escalation
+
+After agent votes, finding severity can escalate (never downgrade) the verdict:
+
+| Rule | Condition | Escalation |
+|------|-----------|------------|
+| Critical consensus | Any Critical finding with Consensus/Majority agreement | → REJECT |
+| Critical low-confidence | Any Critical finding with LOW confidence | → REVISE (minimum) |
+| Accumulation | 5+ findings at Important or higher | → REJECT |
+| Important cluster | 3-4 findings at Important or higher | → REVISE (minimum) |
+| Constraint violation | Finding matching a constraint with High+ severity floor | → REVISE (minimum) |
+
+When a verdict is escalated, the report shows:
+
+```
+### Verdict: Reject (escalated from Approve)
+
+**Escalation reason:** Critical consensus — finding SEC-003 (Critical, Consensus) triggers automatic REJECT.
+**Agent votes:** 3 Approve, 2 Revise
+```

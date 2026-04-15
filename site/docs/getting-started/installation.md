@@ -82,7 +82,7 @@ If `/plugin` commands are unavailable:
 
 ## Cursor (degraded single-agent mode)
 
-Cursor cannot spawn isolated sub-agents. The plugin adapts to a sequential persona mode where the agent role-plays each specialist in sequence. Only the code profile is supported.
+Cursor cannot spawn isolated sub-agents. The plugin adapts to a sequential persona mode where the agent role-plays each specialist one at a time. Both code and strategy profiles work, but without enforced isolation between specialists.
 
 ```bash
 # Clone the repo
@@ -93,11 +93,11 @@ mkdir -p .cursor/rules
 cp $HOME/.adversarial-review/.cursor/rules/adversarial-review.mdc .cursor/rules/
 ```
 
-!!! warning "Limitations in Cursor mode"
-    - Agent isolation and mediated communication are advisory only
-    - No enforcement boundary between specialist personas
-    - Strategy profile (`--profile strat`) is not available
+!!! note "Limitations in Cursor mode"
+    - No enforcement boundary between specialist personas (isolation is advisory)
+    - Mediated communication is advisory only (no programmatic sanitization)
     - Output validation depends entirely on agent compliance
+    - Both profiles work, but findings may be less independent than in Claude Code's isolated multi-agent mode
 
 ## AGENTS.md (universal)
 

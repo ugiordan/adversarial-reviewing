@@ -1,0 +1,352 @@
+graph LR
+    %% Component architecture for rhods-operator
+
+    classDef crd fill:#e74c3c,stroke:#c0392b,color:#fff
+    classDef controller fill:#3498db,stroke:#2980b9,color:#fff
+    classDef owned fill:#2ecc71,stroke:#27ae60,color:#fff
+    classDef external fill:#95a5a6,stroke:#7f8c8d,color:#fff
+    classDef dep fill:#f39c12,stroke:#e67e22,color:#fff
+
+    subgraph controller["rhods-operator Controller"]
+        dep_1["odh-dashboard"]
+        class dep_1 controller
+        dep_2["training-operator"]
+        class dep_2 controller
+        dep_3["odh-dashboard"]
+        class dep_3 controller
+        dep_4["training-operator"]
+        class dep_4 controller
+        dep_5["workflow-controller"]
+        class dep_5 controller
+        dep_6["workflow-controller"]
+        class dep_6 controller
+        dep_7["rhods-operator"]
+        class dep_7 controller
+        dep_8["rhods-operator"]
+        class dep_8 controller
+        dep_9["rhods-operator"]
+        class dep_9 controller
+        dep_10["manager"]
+        class dep_10 controller
+        dep_11["manager"]
+        class dep_11 controller
+        dep_12["controller-manager"]
+        class dep_12 controller
+        dep_13["controller-manager"]
+        class dep_13 controller
+        dep_14["controller-manager"]
+        class dep_14 controller
+        dep_15["kserve-controller-manager"]
+        class dep_15 controller
+        dep_16["kserve-controller-manager"]
+        class dep_16 controller
+        dep_17["kserve-controller-manager"]
+        class dep_17 controller
+        dep_18["kserve-controller-manager"]
+        class dep_18 controller
+        dep_19["kserve-localmodel-controller-manager"]
+        class dep_19 controller
+        dep_20["kserve-controller-manager"]
+        class dep_20 controller
+        dep_21["kserve-controller-manager"]
+        class dep_21 controller
+        dep_22["kserve-controller-manager"]
+        class dep_22 controller
+        dep_23["controller-manager"]
+        class dep_23 controller
+        dep_24["controller-manager"]
+        class dep_24 controller
+        dep_25["controller-manager"]
+        class dep_25 controller
+        dep_26["controller-manager"]
+        class dep_26 controller
+        dep_27["controller-manager"]
+        class dep_27 controller
+        dep_28["controller-manager"]
+        class dep_28 controller
+        dep_29["controller-manager"]
+        class dep_29 controller
+        dep_30["controller-manager"]
+        class dep_30 controller
+        dep_31["controller-manager"]
+        class dep_31 controller
+        dep_32["controller-manager"]
+        class dep_32 controller
+        dep_33["controller-manager"]
+        class dep_33 controller
+        dep_34["controller-manager"]
+        class dep_34 controller
+        dep_35["controller-manager"]
+        class dep_35 controller
+        dep_36["controller-manager"]
+        class dep_36 controller
+        dep_37["odh-model-controller"]
+        class dep_37 controller
+        dep_38["odh-model-controller"]
+        class dep_38 controller
+        dep_39["controller-manager"]
+        class dep_39 controller
+        dep_40["modelmesh-controller"]
+        class dep_40 controller
+        dep_41["modelmesh-controller"]
+        class dep_41 controller
+        dep_42["controller-manager"]
+        class dep_42 controller
+        dep_43["controller-manager"]
+        class dep_43 controller
+        dep_44["controller-manager"]
+        class dep_44 controller
+        dep_45["controller-manager"]
+        class dep_45 controller
+        dep_46["controller-manager"]
+        class dep_46 controller
+        dep_47["controller-manager"]
+        class dep_47 controller
+        dep_48["controller-manager"]
+        class dep_48 controller
+        dep_49["controller-manager"]
+        class dep_49 controller
+        dep_50["kuberay-operator"]
+        class dep_50 controller
+        dep_51["kuberay-operator"]
+        class dep_51 controller
+        dep_52["training-operator"]
+        class dep_52 controller
+        dep_53["training-operator"]
+        class dep_53 controller
+        dep_54["controller-manager"]
+        class dep_54 controller
+        dep_55["controller-manager"]
+        class dep_55 controller
+        dep_56["controller-manager"]
+        class dep_56 controller
+        dep_57["controller-manager"]
+        class dep_57 controller
+        dep_58["controller-manager"]
+        class dep_58 controller
+        dep_59["deployment"]
+        class dep_59 controller
+        dep_60["deployment"]
+        class dep_60 controller
+        dep_61["manager"]
+        class dep_61 controller
+        dep_62["manager"]
+        class dep_62 controller
+        dep_63["manager"]
+        class dep_63 controller
+        dep_64["controller-manager"]
+        class dep_64 controller
+        dep_65["controller-manager"]
+        class dep_65 controller
+        dep_66["controller-manager"]
+        class dep_66 controller
+        dep_67["kserve-controller-manager"]
+        class dep_67 controller
+        dep_68["kserve-controller-manager"]
+        class dep_68 controller
+        dep_69["kserve-controller-manager"]
+        class dep_69 controller
+        dep_70["kserve-controller-manager"]
+        class dep_70 controller
+        dep_71["kserve-localmodel-controller-manager"]
+        class dep_71 controller
+        dep_72["kserve-controller-manager"]
+        class dep_72 controller
+        dep_73["kserve-controller-manager"]
+        class dep_73 controller
+        dep_74["kserve-controller-manager"]
+        class dep_74 controller
+        dep_75["controller-manager"]
+        class dep_75 controller
+        dep_76["controller-manager"]
+        class dep_76 controller
+        dep_77["controller-manager"]
+        class dep_77 controller
+        dep_78["controller-manager"]
+        class dep_78 controller
+        dep_79["controller-manager"]
+        class dep_79 controller
+        dep_80["controller-manager"]
+        class dep_80 controller
+        dep_81["controller-manager"]
+        class dep_81 controller
+        dep_82["controller-manager"]
+        class dep_82 controller
+        dep_83["controller-manager"]
+        class dep_83 controller
+        dep_84["controller-manager"]
+        class dep_84 controller
+        dep_85["controller-manager"]
+        class dep_85 controller
+        dep_86["controller-manager"]
+        class dep_86 controller
+        dep_87["controller-manager"]
+        class dep_87 controller
+        dep_88["controller-manager"]
+        class dep_88 controller
+        dep_89["odh-model-controller"]
+        class dep_89 controller
+        dep_90["odh-model-controller"]
+        class dep_90 controller
+        dep_91["controller-manager"]
+        class dep_91 controller
+        dep_92["modelmesh-controller"]
+        class dep_92 controller
+        dep_93["modelmesh-controller"]
+        class dep_93 controller
+        dep_94["controller-manager"]
+        class dep_94 controller
+        dep_95["controller-manager"]
+        class dep_95 controller
+        dep_96["controller-manager"]
+        class dep_96 controller
+        dep_97["controller-manager"]
+        class dep_97 controller
+        dep_98["controller-manager"]
+        class dep_98 controller
+        dep_99["controller-manager"]
+        class dep_99 controller
+        dep_100["controller-manager"]
+        class dep_100 controller
+        dep_101["controller-manager"]
+        class dep_101 controller
+        dep_102["kuberay-operator"]
+        class dep_102 controller
+        dep_103["kuberay-operator"]
+        class dep_103 controller
+        dep_104["training-operator"]
+        class dep_104 controller
+        dep_105["training-operator"]
+        class dep_105 controller
+        dep_106["controller-manager"]
+        class dep_106 controller
+        dep_107["controller-manager"]
+        class dep_107 controller
+        dep_108["controller-manager"]
+        class dep_108 controller
+        dep_109["controller-manager"]
+        class dep_109 controller
+        dep_110["controller-manager"]
+        class dep_110 controller
+        dep_111["deployment"]
+        class dep_111 controller
+        dep_112["deployment"]
+        class dep_112 controller
+        dep_113["manager"]
+        class dep_113 controller
+    end
+
+    crd_Dashboard{{"Dashboard\ncomponents.platform.opendatahub.io/v1alpha1"}}
+    class crd_Dashboard crd
+    crd_DataSciencePipelines{{"DataSciencePipelines\ncomponents.platform.opendatahub.io/v1alpha1"}}
+    class crd_DataSciencePipelines crd
+    crd_FeastOperator{{"FeastOperator\ncomponents.platform.opendatahub.io/v1alpha1"}}
+    class crd_FeastOperator crd
+    crd_Kserve{{"Kserve\ncomponents.platform.opendatahub.io/v1alpha1"}}
+    class crd_Kserve crd
+    crd_Kueue{{"Kueue\ncomponents.platform.opendatahub.io/v1alpha1"}}
+    class crd_Kueue crd
+    crd_LlamaStackOperator{{"LlamaStackOperator\ncomponents.platform.opendatahub.io/v1alpha1"}}
+    class crd_LlamaStackOperator crd
+    crd_ModelController{{"ModelController\ncomponents.platform.opendatahub.io/v1alpha1"}}
+    class crd_ModelController crd
+    crd_ModelRegistry{{"ModelRegistry\ncomponents.platform.opendatahub.io/v1alpha1"}}
+    class crd_ModelRegistry crd
+    crd_Ray{{"Ray\ncomponents.platform.opendatahub.io/v1alpha1"}}
+    class crd_Ray crd
+    crd_TrainingOperator{{"TrainingOperator\ncomponents.platform.opendatahub.io/v1alpha1"}}
+    class crd_TrainingOperator crd
+    crd_TrustyAI{{"TrustyAI\ncomponents.platform.opendatahub.io/v1alpha1"}}
+    class crd_TrustyAI crd
+    crd_Workbenches{{"Workbenches\ncomponents.platform.opendatahub.io/v1alpha1"}}
+    class crd_Workbenches crd
+    crd_DataScienceCluster{{"DataScienceCluster\ndatasciencecluster.opendatahub.io/v1"}}
+    class crd_DataScienceCluster crd
+    crd_DataScienceCluster{{"DataScienceCluster\ndatasciencecluster.opendatahub.io/v2"}}
+    class crd_DataScienceCluster crd
+    crd_DSCInitialization{{"DSCInitialization\ndscinitialization.opendatahub.io/v1"}}
+    class crd_DSCInitialization crd
+    crd_DSCInitialization{{"DSCInitialization\ndscinitialization.opendatahub.io/v2"}}
+    class crd_DSCInitialization crd
+    crd_FeatureTracker{{"FeatureTracker\nfeatures.opendatahub.io/v1"}}
+    class crd_FeatureTracker crd
+    crd_HardwareProfile{{"HardwareProfile\ninfrastructure.opendatahub.io/v1"}}
+    class crd_HardwareProfile crd
+    crd_HardwareProfile{{"HardwareProfile\ninfrastructure.opendatahub.io/v1alpha1"}}
+    class crd_HardwareProfile crd
+    crd_Auth{{"Auth\nservices.platform.opendatahub.io/v1alpha1"}}
+    class crd_Auth crd
+    crd_GatewayConfig{{"GatewayConfig\nservices.platform.opendatahub.io/v1alpha1"}}
+    class crd_GatewayConfig crd
+    crd_Monitoring{{"Monitoring\nservices.platform.opendatahub.io/v1alpha1"}}
+    class crd_Monitoring crd
+    controller -->|"Owns"| owned_114["ClusterRole"]
+    class owned_114 owned
+    controller -->|"Owns"| owned_115["ClusterRoleBinding"]
+    class owned_115 owned
+    controller -->|"Owns"| owned_116["ConfigMap"]
+    class owned_116 owned
+    controller -->|"Owns"| owned_117["ConsoleLink"]
+    class owned_117 owned
+    controller -->|"Owns"| owned_118["Dashboard"]
+    class owned_118 owned
+    controller -->|"Owns"| owned_119["DataSciencePipelines"]
+    class owned_119 owned
+    controller -->|"Owns"| owned_120["Deployment"]
+    class owned_120 owned
+    controller -->|"Owns"| owned_121["FeastOperator"]
+    class owned_121 owned
+    controller -->|"Owns"| owned_122["Kserve"]
+    class owned_122 owned
+    controller -->|"Owns"| owned_123["Kueue"]
+    class owned_123 owned
+    controller -->|"Owns"| owned_124["LlamaStackOperator"]
+    class owned_124 owned
+    controller -->|"Owns"| owned_125["ModelController"]
+    class owned_125 owned
+    controller -->|"Owns"| owned_126["ModelRegistry"]
+    class owned_126 owned
+    controller -->|"Owns"| owned_127["MutatingWebhookConfiguration"]
+    class owned_127 owned
+    controller -->|"Owns"| owned_128["NetworkPolicy"]
+    class owned_128 owned
+    controller -->|"Owns"| owned_129["PersistentVolumeClaim"]
+    class owned_129 owned
+    controller -->|"Owns"| owned_130["PodMonitor"]
+    class owned_130 owned
+    controller -->|"Owns"| owned_131["PrometheusRule"]
+    class owned_131 owned
+    controller -->|"Owns"| owned_132["Ray"]
+    class owned_132 owned
+    controller -->|"Owns"| owned_133["Role"]
+    class owned_133 owned
+    controller -->|"Owns"| owned_134["RoleBinding"]
+    class owned_134 owned
+    controller -->|"Owns"| owned_135["Route"]
+    class owned_135 owned
+    controller -->|"Owns"| owned_136["Secret"]
+    class owned_136 owned
+    controller -->|"Owns"| owned_137["SecurityContextConstraints"]
+    class owned_137 owned
+    controller -->|"Owns"| owned_138["Service"]
+    class owned_138 owned
+    controller -->|"Owns"| owned_139["ServiceAccount"]
+    class owned_139 owned
+    controller -->|"Owns"| owned_140["ServiceMonitor"]
+    class owned_140 owned
+    controller -->|"Owns"| owned_141["Template"]
+    class owned_141 owned
+    controller -->|"Owns"| owned_142["TrainingOperator"]
+    class owned_142 owned
+    controller -->|"Owns"| owned_143["TrustyAI"]
+    class owned_143 owned
+    controller -->|"Owns"| owned_144["ValidatingWebhookConfiguration"]
+    class owned_144 owned
+    controller -->|"Owns"| owned_145["Workbenches"]
+    class owned_145 owned
+    watch_146["Auth"] -->|"Watches"| controller
+    class watch_146 external
+    watch_147["ClusterRole"] -->|"Watches"| controller
+    class watch_147 external
+    watch_148["Namespace"] -->|"Watches"| controller
+    class watch_148 external

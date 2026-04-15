@@ -51,7 +51,7 @@ Default (no specialist flags): all specialists for the active profile.
 | `--save` | Both | Write report to `docs/reviews/YYYY-MM-DD-<topic>-review.md` |
 | `--fix` | Code only | Enable Phase 5 remediation (Jira drafts, worktree branches, PRs) |
 | `--fix --dry-run` | Code only | Preview remediation without writing anything |
-| `--budget <N>` | Both | Override default 350K token budget |
+| `--budget <N>` | Both | Override default 350K token budget. Cost estimates (USD) are shown in the pre-flight check and final report. |
 | `--force` | Both | Override 200-file hard ceiling |
 | `--strict-scope` | Both | Reject (not demote) out-of-scope findings and patches |
 | `--persist` | Both | Enable cross-run finding persistence via fingerprinting |

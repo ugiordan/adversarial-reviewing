@@ -187,9 +187,27 @@ For each reviewed document (strategy or RFE):
 
 3. **Record dissent:** For non-unanimous verdicts, preserve each dissenting agent's verdict and rationale in the report.
 
+### Severity-Based Verdict Escalation
+
+After agent verdicts are resolved, apply finding-severity rules as a second pass. These rules can **escalate** a verdict (Approve → Revise, Revise → Reject) but never downgrade one. This makes verdicts reproducible regardless of model temperature.
+
+| Rule | Condition | Escalation |
+|------|-----------|------------|
+| **Critical consensus** | Any Critical finding with Consensus or Majority agreement | → REJECT |
+| **Critical low-confidence** | Any Critical finding with LOW confidence (unresolved) | → REVISE (minimum) |
+| **Accumulation** | 5+ findings at Important or higher (any agreement level) | → REJECT |
+| **Important cluster** | 3-4 findings at Important or higher | → REVISE (minimum) |
+| **Constraint violation** | Any finding matching a loaded constraint with severity floor High+ | → REVISE (minimum) |
+
+Apply rules in order. Once a verdict reaches REJECT, no further rules are evaluated for that document.
+
+**Example:** Agent votes resolve to Approve (3 Approve, 2 Revise). But findings include 1 Critical with Consensus agreement. The severity rule escalates the verdict to REJECT regardless of the agent vote outcome.
+
+The escalation is logged in the report with the triggering rule and finding IDs, so the strategy author knows exactly why the verdict was overridden.
+
 ### Conservative Tiebreaker Rationale
 
-When specialists can't agree, the conservative option protects quality:
+When specialists can't agree on their vote, the conservative option protects quality:
 - A strategy where half the specialists want to reject should not be approved
 - "Revise" is always safer than "approve" when there's genuine disagreement
 - The dissenting positions are preserved in the report so the strategy author can see why
