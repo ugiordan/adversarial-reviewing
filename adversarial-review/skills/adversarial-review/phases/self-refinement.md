@@ -35,6 +35,12 @@ Agent and template paths are resolved from the active profile directory (`profil
 >
 > Read `{CACHE_DIR}/navigation.md` FIRST — it tells you what's available and what to read.
 >
+> ## Source Location
+>
+> The original source code is at: {SOURCE_ROOT}
+> When verifying findings by searching or reading files not in the cache, use this path.
+> Do NOT search the current working directory — it may be a different repo.
+>
 > ## Mandatory Reads
 > Read these files before producing findings:
 > - {CACHE_DIR}/code/{file1}
@@ -44,9 +50,14 @@ Agent and template paths are resolved from the active profile directory (`profil
 > Rules:
 > - Read code files from `code/` before making claims about them
 > - Use repo-relative paths in findings (e.g., `src/auth/handler.go`), not cache paths
+> - When verifying code paths, search under {SOURCE_ROOT}, not the working directory
 > - Read references on iteration 2+
 
 The mandatory reads list includes all scope files to ensure agents read code even if they skip `navigation.md`.
+
+### Step 1b: Output Progress Status
+
+Before dispatching iteration 1 agents, output a progress status block (see SKILL.md "Progress Display") with all agents showing `PENDING` status.
 
 ### Step 2: Spawn Agents in Parallel
 
@@ -170,6 +181,10 @@ After convergence check, update navigation for the next iteration:
 ```bash
 CACHE_DIR=$CACHE_DIR scripts/manage-cache.sh generate-navigation <iteration+1> 1
 ```
+
+### Step 6b: Output Iteration Status
+
+After convergence detection for each iteration, output a progress status block (see SKILL.md "Progress Display"). Show each agent's status (`DONE`, `CONVERGED`, or `FAILED`), finding counts with iteration-over-iteration deltas (e.g., `5 → 3`), and current budget consumption.
 
 ### Step 7: Budget Check
 

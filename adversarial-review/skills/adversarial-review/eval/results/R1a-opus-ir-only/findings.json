@@ -1,0 +1,124 @@
+{
+  "findings": [
+    {
+      "finding_id": "SEC-001",
+      "severity": "Important",
+      "confidence": "High",
+      "source_trust": "Privileged",
+      "file": "architecture-level",
+      "title": "Operator ClusterRole grants wildcard verbs on security-sensitive resources including RBAC, SCCs, and core workloads",
+      "evidence": "rhods-operator-role grants * verbs on clusterrolebindings,clusterroles,rolebindings,roles, securitycontextconstraints, deployments, pods/exec, services, etc.",
+      "category": "rbac"
+    },
+    {
+      "finding_id": "SEC-002",
+      "severity": "Important",
+      "confidence": "High",
+      "source_trust": "Privileged",
+      "file": "architecture-level",
+      "title": "Operator has unrestricted pods/exec permission enabling arbitrary code execution in any pod",
+      "evidence": "rhods-operator-role grants pods,pods/exec,pods/log: * at cluster scope",
+      "category": "rbac"
+    },
+    {
+      "finding_id": "SEC-003",
+      "severity": "Important",
+      "confidence": "High",
+      "source_trust": "Privileged",
+      "file": "architecture-level",
+      "title": "Cluster-wide secrets access enables cross-namespace trust boundary violation",
+      "evidence": "rhods-operator-role grants secrets: create,delete,get,list,patch,update,watch at cluster scope",
+      "category": "rbac"
+    },
+    {
+      "finding_id": "SEC-004",
+      "severity": "Important",
+      "confidence": "High",
+      "source_trust": "N/A",
+      "file": "architecture-level",
+      "title": "Operator can modify its own admission webhooks, enabling self-bypass of validation",
+      "evidence": "rhods-operator-role grants mutatingwebhookconfigurations,validatingwebhookconfigurations: * verbs",
+      "category": "rbac"
+    },
+    {
+      "finding_id": "SEC-005",
+      "severity": "Important",
+      "confidence": "High",
+      "source_trust": "N/A",
+      "file": "architecture-level",
+      "title": "Operator can modify CRDs, enabling schema bypass and privilege escalation",
+      "evidence": "rhods-operator-role grants customresourcedefinitions: create,delete,get,list,patch,update,watch",
+      "category": "rbac"
+    },
+    {
+      "finding_id": "SEC-006",
+      "severity": "Minor",
+      "confidence": "High",
+      "source_trust": "N/A",
+      "file": "architecture-level",
+      "title": "Six webhook configurations have empty failurePolicy",
+      "evidence": "mdeployment.kb.io, mpod.kb.io, mjob.kb.io, vdeployment.kb.io, vpod.kb.io, vjob.kb.io have empty Fail Policy",
+      "category": "webhook"
+    },
+    {
+      "finding_id": "SEC-007",
+      "severity": "Minor",
+      "confidence": "Medium",
+      "source_trust": "N/A",
+      "file": "architecture-level",
+      "title": "All webhook configurations show empty Resources and Operations preventing coverage verification",
+      "evidence": "Every webhook shows Resources: [] and Operations: [], cannot verify UPDATE coverage",
+      "category": "webhook"
+    },
+    {
+      "finding_id": "SEC-008",
+      "severity": "Important",
+      "confidence": "Medium",
+      "source_trust": "Privileged",
+      "file": "architecture-level",
+      "title": "Operator can manage OAuthClients and users, enabling authentication bypass",
+      "evidence": "rhods-operator-role grants oauthclients: *, users: *, groups: * permissions",
+      "category": "rbac"
+    },
+    {
+      "finding_id": "SEC-009",
+      "severity": "Minor",
+      "confidence": "Medium",
+      "source_trust": "Internal",
+      "file": "architecture-level",
+      "title": "Multiple webhook TLS certificates use Opaque type instead of kubernetes.io/tls",
+      "evidence": "kubeflow-training-operator-webhook-cert, kserve-webhook-server-cert, etc. use Opaque type",
+      "category": "crypto"
+    },
+    {
+      "finding_id": "SEC-010",
+      "severity": "Important",
+      "confidence": "Medium",
+      "source_trust": "Privileged",
+      "file": "architecture-level",
+      "title": "CRD field definitions report 0 fields preventing validation gap analysis",
+      "evidence": "Every CRD shows Fields: 0, cannot assess URL/path/namespace field validation",
+      "category": "input_validation"
+    },
+    {
+      "finding_id": "SEC-011",
+      "severity": "Minor",
+      "confidence": "Low",
+      "source_trust": "Privileged",
+      "file": "architecture-level",
+      "title": "Empty controller watches blocking confused deputy analysis",
+      "evidence": "CONTROLLER WATCHES section shows only empty entries, preventing confused deputy pattern detection",
+      "category": "data_flow"
+    },
+    {
+      "finding_id": "SEC-012",
+      "severity": "Minor",
+      "confidence": "Medium",
+      "source_trust": "N/A",
+      "file": "architecture-level",
+      "title": "Duplicate SecurityContextConstraints permission entries suggest copy-paste RBAC accumulation",
+      "evidence": "securitycontextconstraints: * appears three times, deployments,replicasets: * appears multiple times",
+      "category": "rbac"
+    }
+  ]
+}

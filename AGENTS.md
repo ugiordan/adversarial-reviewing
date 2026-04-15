@@ -17,9 +17,9 @@ validation, and evidence-based resolution. Supports two profiles:
 **Code profile** (default): Reviews code from 5 specialist perspectives:
 Security, Performance, Code Quality, Correctness, Architecture.
 
-**Strategy profile** (`--profile strat`): Reviews strategy documents from 5
+**Strategy profile** (`--profile strat`): Reviews strategy documents from 6
 specialist perspectives: Feasibility, Architecture, Security, User Impact,
-Scope & Completeness. Produces per-document verdicts (Approve/Revise/Reject).
+Scope & Completeness, Testability. Produces per-document verdicts (Approve/Revise/Reject).
 
 ## Multi-Agent Mode
 
@@ -63,6 +63,9 @@ All scripts use the `$AR_HOME/` prefix:
 - `bash $AR_HOME/scripts/validate-triage-output.sh` -- validate triage output format
 - `bash $AR_HOME/scripts/discover-references.sh` -- discover and filter reference modules (3-layer: built-in, user, project)
 - `bash $AR_HOME/scripts/update-references.sh` -- update reference modules from remote `source_url`
+- `bash $AR_HOME/scripts/manage-cache.sh` -- cache lifecycle (init, populate, validate, cleanup)
+- `bash $AR_HOME/scripts/fetch-context.sh` -- generic context fetcher for `--context` flag
+- `bash $AR_HOME/scripts/profile-config.sh` -- profile configuration reader
 
 ## Degraded Single-Agent Mode
 
@@ -71,7 +74,7 @@ sequentially:
 
 1. For each specialist in the active profile:
    - **Code profile:** SEC, PERF, QUAL, CORR, ARCH
-   - **Strat profile:** FEAS, ARCH, SEC, USER, SCOP
+   - **Strat profile:** FEAS, ARCH, SEC, USER, SCOP, TEST
    - Read the specialist prompt from `$AR_HOME/profiles/<profile>/agents/<name>.md`
    - Analyze the target from that perspective
    - Produce findings using the template from `$AR_HOME/profiles/<profile>/templates/finding-template.md`
@@ -115,7 +118,8 @@ Mode flags:
 - `--fix` -- Generate and apply remediation patches (code profile only)
 - `--quick` -- 2 specialists, 2 iterations, 150K budget
 - `--thorough` -- All 5 specialists, 3 iterations, 800K budget
-- `--arch-context [url|path]` -- Fetch architecture context (strat profile only)
+- `--context <label>=<source>` -- Inject labeled context (repeatable, works with both profiles)
+- `--testability` -- Testability analyst only (strat profile)
 - `--budget <tokens>` -- Set token budget cap
 - `--diff` -- Enable change-impact analysis (diff + caller/callee graph)
 - `--diff --range <range>` -- Specify git commit range for diff analysis

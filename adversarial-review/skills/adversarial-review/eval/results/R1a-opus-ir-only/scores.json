@@ -1,0 +1,158 @@
+{
+  "detection_rate": 0.17647058823529413,
+  "true_positives": 3,
+  "false_positives": 8,
+  "false_positive_rate": 0.6666666666666666,
+  "total_ground_truth": 17,
+  "total_findings": 12,
+  "severity_accuracy": 0.6666666666666666,
+  "severity_correct": 2,
+  "severity_total": 3,
+  "source_trust_accuracy": 0.0,
+  "source_trust_correct": 0,
+  "source_trust_total": 3,
+  "detected": [
+    "B2-OIDC-URL",
+    "B2-RBAC-SUB",
+    "SSRF-ISVC"
+  ],
+  "missed": [
+    {
+      "id": "SEC-001",
+      "severity": "Critical",
+      "category": "rbac",
+      "title": "RBAC operator precedence bug in auth group filter"
+    },
+    {
+      "id": "SEC-002",
+      "severity": "Important",
+      "category": "crypto",
+      "title": "Server certificate marked as CA with unnecessary capabilities"
+    },
+    {
+      "id": "SEC-003",
+      "severity": "Important",
+      "category": "crypto",
+      "title": "100-year CA validity without renewal strategy"
+    },
+    {
+      "id": "SEC-006",
+      "severity": "Important",
+      "category": "randomness",
+      "title": "Weak certificate serial number entropy"
+    },
+    {
+      "id": "SEC-008",
+      "severity": "Important",
+      "category": "webhook",
+      "title": "Zero-value admission response on webhook fall-through"
+    },
+    {
+      "id": "SEC-009",
+      "severity": "Important",
+      "category": "bounds_check",
+      "title": "Panic on empty ClusterVersion history"
+    },
+    {
+      "id": "B2-SECRET-NS",
+      "severity": "Important",
+      "category": "data_flow",
+      "title": "SecretNamespace allows cross-namespace secret read"
+    },
+    {
+      "id": "B2-DSCI-WEBHOOK",
+      "severity": "Important",
+      "category": "webhook",
+      "title": "DSCI webhook skips UPDATE validation"
+    },
+    {
+      "id": "B2-MON-SECRET",
+      "severity": "Important",
+      "category": "secret_management",
+      "title": "Monitoring secrets stored in plaintext on disk"
+    },
+    {
+      "id": "B2-CERT-NAME",
+      "severity": "Minor",
+      "category": "input_validation",
+      "title": "CertificateSpec.SecretName no format validation"
+    },
+    {
+      "id": "B2-ENTROPY",
+      "severity": "Minor",
+      "category": "randomness",
+      "title": "GenerateRandomHex returns half the expected entropy"
+    },
+    {
+      "id": "B2-ERR-EXPOSE",
+      "severity": "Minor",
+      "category": "info_disclosure",
+      "title": "Error messages expose internal implementation details"
+    },
+    {
+      "id": "RBAC-AGGREGATE",
+      "severity": "Important",
+      "category": "rbac",
+      "title": "aggregate-to-edit labels grant implicit CRD access"
+    },
+    {
+      "id": "CACHE-OOM",
+      "severity": "Important",
+      "category": "input_validation",
+      "title": "Unfiltered informer cache types cause OOM risk"
+    }
+  ],
+  "false_positive_details": [
+    {
+      "finding_id": "SEC-002",
+      "title": "Operator has unrestricted pods/exec permission enabling arbitrary code execution in any pod",
+      "severity": "Important",
+      "file": "architecture-level"
+    },
+    {
+      "finding_id": "SEC-003",
+      "title": "Cluster-wide secrets access enables cross-namespace trust boundary violation",
+      "severity": "Important",
+      "file": "architecture-level"
+    },
+    {
+      "finding_id": "SEC-004",
+      "title": "Operator can modify its own admission webhooks, enabling self-bypass of validation",
+      "severity": "Important",
+      "file": "architecture-level"
+    },
+    {
+      "finding_id": "SEC-005",
+      "title": "Operator can modify CRDs, enabling schema bypass and privilege escalation",
+      "severity": "Important",
+      "file": "architecture-level"
+    },
+    {
+      "finding_id": "SEC-006",
+      "title": "Six webhook configurations have empty failurePolicy",
+      "severity": "Minor",
+      "file": "architecture-level"
+    },
+    {
+      "finding_id": "SEC-007",
+      "title": "All webhook configurations show empty Resources and Operations preventing coverage verification",
+      "severity": "Minor",
+      "file": "architecture-level"
+    },
+    {
+      "finding_id": "SEC-008",
+      "title": "Operator can manage OAuthClients and users, enabling authentication bypass",
+      "severity": "Important",
+      "file": "architecture-level"
+    },
+    {
+      "finding_id": "SEC-009",
+      "title": "Multiple webhook TLS certificates use Opaque type instead of kubernetes.io/tls",
+      "severity": "Minor",
+      "file": "architecture-level"
+    }
+  ],
+  "run_id": "R1a-opus-ir-only",
+  "representation": "R1a",
+  "model": "opus"
+}

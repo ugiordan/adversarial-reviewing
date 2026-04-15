@@ -2,6 +2,7 @@ Finding ID: SEC-002
 Specialist: Security Auditor
 Severity: Important
 Confidence: Medium
+Source Trust: N/A
 File: src/auth/login.py
 Lines: 45-52
 Title: Hardcoded credentials in authentication module

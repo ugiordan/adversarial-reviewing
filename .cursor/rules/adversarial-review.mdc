@@ -22,20 +22,20 @@ execute the following steps **sequentially** inside the single agent context.
 
 For each active specialist (default: all five), do:
 
-| Tag  | Specialist        | Prompt file                                                                  |
-|------|-------------------|------------------------------------------------------------------------------|
-| SEC  | Security          | `$HOME/.adversarial-review/adversarial-review/agents/security-auditor.md`         |
-| PERF | Performance       | `$HOME/.adversarial-review/adversarial-review/agents/performance-analyst.md`      |
-| QUAL | Quality           | `$HOME/.adversarial-review/adversarial-review/agents/code-quality-reviewer.md`    |
-| CORR | Correctness       | `$HOME/.adversarial-review/adversarial-review/agents/correctness-verifier.md`     |
-| ARCH | Architecture      | `$HOME/.adversarial-review/adversarial-review/agents/architecture-reviewer.md`    |
+| Tag  | Specialist        | Prompt file                                                                              |
+|------|-------------------|------------------------------------------------------------------------------------------|
+| SEC  | Security          | `$HOME/.adversarial-review/adversarial-review/profiles/code/agents/security-auditor.md`       |
+| PERF | Performance       | `$HOME/.adversarial-review/adversarial-review/profiles/code/agents/performance-analyst.md`    |
+| QUAL | Quality           | `$HOME/.adversarial-review/adversarial-review/profiles/code/agents/code-quality-reviewer.md`  |
+| CORR | Correctness       | `$HOME/.adversarial-review/adversarial-review/profiles/code/agents/correctness-verifier.md`   |
+| ARCH | Architecture      | `$HOME/.adversarial-review/adversarial-review/profiles/code/agents/architecture-reviewer.md`  |
 
 For each specialist:
 
 1. Read the specialist prompt from the path above.
 2. Adopt that specialist persona and analyze the code under review from that perspective.
 3. Produce findings using the standard template at
-   `$HOME/.adversarial-review/adversarial-review/templates/finding-template.md`.
+   `$HOME/.adversarial-review/adversarial-review/profiles/code/templates/finding-template.md`.
 
 ### Phase 1.5 -- Output validation (optional)
 
@@ -50,7 +50,7 @@ on the collected output to check structural compliance.
 ### Phase 2 -- Self-challenge (Devil's Advocate)
 
 Role-play a devil's advocate using the prompt at
-`$HOME/.adversarial-review/adversarial-review/agents/devils-advocate.md`.
+`$HOME/.adversarial-review/adversarial-review/profiles/code/agents/devils-advocate.md`.
 
 - Challenge each finding from Phase 1.
 - Discard findings that do not survive scrutiny.
@@ -60,7 +60,8 @@ Role-play a devil's advocate using the prompt at
 
 - Deduplicate surviving findings across specialists.
 - Produce the final report using the template at
-  `$HOME/.adversarial-review/adversarial-review/templates/report-template.md`.
+  `$HOME/.adversarial-review/adversarial-review/profiles/code/templates/report-template.md`
+  (or `$HOME/.adversarial-review/adversarial-review/templates/report-template.md` if profile templates are unavailable).
 
 ---
 
@@ -77,7 +78,7 @@ Role-play a devil's advocate using the prompt at
 | `--save`         | Save the report to disk (see path below)            |
 | `--delta`        | Review only the diff, not the full file             |
 | `--fix`          | Propose concrete fixes alongside findings           |
-| `--quick`        | 2 specialists (SEC + CORR), 2 iterations, 200K budget |
+| `--quick`        | 2 specialists (SEC + CORR), 2 iterations, 150K budget |
 | `--thorough`     | Increase depth: more detailed analysis per finding  |
 | `--diff`           | Enable change-impact analysis with caller/callee graph |
 | `--triage <source>`| Evaluate external comments (pr:<N>, file:<path>, -)   |
@@ -87,6 +88,7 @@ Role-play a devil's advocate using the prompt at
 | `--update-references --check-only` | Check for updates without applying        |
 | `--strict-scope` | Reject (not demote) out-of-scope findings and patches |
 | `--fix --dry-run` | Preview remediation without writing anything         |
+| `--context <label>=<source>` | Inject labeled context (repeatable)          |
 
 Multiple specialist flags can be combined (e.g. `--security --performance`).
 

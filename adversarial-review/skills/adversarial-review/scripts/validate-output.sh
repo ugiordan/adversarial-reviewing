@@ -289,6 +289,24 @@ while IFS= read -r fid; do
         fi
     fi
 
+    # Source Trust validation (SEC findings in code profile)
+    if [[ "$PROFILE" == "code" && "$prefix" == "SEC" ]]; then
+        source_trust=$(extract_field "Source Trust:" "$block")
+        if [[ -z "$source_trust" ]]; then
+            WARNINGS+=("SOURCE_TRUST_MISSING: Finding $fid (SEC) has no Source Trust field")
+        elif [[ "$source_trust" != "External" && "$source_trust" != "Authenticated" && "$source_trust" != "Privileged" && "$source_trust" != "Internal" && "$source_trust" != "N/A" ]]; then
+            ERRORS+=("Finding $fid: invalid Source Trust '$source_trust' (must be External|Authenticated|Privileged|Internal|N/A)")
+        else
+            # Enforce severity ceiling based on Source Trust
+            if [[ "$source_trust" == "Privileged" && "$severity" == "Critical" ]]; then
+                ERRORS+=("SEVERITY_CEILING: Finding $fid has Source Trust 'Privileged' but severity 'Critical' (max: Important). Privileged sources require write/admin access and cannot be Critical.")
+            fi
+            if [[ "$source_trust" == "Internal" && ( "$severity" == "Critical" || "$severity" == "Important" ) ]]; then
+                ERRORS+=("SEVERITY_CEILING: Finding $fid has Source Trust 'Internal' but severity '$severity' (max: Minor). Internal sources are infrastructure-controlled and cannot exceed Minor.")
+            fi
+        fi
+    fi
+
     # Check length caps
     title=$(extract_field "Title:" "$block")
     if [[ ${#title} -gt 200 ]]; then

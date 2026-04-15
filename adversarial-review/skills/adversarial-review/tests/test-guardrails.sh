@@ -18,11 +18,12 @@ Finding ID: SEC-001
 Specialist: Security Auditor
 Severity: Critical
 Confidence: High
+Source Trust: External
 File: src/auth.ts
 Lines: 10-20
 Title: SQL injection in login handler
 Evidence:
-The function at src/auth.ts:10 directly concatenates user input into a SQL query string without parameterization. The request.body.username value flows from the Express handler through buildQuery() at src/auth.ts:15 into db.execute() at src/auth.ts:20 without any sanitization or escaping whatsoever.
+The function at src/auth.ts:10 directly concatenates user input into a SQL query string without parameterization. The request.body.username value flows from the Express handler through buildQuery() at src/auth.ts:15 into db.execute() at src/auth.ts:20 without any sanitization or escaping whatsoever. Source: HTTP request body (unauthenticated). Trust boundary: External.
 Recommended fix: Use parameterized queries instead of string concatenation.
 EOF
 
@@ -31,11 +32,12 @@ Finding ID: SEC-001
 Specialist: Security Auditor
 Severity: Critical
 Confidence: High
+Source Trust: External
 File: src/unrelated.ts
 Lines: 10-20
 Title: SQL injection in unrelated handler
 Evidence:
-The function at src/unrelated.ts:10 directly concatenates user input into a SQL query string without parameterization. The request.body.username value flows from the Express handler through buildQuery() at src/unrelated.ts:15 into db.execute() at src/unrelated.ts:20 without any sanitization or escaping whatsoever.
+The function at src/unrelated.ts:10 directly concatenates user input into a SQL query string without parameterization. The request.body.username value flows from the Express handler through buildQuery() at src/unrelated.ts:15 into db.execute() at src/unrelated.ts:20 without any sanitization or escaping whatsoever. Source: HTTP request body (unauthenticated). Trust boundary: External.
 Recommended fix: Use parameterized queries.
 EOF
 

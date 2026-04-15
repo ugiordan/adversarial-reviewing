@@ -1,0 +1,109 @@
+Finding ID: SEC-001
+Specialist: Security Auditor
+Severity: Important
+Confidence: High
+Source Trust: Privileged
+File: internal/controller/services/auth/auth_controller_actions.go
+Lines: 63-65
+Title: Operator precedence bug in system:authenticated guard allows bypassing admin group protection
+Evidence: In bindRole(), the condition `if roleName == "admingroup-role" && e == "system:authenticated" || e == ""` has an operator precedence issue. Due to && binding tighter than ||, this evaluates as `(roleName == "admingroup-role" && e == "system:authenticated") || (e == "")`. The e == "" check applies unconditionally to ALL roles, not just admin roles. The same pattern exists in bindClusterRole(). While the CRD-level validation provides a first line of defense, this controller-level guard is the last line of defense and could be bypassed if the webhook is unavailable.
+Recommended fix: Add parentheses to clarify intent: `if roleName == "admingroup-role" && (e == "system:authenticated" || e == "")`.
+
+Finding ID: SEC-002
+Specialist: Security Auditor
+Severity: Important
+Confidence: High
+Source Trust: Internal
+File: pkg/cluster/cert.go
+Lines: 106-118
+Title: Self-signed certificate generated as CA with overly permissive key usage enables certificate forgery if key is compromised
+Evidence: In generateCertificate(), the certificate template sets IsCA: true and includes KeyUsageCertSign. This certificate is used as a TLS server certificate (it self-signs itself). A TLS server certificate should never be a CA certificate. If the private key is compromised, an attacker could use it to sign arbitrary certificates.
+Recommended fix: Set IsCA: false, remove KeyUsageCertSign from KeyUsage.
+
+Finding ID: SEC-003
+Specialist: Security Auditor
+Severity: Minor
+Confidence: High
+Source Trust: Internal
+File: internal/controller/services/gateway/gateway_support.go
+Lines: 40-45
+Title: Fallback container image uses :latest tag from personal repository
+Evidence: getKubeAuthProxyImage() falls back to "quay.io/jtanner/kube-auth-proxy:latest" when RELATED_IMAGE_ODH_KUBE_AUTH_PROXY_IMAGE is not set. Uses mutable :latest tag from personal repository. No runtime guard prevents this fallback in production.
+Recommended fix: Remove the fallback entirely and return an error when env var is missing, or pin to a specific digest from the org registry.
+
+Finding ID: SEC-004
+Specialist: Security Auditor
+Severity: Minor
+Confidence: Medium
+Source Trust: Privileged
+File: internal/controller/services/gateway/gateway_auth_actions.go
+Lines: 55-88
+Title: OAuth2 proxy configured with --email-domain=* allowing any email domain
+Evidence: buildBaseOAuth2ProxyArgs() configures --email-domain=* which disables email-domain-based access restriction. Combined with --skip-jwt-bearer-tokens=true. However, oauth2-proxy serves as authentication, not the sole authorization mechanism. Authorization is handled downstream by Kubernetes RBAC and Auth controller group bindings.
+Recommended fix: Document security implications. Consider making email-domain configurable through GatewayConfigSpec.
+
+Finding ID: SEC-005
+Specialist: Security Auditor
+Severity: Important
+Confidence: Medium
+Source Trust: Privileged
+File: internal/controller/services/gateway/gateway_support.go
+Lines: 30-32
+Title: OAuth scope user:full grants excessive permissions to the gateway OAuth client
+Evidence: OpenShiftOAuthScope = "user:full" grants the OAuth client ability to perform any action the authenticated user can. Combined with GrantHandlerAuto which auto-approves without user confirmation. If gateway is compromised or access token leaks, attacker gains full user capabilities.
+Recommended fix: Reduce OAuth scope to user:info or user:check-access. Consider changing GrantHandlerAuto to GrantHandlerPrompt.
+
+Finding ID: SEC-006
+Specialist: Security Auditor
+Severity: Minor
+Confidence: Medium
+Source Trust: Internal
+File: internal/controller/dscinitialization/monitoring.go
+Lines: 100-108
+Title: Secret values written to YAML config files on disk via string substitution
+Evidence: configureAlertManager() reads secret values (SNITCH_URL, PAGERDUTY_KEY, SMTP credentials) and writes them to alertmanager-configs.yaml via common.ReplaceStringsInFile(). Plaintext credentials persist on the operator's filesystem across reconciliation cycles.
+Recommended fix: Use Kubernetes Secret references in deployed AlertManager config. Clean up files after deployment.
+
+Finding ID: SEC-007
+Specialist: Security Auditor
+Severity: Minor
+Confidence: Medium
+Source Trust: Privileged
+File: internal/controller/services/gateway/gateway_controller_actions.go
+Lines: 80-115
+Title: Gateway listener allows routes from all namespaces with no restrictions
+Evidence: CreateListeners() uses NamespacesFromAll in AllowedRoutes. Any namespace can create HTTPRoutes attaching to this gateway. Security depends entirely on namespace-level RBAC for HTTPRoute creation.
+Recommended fix: Use NamespacesFromSelector with label selector. Document RBAC requirements for multi-tenant deployments.
+
+Finding ID: SEC-008
+Specialist: Security Auditor
+Severity: Minor
+Confidence: High
+Source Trust: Internal
+File: pkg/cluster/cert.go
+Lines: 91-93
+Title: Certificate serial number has artificially limited entropy range
+Evidence: Serial number generated as rand.Int(rand.Reader, big.NewInt(time.Now().UnixNano())). While crypto/rand is used, the upper bound is ~61 bits (time.Now().UnixNano()). RFC 5280 recommends at least 20 bytes (160 bits) of entropy.
+Recommended fix: Use full 128-bit random value: rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128)).
+
+Finding ID: SEC-009
+Specialist: Security Auditor
+Severity: Minor
+Confidence: High
+Source Trust: Internal
+File: pkg/cluster/cluster_config.go
+Lines: 190-192
+Title: Unchecked array index access on ClusterVersion History could panic
+Evidence: getOCPVersion() accesses clusterVersion.Status.History[0].Version without checking that History is non-empty. Empty History during cluster bootstrap causes index out of range panic, crashing the operator. Can be exploited as denial-of-service.
+Recommended fix: Add bounds check: if len(clusterVersion.Status.History) == 0 { return error }.
+
+Finding ID: SEC-010
+Specialist: Security Auditor
+Severity: Minor
+Confidence: Medium
+Source Trust: Internal
+File: internal/controller/dscinitialization/utils.go
+Lines: 262-275
+Title: GenerateRandomHex produces half the expected byte count due to integer division
+Evidence: GenerateRandomHex() computes numBytes := length / 2. Called with length=32, it generates 16 bytes (128 bits). The function name and parameter semantics are misleading, which could lead future callers to get less entropy than expected.
+Recommended fix: Rename function to clarify semantics or change to return hex-encoded output of specified length.

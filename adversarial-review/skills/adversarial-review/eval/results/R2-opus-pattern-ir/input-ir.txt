@@ -1,0 +1,518 @@
+=== R2: SECURITY PATTERN IR ===
+Repo: /Users/ugogiordano/workdir/rhoai/rhods-operator
+Generated: 2026-04-11T07:02:55Z
+
+=== CRYPTO PATTERNS ===
+--- Certificate configuration ---
+FILE: pkg/cluster/cert.go
+  103:		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+  106:		IsCA:                  true,
+  89:	seededRand, cryptErr := rand.Int(rand.Reader, big.NewInt(time.Now().UnixNano()))
+  96:		SerialNumber: seededRand,
+  101:		NotBefore:             now.UTC(),
+  102:		NotAfter:              now.Add(time.Second * 60 * 60 * 24 * 365).UTC(),
+
+=== RANDOMNESS / ENTROPY ===
+FILE: internal/controller/dscinitialization/monitoring.go
+  401:	sessionSecret, err := GenerateRandomHex(32)
+
+FILE: internal/controller/dscinitialization/utils.go
+  5:	"crypto/rand"
+  261:func GenerateRandomHex(length int) ([]byte, error) {
+  263:	numBytes := length / 2
+  266:	randomBytes := make([]byte, numBytes)
+  268:	// Read random bytes from the crypto/rand source
+  269:	if _, err := rand.Read(randomBytes); err != nil {
+
+FILE: pkg/cluster/cert.go
+  6:	"crypto/rand"
+  84:	key, err := rsa.GenerateKey(rand.Reader, 2048)
+  89:	seededRand, cryptErr := rand.Int(rand.Reader, big.NewInt(time.Now().UnixNano()))
+  120:	certDERBytes, err := x509.CreateCertificate(rand.Reader, &tmpl, &tmpl, key.Public(), key)
+
+=== WEBHOOK OPERATION COVERAGE ===
+FILE: internal/controller/dscinitialization/servicemesh_setup.go
+  35:		capabilities := []*feature.HandlerWithReporter[*dsciv2.DSCInitialization]{
+  73:		capabilities := []*feature.HandlerWithReporter[*dsciv2.DSCInitialization]{
+  97:func (r *DSCInitializationReconciler) serviceMeshCapability(instance *dsciv2.DSCInitialization, initialCondition *common.Condition) *feature.HandlerWithReporter[*dsciv2.DSCInitialization] { //nolint:lll // Reason: generics are long
+  98:	return feature.NewHandlerWithReporter(
+  99:		feature.ClusterFeaturesHandler(instance, r.serviceMeshCapabilityFeatures(instance)),
+  104:func (r *DSCInitializationReconciler) authorizationCapability(ctx context.Context, instance *dsciv2.DSCInitialization, condition *common.Condition) (*feature.HandlerWithReporter[*dsciv2.DSCInitialization], error) { //nolint:lll // Reason: generics are long
+  118:		return feature.NewHandlerWithReporter(
+  119:			// EmptyFeaturesHandler acts as all the authorization features are disabled (calling Apply/Delete has no actual effect on the cluster)
+  121:			feature.EmptyFeaturesHandler,
+  126:	return feature.NewHandlerWithReporter(
+  127:		feature.ClusterFeaturesHandler(instance, r.authorizationFeatures(instance)),
+
+FILE: internal/controller/dscinitialization/utils.go
+  43:	if err := r.appNamespaceHandler(ctx, dscInit, platform); err != nil {
+  63:func (r *DSCInitializationReconciler) appNamespaceHandler(ctx context.Context, dscInit *dsciv2.DSCInitialization, platform common.Platform) error {
+
+FILE: internal/controller/services/auth/auth_controller.go
+  38:	sr.Add(&ServiceHandler{})
+  41:type ServiceHandler struct {
+  44:func (h *ServiceHandler) Init(_ common.Platform) error {
+  48:func (h *ServiceHandler) GetName() string {
+  52:func (h *ServiceHandler) GetManagementState(platform common.Platform, _ *dsciv2.DSCInitialization) operatorv1.ManagementState {
+  56:func (h *ServiceHandler) NewReconciler(ctx context.Context, mgr ctrl.Manager) error {
+
+FILE: internal/controller/services/gateway/gateway_auth_actions.go
+  467:		GrantMethod:  oauthv1.GrantHandlerAuto,
+
+FILE: internal/controller/services/gateway/gateway_controller.go
+  40:	sr.Add(&ServiceHandler{})
+  43:// ServiceHandler implements the ServiceHandler interface for Gateway services.
+  45:type ServiceHandler struct{}
+  47:// Init initializes the ServiceHandler for the given platform.
+  49:func (h *ServiceHandler) Init(platform common.Platform) error {
+  54:func (h *ServiceHandler) GetName() string {
+  60:func (h *ServiceHandler) GetManagementState(platform common.Platform, _ *dsciv2.DSCInitialization) operatorv1.ManagementState {
+  66:func (h *ServiceHandler) NewReconciler(ctx context.Context, mgr ctrl.Manager) error {
+
+FILE: internal/webhook/notebook/mutating.go
+  41:// Validator implements webhook.AdmissionHandler for Notebook connection validation webhooks.
+  54:// Assert that NotebookWebhook implements admission.Handler interface.
+  55:var _ admission.Handler = &NotebookWebhook{}
+  60:		Handler:        w,
+  66:func (w *NotebookWebhook) Handle(ctx context.Context, req admission.Request) admission.Response {
+  83:		return admission.Allowed("Object marked for deletion, skipping connection logic")
+  86:	var resp admission.Response
+  88:	switch req.Operation {
+  91:		if !validationResp.Allowed {
+  97:			return admission.Allowed(fmt.Sprintf("Connection annotation validation passed in namespace %s for %s, no injection needed", req.Namespace, req.Kind.Kind))
+  117:		resp = admission.Allowed(fmt.Sprintf("Operation %s on %s allowed", req.Operation, req.Kind.Kind))
+  130:	req *admission.Request,
+  131:) (admission.Response, bool, []NotebookSecretReference) {
+  135:	if req.Operation == admissionv1.Create && annotationValue == "" {
+  136:		return admission.Allowed(fmt.Sprintf("Annotation '%s' not present or empty value, skipping validation", annotations.Connection)), false, nil
+  143:		return admission.Denied(fmt.Sprintf("failed to parse connections annotation: %v", err)), false, nil
+  154:		return admission.Denied(fmt.Sprintf("some of the connection secret(s) do not exist or are outside the Notebook's namespace: %s",
+  159:		return admission.Denied(fmt.Sprintf("user does not have permission to access the following connection secret(s): %s", strings.Join(permissionsErrors, ", "))), false, nil
+  167:	return admission.Allowed("Connection permissions validated successfully"), true, notebookSecretRefs
+  170:func (w *NotebookWebhook) getNotebookSecretRefs(ctx context.Context, req *admission.Request, secretRefs []corev1.SecretReference) ([]NotebookSecretReference, error) {
+  173:	// Only UPDATE operation has old object and potential connection secrets that may need to be removed
+  174:	if req.Operation == admissionv1.Update {
+  240:func (w *NotebookWebhook) checkSecretsExistsAndUserHasPermissions(ctx context.Context, req *admission.Request, secretRefs []corev1.SecretReference) ([]string, []string, error) {
+  258:func (w *NotebookWebhook) checkSecretExists(ctx context.Context, req *admission.Request, secretRefs []corev1.SecretReference) ([]string, error) {
+  285:func (w *NotebookWebhook) checkUserHasPermission(ctx context.Context, req *admission.Request, secretRefs []corev1.SecretReference) ([]string, error) {
+  315:		if !sar.Status.Allowed {
+  435:// for UPDATE operations to determine which secrets are being added/removed.
+  436:func (w *NotebookWebhook) getOldConnectionSecrets(ctx context.Context, req *admission.Request) ([]corev1.SecretReference, error) {
+
+FILE: internal/webhook/notebook/register.go
+
+FILE: vendor/sigs.k8s.io/controller-runtime/pkg/cluster/internal.go
+  51:	// (and EventHandlers, Sources and Predicates).
+
+=== CRD FIELD VALIDATION ===
+FILE: api/dscinitialization/v2/dscinitialization_types.go
+  33:	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="ApplicationsNamespace is immutable"
+  34:	// +kubebuilder:validation:Pattern="^([a-z0-9]([-a-z0-9]*[a-z0-9])?)?$"
+  35:	// +kubebuilder:validation:MaxLength=63
+  36:	ApplicationsNamespace string `json:"applicationsNamespace,omitempty"`
+  39:	Monitoring serviceApi.DSCIMonitoring `json:"monitoring,omitempty"`
+  46:	ServiceMesh *infrav1.ServiceMeshSpec `json:"serviceMesh,omitempty"`
+  51:	TrustedCABundle *TrustedCABundleSpec `json:"trustedCABundle,omitempty"`
+  55:	DevFlags *DevFlags `json:"devFlags,omitempty"`
+  61:	// ## DEPRECATED ## : ManifestsUri set on DSCI is not maintained.
+  64:	ManifestsUri string `json:"manifestsUri,omitempty"`
+  66:	// +kubebuilder:validation:Enum=devel;development;prod;production;default
+  68:	LogMode string `json:"logmode,omitempty"`
+  71:	LogLevel string `json:"logLevel,omitempty"`
+  76:	// +kubebuilder:validation:Enum=Managed;Removed;Unmanaged
+  78:	ManagementState operatorv1.ManagementState `json:"managementState"`
+  83:	CustomCABundle string `json:"customCABundle"`
+  90:	Phase string `json:"phase,omitempty"`
+  94:	Conditions []common.Condition `json:"conditions,omitempty"`
+  99:	RelatedObjects []corev1.ObjectReference `json:"relatedObjects,omitempty"`
+  100:	ErrorMessage   string                   `json:"errorMessage,omitempty"`
+  103:	Release common.Release `json:"release,omitempty"`
+  126:	metav1.TypeMeta   `json:",inline"`
+  127:	metav1.ObjectMeta `json:"metadata,omitempty"`
+  129:	Spec   DSCInitializationSpec   `json:"spec,omitempty"`
+  130:	Status DSCInitializationStatus `json:"status,omitempty"`
+  137:	metav1.TypeMeta `json:",inline"`
+  138:	metav1.ListMeta `json:"metadata,omitempty"`
+  139:	Items           []DSCInitialization `json:"items"`
+
+FILE: api/infrastructure/v1/cert_types.go
+  14:	// SecretName specifies the name of the Kubernetes Secret resource that contains a
+  16:	SecretName string `json:"secretName,omitempty"`
+  20:	// * Provided: Pre-existence of the TLS Secret (see SecretName) with a valid certificate is assumed.
+  22:	// +kubebuilder:validation:Enum=SelfSigned;Provided;OpenshiftDefaultIngress
+  24:	Type CertType `json:"type,omitempty"`
+
+FILE: api/infrastructure/v1/hardwareprofile_types.go
+  40:	Identifiers []HardwareIdentifier `json:"identifiers,omitempty"`
+  44:	SchedulingSpec *SchedulingSpec `json:"scheduling,omitempty"`
+  49:	DisplayName string `json:"displayName"`
+  52:	Identifier string `json:"identifier"`
+  55:	MinCount intstr.IntOrString `json:"minCount"`
+  59:	MaxCount *intstr.IntOrString `json:"maxCount,omitempty"`
+  62:	DefaultCount intstr.IntOrString `json:"defaultCount"`
+  66:	// +kubebuilder:validation:Enum=CPU;Memory;Accelerator
+  67:	ResourceType string `json:"resourceType,omitempty"`
+  72:// +kubebuilder:validation:XValidation:rule="self.type == 'Queue' ? (has(self.kueue) && has(self.kueue.localQueueName) && !has(self.node)) : true",message="When schedulingType is 'Queue', the 'kueue.localQueueName' field must be specified and non-empty, and the 'node' field must not be set"
+  74:// +kubebuilder:validation:XValidation:rule="self.type == 'Node' ? (has(self.node) && !has(self.kueue)) : true",message="When schedulingType is 'Node', the 'node' field must be set, and the 'kueue' field must not be set"
+  80:	// +kubebuilder:validation:Enum="Queue";"Node"
+  81:	// +kubebuilder:validation:Required
+  82:	SchedulingType SchedulingType `json:"type"`
+  87:	Kueue *KueueSchedulingSpec `json:"kueue,omitempty"`
+  92:	Node *NodeSchedulingSpec `json:"node,omitempty"`
+  101:	// +kubebuilder:validation:Required
+  102:	// +kubebuilder:validation:MinLength=1
+  103:	LocalQueueName string `json:"localQueueName"`
+  107:	PriorityClass string `json:"priorityClass,omitempty"`
+  115:	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+  120:	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
+  135:	metav1.TypeMeta   `json:",inline"`
+  136:	metav1.ObjectMeta `json:"metadata,omitempty"`
+  138:	Spec   HardwareProfileSpec   `json:"spec"`
+  139:	Status HardwareProfileStatus `json:"status,omitempty"`
+  146:	metav1.TypeMeta `json:",inline"`
+  147:	metav1.ListMeta `json:"metadata,omitempty"`
+  148:	Items           []HardwareProfile `json:"items"`
+
+FILE: api/infrastructure/v1/serverless_types.go
+  10:	// +kubebuilder:validation:Enum=Managed;Unmanaged;Removed
+  12:	ManagementState operatorv1.ManagementState `json:"managementState,omitempty"`
+  17:	Name string `json:"name,omitempty"`
+  20:	IngressGateway GatewaySpec `json:"ingressGateway,omitempty"`
+
+FILE: api/infrastructure/v1/servicemesh_types.go
+  7:	// +kubebuilder:validation:Enum=Managed;Unmanaged;Removed
+  9:	ManagementState operatorv1.ManagementState `json:"managementState,omitempty"`
+  11:	ControlPlane ControlPlaneSpec `json:"controlPlane,omitempty"`
+  14:	Auth AuthSpec `json:"auth,omitempty"`
+  20:	Name string `json:"name,omitempty"`
+  23:	// +kubebuilder:validation:Pattern="^([a-z0-9]([-a-z0-9]*[a-z0-9])?)?$"
+  24:	// +kubebuilder:validation:MaxLength=63
+  25:	Namespace string `json:"namespace,omitempty"`
+  30:	// +kubebuilder:validation:Enum=Istio;None
+  32:	MetricsCollection string `json:"metricsCollection,omitempty"`
+  37:	// Domain specifies the host name for intercepting incoming requests.
+  41:	Domain string `json:"domain,omitempty"`
+  44:	Certificate CertificateSpec `json:"certificate,omitempty"`
+  50:	// +kubebuilder:validation:Pattern="^([a-z0-9]([-a-z0-9]*[a-z0-9])?)?$"
+  51:	// +kubebuilder:validation:MaxLength=63
+  52:	Namespace string `json:"namespace,omitempty"`
+  59:	Audiences *[]string `json:"audiences,omitempty"`
+
+FILE: api/services/v1alpha1/auth_types.go
+  36:	// +kubebuilder:validation:XValidation:rule="size(self) > 0",message="AdminGroups cannot be empty"
+  37:	// +kubebuilder:validation:XValidation:rule="self.all(group, group != 'system:authenticated' && group != '')",message="AdminGroups cannot contain 'system:authenticated' or empty strings"
+  38:	AdminGroups []string `json:"adminGroups"`
+  40:	// +kubebuilder:validation:XValidation:rule="self.all(group, group != '')",message="AllowedGroups cannot contain empty strings"
+  41:	AllowedGroups []string `json:"allowedGroups"`
+  46:	common.Status `json:",inline"`
+  52:// +kubebuilder:validation:XValidation:rule="self.metadata.name == 'auth'",message="Auth name must be auth"
+  58:	metav1.TypeMeta   `json:",inline"`
+  59:	metav1.ObjectMeta `json:"metadata,omitempty"`
+  61:	Spec   AuthSpec   `json:"spec,omitempty"`
+  62:	Status AuthStatus `json:"status,omitempty"`
+  69:	metav1.TypeMeta `json:",inline"`
+  70:	metav1.ListMeta `json:"metadata,omitempty"`
+  71:	Items           []Auth `json:"items"`
+
+FILE: api/services/v1alpha1/gateway_types.go
+  41:	OIDC *OIDCConfig `json:"oidc,omitempty"`
+  45:	Certificate *infrav1.CertificateSpec `json:"certificate,omitempty"`
+  47:	// Domain configuration for the GatewayConfig
+  50:	Domain string `json:"domain,omitempty"`
+  55:	// OIDC issuer URL
+  56:	// +kubebuilder:validation:Required
+  57:	IssuerURL string `json:"issuerURL"`
+  60:	// +kubebuilder:validation:Required
+  61:	ClientID string `json:"clientID"`
+  64:	// +kubebuilder:validation:Required
+  65:	ClientSecretRef corev1.SecretKeySelector `json:"clientSecretRef"`
+  70:	common.Status `json:",inline"`
+  76:// +kubebuilder:validation:XValidation:rule="self.metadata.name == 'default-gateway'",message="GatewayConfig name must be default-gateway"
+  82:	metav1.TypeMeta   `json:",inline"`
+  83:	metav1.ObjectMeta `json:"metadata,omitempty"`
+  85:	Spec   GatewayConfigSpec   `json:"spec,omitempty"`
+  86:	Status GatewayConfigStatus `json:"status,omitempty"`
+  93:	metav1.TypeMeta `json:",inline"`
+  94:	metav1.ListMeta `json:"metadata,omitempty"`
+  95:	Items           []GatewayConfig `json:"items"`
+
+FILE: api/services/v1alpha1/monitoring_types.go
+  40:	MonitoringCommonSpec `json:",inline"`
+  45:// +kubebuilder:validation:XValidation:rule="!(self.storage == null && self.resources == null) || !has(self.replicas) || self.replicas == 0",message="Replicas can only be set to non-zero value when either Storage or Resources is configured"
+  47:	Storage   *MetricsStorage   `json:"storage,omitempty"`
+  48:	Resources *MetricsResources `json:"resources,omitempty"`
+  51:	// +kubebuilder:validation:Minimum=0
+  52:	Replicas int32 `json:"replicas,omitempty"`
+  57:	// +kubebuilder:validation:XValidation:rule="!('prometheus' in self)",message="exporter name 'prometheus' is reserved and cannot be used"
+  58:	// +kubebuilder:validation:XValidation:rule="!('otlp/tempo' in self)",message="exporter name 'otlp/tempo' is reserved and cannot be used"
+  59:	// +kubebuilder:validation:XValidation:rule="self.all(k, self[k] != '')",message="exporter configuration values must be non-empty strings"
+  60:	Exporters map[string]string `json:"exporters,omitempty"`
+  67:	Size resource.Quantity `json:"size,omitempty"`
+  70:	Retention string `json:"retention,omitempty"`
+  77:	CPULimit resource.Quantity `json:"cpulimit,omitempty"`
+  80:	MemoryLimit resource.Quantity `json:"memorylimit,omitempty"`
+  83:	CPURequest resource.Quantity `json:"cpurequest,omitempty"`
+  86:	MemoryRequest resource.Quantity `json:"memoryrequest,omitempty"`
+  91:	common.Status `json:",inline"`
+  93:	URL string `json:"url,omitempty"`
+  98:	Storage TracesStorage `json:"storage"`
+  102:	// +kubebuilder:validation:Pattern="^(0(\\.[0-9]+)?|1(\\.0+)?)$"
+  103:	SampleRatio string `json:"sampleRatio,omitempty"`
+  105:	TLS *TracesTLS `json:"tls,omitempty"`
+  110:	Exporters map[string]runtime.RawExtension `json:"exporters,omitempty"`
+  117:	Enabled bool `json:"enabled,omitempty"`
+  120:	CertificateSecret string `json:"certificateSecret,omitempty"`
+  123:	CAConfigMap string `json:"caConfigMap,omitempty"`
+  127:// +kubebuilder:validation:XValidation:rule="self.backend != 'pv' ? has(self.secret) : true", message="When backend is s3 or gcs, the 'secret' field must be specified and non-empty"
+  128:// +kubebuilder:validation:XValidation:rule="self.backend != 'pv' ? !has(self.size) : true", message="Size is supported when backend is pv only"
+  132:	// +kubebuilder:validation:Enum="pv";"s3";"gcs"
+  134:	Backend string `json:"backend"`
+  139:	Size string `json:"size,omitempty"`
+  144:	Secret string `json:"secret,omitempty"`
+  148:	Retention metav1.Duration `json:"retention,omitempty"`
+  158:// +kubebuilder:validation:XValidation:rule="self.metadata.name == 'default-monitoring'",message="Monitoring name must be default-monitoring"
+  161:// +kubebuilder:printcolumn:name="URL",type=string,JSONPath=`.status.url`,description="URL"
+  165:	metav1.TypeMeta   `json:",inline"`
+  166:	metav1.ObjectMeta `json:"metadata,omitempty"`
+  168:	Spec   MonitoringSpec   `json:"spec,omitempty"`
+  169:	Status MonitoringStatus `json:"status,omitempty"`
+  173:// +kubebuilder:validation:XValidation:rule="has(self.alerting) ? has(self.metrics.storage) || has(self.metrics.resources) : true",message="Alerting configuration requires metrics.storage or metrics.resources to be configured"
+  174:// +kubebuilder:validation:XValidation:rule="!has(self.collectorReplicas) || (self.collectorReplicas > 0 && ((self.metrics.resources != null || self.metrics.storage != null) || self.traces != null))",message="CollectorReplicas can only be set when metrics.resources, metrics.storage or traces are configured, and must be > 0"
+  179:	// +kubebuilder:validation:Pattern="^([a-z0-9]([-a-z0-9]*[a-z0-9])?)?$"
+  180:	// +kubebuilder:validation:MaxLength=63
+  181:	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="MonitoringNamespace is immutable"
+  182:	Namespace string `json:"namespace,omitempty"`
+  184:	Metrics *Metrics `json:"metrics,omitempty"`
+  186:	Traces *Traces `json:"traces,omitempty"`
+  188:	Alerting *Alerting `json:"alerting,omitempty"`
+  190:	CollectorReplicas int32 `json:"collectorReplicas,omitempty"`
+  197:	metav1.TypeMeta `json:",inline"`
+  198:	metav1.ListMeta `json:"metadata,omitempty"`
+  199:	Items           []Monitoring `json:"items"`
+  224:	common.ManagementSpec `json:",inline"`
+  226:	MonitoringCommonSpec `json:",inline"`
+
+FILE: internal/controller/dscinitialization/dscinitialization_controller.go
+
+FILE: internal/controller/dscinitialization/hardwareprofile.go
+
+FILE: internal/controller/dscinitialization/monitoring.go
+  117:			"<snitch_url>":      string(deadmansnitchSecret.Data["SNITCH_URL"]),
+  131:	consolelinkDomain, err := cluster.GetDomain(ctx, r.Client)
+  133:		return fmt.Errorf("error getting console route URL : %w", err)
+  135:	if strings.Contains(consolelinkDomain, "devshift.org") {
+  146:	if strings.Contains(consolelinkDomain, "aisrhods") {
+  210:	consolelinkDomain, err := cluster.GetDomain(ctx, r.Client)
+  212:		return fmt.Errorf("error getting console route URL : %w", err)
+  218:			"<console_domain>":            consolelinkDomain,
+
+FILE: internal/controller/dscinitialization/servicemesh_setup.go
+
+FILE: internal/controller/dscinitialization/utils.go
+
+FILE: internal/controller/services/auth/auth.go
+
+FILE: internal/controller/services/auth/auth_controller_actions.go
+
+FILE: internal/controller/services/gateway/gateway_auth_actions.go
+  49:	domain, err := ResolveDomain(ctx, rr.Client, gatewayConfig)
+  198:			"issuerURL", oidcConfig.IssuerURL,
+  342:									SecretName: KubeAuthProxyTLSName,
+  393:		"--oidc-issuer-url=" + oidcConfig.IssuerURL,
+  458:	domain, err := ResolveDomain(ctx, rr.Client, gatewayConfig)
+  475:// createHTTPRoute creates a common HTTPRoute with optional URL rewrite filter.
+  476:func createHTTPRoute(routeName, path, serviceName, serviceNamespace string, port int32, urlRewrite *gwapiv1.HTTPURLRewriteFilter) *gwapiv1.HTTPRoute {
+  503:	// Add URL rewrite filter if provided
+  507:				Type:       gwapiv1.HTTPRouteFilterURLRewrite,
+  508:				URLRewrite: urlRewrite,
+  539:		nil, // no URL rewrite for OAuth callback
+
+FILE: internal/controller/services/gateway/gateway_controller_actions.go
+  70:	domain, err := ResolveDomain(ctx, rr.Client, gatewayConfig)
+  79:	certSecretName, err := handleCertificates(ctx, rr, gatewayConfig, domain)
+  84:	if err := createGateway(rr, certSecretName, domain, DefaultGatewayName); err != nil {
+  128:	secretName := certConfig.SecretName
+  169:func createGateway(rr *odhtypes.ReconciliationRequest, certSecretName string, domain string, gatewayName string) error {
+  182:	listeners := CreateListeners(certSecretName, domain)
+
+FILE: internal/controller/services/gateway/gateway_support.go
+  82:// buildGatewayDomain combines gateway name with base domain.
+  83:func buildGatewayDomain(baseDomain string) string {
+  85:	return DefaultGatewayName + "." + baseDomain
+  88:// getClusterDomain gets cluster domain - extracted common logic.
+  89:func getClusterDomain(ctx context.Context, client client.Client) (string, error) {
+  90:	clusterDomain, err := cluster.GetDomain(ctx, client)
+  94:	return buildGatewayDomain(clusterDomain), nil
+  97:func ResolveDomain(ctx context.Context, client client.Client,
+  101:		return getClusterDomain(ctx, client)
+  105:	baseDomain := strings.TrimSpace(gatewayConfig.Spec.Domain)
+  106:	if baseDomain != "" {
+  107:		return buildGatewayDomain(baseDomain), nil
+  111:	return getClusterDomain(ctx, client)
+  114:// GetGatewayDomain reads GatewayConfig and passes it to ResolveDomain.
+  117:func GetGatewayDomain(ctx context.Context, cli client.Client) (string, error) {
+  123:		return getClusterDomain(ctx, cli)
+  126:	// Check if user has overridden the domain (inline ResolveDomain logic to avoid redundant calls)
+  127:	baseDomain := strings.TrimSpace(gatewayConfig.Spec.Domain)
+  128:	if baseDomain != "" {
+  129:		return buildGatewayDomain(baseDomain), nil
+  133:	return getClusterDomain(ctx, cli)
+  137:func CreateListeners(certSecretName string, domain string) []gwapiv1.Listener {
+  139:	if certSecretName == "" {
+  159:					Name: gwapiv1.ObjectName(certSecretName),
+
+FILE: internal/webhook/notebook/mutating.go
+
+FILE: pkg/cluster/cert.go
+  154:	defaultIngressCertName := GetDefaultIngressCertSecretName(defaultIngressCtrl)
+  184:func GetDefaultIngressCertSecretName(ingressCtrl *operatorv1.IngressController) string {
+  200:func copySecretToNamespace(ctx context.Context, c client.Client, secret *corev1.Secret, newSecretName, namespace string) error {
+  207:			Name:      newSecretName,
+
+FILE: pkg/cluster/cluster_config.go
+  30:	Type        string                  `json:"type,omitempty"` // openshift , TODO: can be other value if we later support other type
+  31:	Version     version.OperatorVersion `json:"version,omitempty"`
+  32:	FipsEnabled bool                    `json:"fips_enabled,omitempty"`
+  42:	FIPS bool `json:"fips"`
+  99:func GetDomain(ctx context.Context, c client.Client) (string, error) {
+
+FILE: pkg/cluster/const.go
+
+FILE: pkg/cluster/gvk/gvk.go
+
+FILE: pkg/cluster/meta.go
+
+FILE: pkg/cluster/operator.go
+
+FILE: pkg/cluster/resources.go
+
+=== RBAC AGGREGATE LABELS ===
+=== BOOLEAN CONDITION PATTERNS ===
+FILE: api/services/v1alpha1/monitoring_types.go
+  45:// +kubebuilder:validation:XValidation:rule="!(self.storage == null && self.resources == null) || !has(self.replicas) || self.replicas == 0",message="Replicas can only be set to non-zero value when either Storage or Resources is configured"
+  174:// +kubebuilder:validation:XValidation:rule="!has(self.collectorReplicas) || (self.collectorReplicas > 0 && ((self.metrics.resources != null || self.metrics.storage != null) || self.traces != null))",message="CollectorReplicas can only be set when metrics.resources, metrics.storage or traces are configured, and must be > 0"
+
+FILE: internal/controller/dscinitialization/dscinitialization_controller.go
+  477:	metricsEnabled := dsci.Spec.Monitoring.Metrics != nil && (dsci.Spec.Monitoring.Metrics.Storage != nil || dsci.Spec.Monitoring.Metrics.Resources != nil)
+
+FILE: internal/controller/services/auth/auth_controller_actions.go
+  61:		if roleName == "admingroup-role" && e == "system:authenticated" || e == "" {
+  98:		if roleName == "admingroupcluster-role" && e == "system:authenticated" || e == "" {
+
+=== CROSS-NAMESPACE ACCESS ===
+FILE: internal/webhook/notebook/mutating.go
+
+FILE: pkg/cluster/cluster_config.go
+  85:	if clusterConfig.Namespace == "" {
+
+FILE: pkg/cluster/meta.go
+  59:func InNamespace(ns string) MetaOptions {
+
+FILE: pkg/cluster/resources.go
+  179:		if subject.Name == serviceAccountName && subject.Namespace == namespace {
+
+=== ERROR MESSAGE PATTERNS ===
+FILE: internal/controller/dscinitialization/monitoring.go (9 error construction sites)
+  41:			return fmt.Errorf("error in configureBlackboxExporter: %w", err)
+  68:		return fmt.Errorf("error in configureAlertManager: %w", err)
+  73:		return fmt.Errorf("error in configurePrometheus: %w", err)
+  79:			return fmt.Errorf("error to update monitoring security rolebinding: %w", err)
+  133:		return fmt.Errorf("error getting console route URL : %w", err)
+
+FILE: internal/controller/dscinitialization/utils.go (4 error construction sites)
+  94:			return errors.New("DSCI must used the same namespace which has opendatahub.io/application-namespace=true label")
+  99:		return errors.New("only support max. one namespace with label: opendatahub.io/application-namespace=true")
+  216:		return fmt.Errorf("unable to set GVK to NetworkPolicy: %w", err)
+  220:		return fmt.Errorf("unable to add OwnerReference to the Network policy: %w", err)
+
+FILE: internal/controller/services/auth/auth_controller_actions.go (4 error construction sites)
+  88:		return errors.New("error creating RoleBinding for group")
+  125:		return errors.New("error creating RoleBinding for group")
+  134:		return errors.New("instance is not of type *services.Auth")
+  175:		return fmt.Errorf("unable to add user group: %w", err)
+
+FILE: internal/controller/services/gateway/gateway_auth_actions.go (21 error construction sites)
+  43:		return errors.New("instance is not of type *services.GatewayConfig")
+  51:		return fmt.Errorf("failed to resolve domain: %w", err)
+  56:		return fmt.Errorf("failed to detect cluster authentication mode: %w", err)
+  60:		return fmt.Errorf("%s", errorCondition.Message)
+  64:		return fmt.Errorf("%s", condition.Message)
+
+FILE: internal/controller/services/gateway/gateway_controller_actions.go (20 error construction sites)
+  48:		return nil, errors.New("reconciliation request cannot be nil")
+  52:		return nil, errors.New("instance is not of type *services.GatewayConfig")
+  55:		return nil, errors.New("gatewayConfig cannot be nil")
+  72:		return fmt.Errorf("failed to resolve domain: %w", err)
+  76:		return fmt.Errorf("failed to create GatewayClass: %w", err)
+
+FILE: internal/webhook/notebook/mutating.go (17 error construction sites)
+  71:		return admission.Errored(http.StatusInternalServerError, errors.New("webhook decoder not initialized"))
+  78:		return admission.Errored(http.StatusBadRequest, fmt.Errorf("failed to decode object: %w", err))
+  150:		return admission.Errored(http.StatusInternalServerError, fmt.Errorf("error verifying secret(s) exist/user has permissions for them %s: %w", connectionSecrets, err)), false, nil
+  164:		return admission.Errored(http.StatusInternalServerError, fmt.Errorf("failed to get notebook secret references: %w", err)), false, nil
+  177:			return nil, fmt.Errorf("failed to get old secret references: %w", err)
+
+FILE: pkg/cluster/cert.go (10 error construction sites)
+  41:		return fmt.Errorf("failed generating self-signed certificate: %w", err)
+  63:		return nil, fmt.Errorf("error generating certificate: %w", err)
+  86:		return nil, nil, fmt.Errorf("error generating key: %w", err)
+  91:		return nil, nil, fmt.Errorf("error generating random: %w", cryptErr)
+  122:		return nil, nil, fmt.Errorf("error creating certificate: %w", err)
+
+FILE: pkg/cluster/cluster_config.go (6 error construction sites)
+  86:		return "", errors.New("unable to find operator namespace")
+  107:		return "", fmt.Errorf("failed fetching cluster's ingress details: %w", err)
+  112:		return "", errors.New("spec.domain not found")
+  124:		return version.OperatorVersion{}, errors.New("unable to get OCP version")
+  128:		return version.OperatorVersion{}, errors.New("unable to parse OCP version")
+
+FILE: pkg/cluster/resources.go (12 error construction sites)
+  54:		return errors.New("obj must be a pointer")
+  70:			return fmt.Errorf("failed to convert resource to %T: %w", obj, err)
+  76:			return fmt.Errorf("failed to get REST mapping for %s: %w", objGVK, err)
+  87:		return fmt.Errorf("failed to get a valid %s instance, expected to find 1 instance, found %d", objGVK, len(instances))
+  95:		return nil, fmt.Errorf("failed to list resources of type %s: %w", gvk.DataScienceCluster, err)
+
+=== CACHE / OOM PATTERNS ===
+FILE: vendor/sigs.k8s.io/controller-runtime/pkg/cluster/cluster.go
+  46:	// GetCache returns a cache.Cache
+  47:	GetCache() cache.Cache
+  95:	// Cache is the cache.Options that will be used to create the default Cache.
+  97:	Cache cache.Options
+  99:	// NewCache is the function that will create the cache to be used
+  102:	// When using a custom NewCache, the Cache options will be passed to the
+  103:	// NewCache function.
+  106:	// Only use a custom NewCache if you know what you are doing.
+  107:	NewCache cache.NewCacheFunc
+  174:	// Create the cache for the cached read client and registering informers
+  187:	cache, err := options.NewCache(config, cacheOpts)
+  218:	// Create the API Reader, a client with no cache.
+  275:	if options.NewCache == nil {
+  276:		options.NewCache = cache.New
+
+FILE: vendor/sigs.k8s.io/controller-runtime/pkg/cluster/internal.go
+  40:	cache      cache.Cache
+  43:	// apiReader is the reader that will make requests to the api server and not the cache.
+  82:func (c *cluster) GetCache() cache.Cache {
+  104:	return c.cache.Start(ctx)
+
+=== ARRAY BOUNDS / PANIC RISK ===
+FILE: internal/controller/dscinitialization/dscinitialization_controller.go
+  541:	return []reconcile.Request{{NamespacedName: types.NamespacedName{Name: instanceList.Items[0].Name}}}
+
+FILE: internal/controller/dscinitialization/utils.go
+  93:		if nsList.Items[0].Name != dsciNsName {
+
+FILE: internal/controller/services/gateway/gateway_auth_actions.go
+
+FILE: internal/controller/services/gateway/gateway_controller_actions.go
+
+FILE: internal/webhook/notebook/mutating.go
+  342:	container, ok := containers[0].(map[string]interface{})
+
+FILE: pkg/cluster/cluster_config.go
+  126:	v, err := semver.ParseTolerant(clusterVersion.Status.History[0].Version)
+
+FILE: pkg/cluster/resources.go
+
+=== END R2 IR ===

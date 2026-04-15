@@ -3,6 +3,8 @@ set -euo pipefail
 
 # Generic context fetcher
 # Accepts git repos, local directories, or single files as context sources
+# Note: --output is only used for git repos and single files.
+# For directory sources, the source directory is used directly (no copy).
 
 label=""
 source=""

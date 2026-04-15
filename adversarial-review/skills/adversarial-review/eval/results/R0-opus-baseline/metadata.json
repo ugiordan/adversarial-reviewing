@@ -1,0 +1,29 @@
+{
+  "run_id": "R0-opus-baseline",
+  "representation": "R0",
+  "model": "opus",
+  "repo": "/Users/ugogiordano/workdir/rhoai/rhods-operator",
+  "ground_truth": "eval/ground-truth-odh-operator.yaml",
+  "start_time": "2026-04-11T00:00:00Z",
+  "input_mode": "files",
+  "files_in_scope": 43,
+  "estimated_tokens": 60790,
+  "budget_consumed": 84236,
+  "budget_limit": 200000,
+  "iterations": 2,
+  "specialists": ["SEC"],
+  "profile": "code",
+  "quick_mode": true,
+  "findings_produced": 10,
+  "findings_after_resolution": 9,
+  "findings_dismissed_in_resolution": 4,
+  "resolution_errors": [
+    "SEC-012 (OIDC IssuerURL SSRF) dismissed in resolution but matches ground truth B2-OIDC-URL",
+    "SEC-008 (serial entropy) dismissed by DA but matches ground truth SEC-006"
+  ],
+  "notes": [
+    "Several ground truth findings (SSRF-ISVC, RBAC-AGGREGATE, CACHE-OOM) are in code outside the 43-file scope",
+    "B2-DSCI-WEBHOOK partially surfaced as SEC-015 but not fully captured",
+    "Detection rate would be ~53% if resolution errors were corrected"
+  ]
+}

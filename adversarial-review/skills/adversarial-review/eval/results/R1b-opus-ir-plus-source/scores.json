@@ -1,0 +1,94 @@
+{
+  "detection_rate": 0.35294117647058826,
+  "true_positives": 6,
+  "false_positives": 0,
+  "false_positive_rate": 0.0,
+  "total_ground_truth": 17,
+  "total_findings": 7,
+  "severity_accuracy": 0.3333333333333333,
+  "severity_correct": 2,
+  "severity_total": 6,
+  "source_trust_accuracy": 0.3333333333333333,
+  "source_trust_correct": 2,
+  "source_trust_total": 6,
+  "detected": [
+    "B2-MON-SECRET",
+    "B2-OIDC-URL",
+    "B2-SECRET-NS",
+    "SEC-001",
+    "SEC-002",
+    "SEC-009"
+  ],
+  "missed": [
+    {
+      "id": "SEC-003",
+      "severity": "Important",
+      "category": "crypto",
+      "title": "100-year CA validity without renewal strategy"
+    },
+    {
+      "id": "SEC-006",
+      "severity": "Important",
+      "category": "randomness",
+      "title": "Weak certificate serial number entropy"
+    },
+    {
+      "id": "SEC-008",
+      "severity": "Important",
+      "category": "webhook",
+      "title": "Zero-value admission response on webhook fall-through"
+    },
+    {
+      "id": "B2-DSCI-WEBHOOK",
+      "severity": "Important",
+      "category": "webhook",
+      "title": "DSCI webhook skips UPDATE validation"
+    },
+    {
+      "id": "B2-RBAC-SUB",
+      "severity": "Important",
+      "category": "rbac",
+      "title": "Overprivileged RBAC on subresources"
+    },
+    {
+      "id": "B2-CERT-NAME",
+      "severity": "Minor",
+      "category": "input_validation",
+      "title": "CertificateSpec.SecretName no format validation"
+    },
+    {
+      "id": "B2-ENTROPY",
+      "severity": "Minor",
+      "category": "randomness",
+      "title": "GenerateRandomHex returns half the expected entropy"
+    },
+    {
+      "id": "B2-ERR-EXPOSE",
+      "severity": "Minor",
+      "category": "info_disclosure",
+      "title": "Error messages expose internal implementation details"
+    },
+    {
+      "id": "SSRF-ISVC",
+      "severity": "Important",
+      "category": "data_flow",
+      "title": "SSRF via InferenceService storageUri"
+    },
+    {
+      "id": "RBAC-AGGREGATE",
+      "severity": "Important",
+      "category": "rbac",
+      "title": "aggregate-to-edit labels grant implicit CRD access"
+    },
+    {
+      "id": "CACHE-OOM",
+      "severity": "Important",
+      "category": "input_validation",
+      "title": "Unfiltered informer cache types cause OOM risk"
+    }
+  ],
+  "false_positive_details": [],
+  "run_id": "R1b-opus-ir-plus-source",
+  "representation": "R1b",
+  "model": "opus"
+}

@@ -1,0 +1,94 @@
+{
+  "detection_rate": 0.35294117647058826,
+  "true_positives": 6,
+  "false_positives": 0,
+  "false_positive_rate": 0.0,
+  "total_ground_truth": 17,
+  "total_findings": 7,
+  "severity_accuracy": 0.16666666666666666,
+  "severity_correct": 1,
+  "severity_total": 6,
+  "source_trust_accuracy": 0.6666666666666666,
+  "source_trust_correct": 4,
+  "source_trust_total": 6,
+  "detected": [
+    "B2-ENTROPY",
+    "B2-OIDC-URL",
+    "SEC-001",
+    "SEC-002",
+    "SEC-006",
+    "SEC-009"
+  ],
+  "missed": [
+    {
+      "id": "SEC-003",
+      "severity": "Important",
+      "category": "crypto",
+      "title": "100-year CA validity without renewal strategy"
+    },
+    {
+      "id": "SEC-008",
+      "severity": "Important",
+      "category": "webhook",
+      "title": "Zero-value admission response on webhook fall-through"
+    },
+    {
+      "id": "B2-SECRET-NS",
+      "severity": "Important",
+      "category": "data_flow",
+      "title": "SecretNamespace allows cross-namespace secret read"
+    },
+    {
+      "id": "B2-DSCI-WEBHOOK",
+      "severity": "Important",
+      "category": "webhook",
+      "title": "DSCI webhook skips UPDATE validation"
+    },
+    {
+      "id": "B2-RBAC-SUB",
+      "severity": "Important",
+      "category": "rbac",
+      "title": "Overprivileged RBAC on subresources"
+    },
+    {
+      "id": "B2-MON-SECRET",
+      "severity": "Important",
+      "category": "secret_management",
+      "title": "Monitoring secrets stored in plaintext on disk"
+    },
+    {
+      "id": "B2-CERT-NAME",
+      "severity": "Minor",
+      "category": "input_validation",
+      "title": "CertificateSpec.SecretName no format validation"
+    },
+    {
+      "id": "B2-ERR-EXPOSE",
+      "severity": "Minor",
+      "category": "info_disclosure",
+      "title": "Error messages expose internal implementation details"
+    },
+    {
+      "id": "SSRF-ISVC",
+      "severity": "Important",
+      "category": "data_flow",
+      "title": "SSRF via InferenceService storageUri"
+    },
+    {
+      "id": "RBAC-AGGREGATE",
+      "severity": "Important",
+      "category": "rbac",
+      "title": "aggregate-to-edit labels grant implicit CRD access"
+    },
+    {
+      "id": "CACHE-OOM",
+      "severity": "Important",
+      "category": "input_validation",
+      "title": "Unfiltered informer cache types cause OOM risk"
+    }
+  ],
+  "false_positive_details": [],
+  "run_id": "R2-opus-pattern-ir",
+  "representation": "R2",
+  "model": "opus"
+}

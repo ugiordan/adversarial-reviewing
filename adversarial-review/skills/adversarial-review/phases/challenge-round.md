@@ -52,6 +52,10 @@ awk -F'|' 'NR>2 && NF>2 {gsub(/^[ \t]+|[ \t]+$/, "", $2); if ($2 != "") print $2
 # rm -f "$FINDING_IDS_FILE"
 ```
 
+### Step 3b: Output Progress Status
+
+Before dispatching challenge round agents, output a progress status block (see SKILL.md "Progress Display") showing "Phase 2: Challenge Round" with the total finding count entering challenge.
+
 ### Step 4: Broadcast via Cache and Collect Responses
 
 Send each agent a minimal prompt (~2,825 tokens) with Phase 2 cache navigation:
@@ -145,6 +149,10 @@ Phase 2 convergence requires all of:
 | Convergence honored | After minimum iterations completed |
 
 **Unanimous early exit:** If ALL agents choose **Agree** on ALL findings in iteration 1 (zero Challenges, zero Abstains), skip iterations 2-3 and proceed directly to Phase 3. Full agreement on the first pass means debate is unnecessary. This saves 1-2 full iterations of token consumption. This early exit does NOT apply in `--thorough` mode, which always runs minimum 2 iterations.
+
+### Step 7b: Output Iteration Status
+
+After each challenge iteration's convergence check, output a progress status block (see SKILL.md "Progress Display"). Show challenge iteration progress, positions collected per agent (Agree/Challenge/Abstain counts), and current budget consumption.
 
 ### Step 8: Budget Check
 

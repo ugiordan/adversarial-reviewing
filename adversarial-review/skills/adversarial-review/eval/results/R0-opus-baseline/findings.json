@@ -1,0 +1,103 @@
+{
+  "findings": [
+    {
+      "finding_id": "SEC-001",
+      "severity": "Important",
+      "confidence": "High",
+      "source_trust": "Privileged",
+      "file": "internal/controller/services/auth/auth_controller_actions.go",
+      "lines": "63-65",
+      "title": "Operator precedence bug in system:authenticated guard allows bypassing admin group protection",
+      "evidence": "In bindRole(), the condition if roleName == admingroup-role && e == system:authenticated || e == '' has an operator precedence issue. Due to && binding tighter than ||, system:authenticated filtering only applies to admingroup-role. CRD CEL validation provides first line of defense but this controller-level guard is last line of defense.",
+      "category": "rbac"
+    },
+    {
+      "finding_id": "SEC-002",
+      "severity": "Important",
+      "confidence": "High",
+      "source_trust": "Internal",
+      "file": "pkg/cluster/cert.go",
+      "lines": "106-118",
+      "title": "Self-signed certificate generated as CA with overly permissive key usage enables certificate forgery",
+      "evidence": "generateCertificate() sets IsCA: true and KeyUsageCertSign on server TLS cert. If private key is compromised, attacker could sign arbitrary certificates trusted by anything trusting this cert. Certificate stored in Kubernetes Secret.",
+      "category": "crypto"
+    },
+    {
+      "finding_id": "SEC-003",
+      "severity": "Minor",
+      "confidence": "High",
+      "source_trust": "Internal",
+      "file": "internal/controller/services/gateway/gateway_support.go",
+      "lines": "40-45",
+      "title": "Fallback container image uses :latest tag from personal repository",
+      "evidence": "getKubeAuthProxyImage() falls back to quay.io/jtanner/kube-auth-proxy:latest when env var unset. Mutable tag from personal repo with no runtime guard preventing production use.",
+      "category": "input_validation"
+    },
+    {
+      "finding_id": "SEC-005",
+      "severity": "Minor",
+      "confidence": "Medium",
+      "source_trust": "Privileged",
+      "file": "internal/controller/services/gateway/gateway_support.go",
+      "lines": "30-32",
+      "title": "OAuth scope user:full grants excessive permissions to gateway OAuth client",
+      "evidence": "OpenShiftOAuthScope set to user:full granting full API access. Standard OpenShift practice but broader than necessary. Server-side only, not exposed to clients.",
+      "category": "rbac"
+    },
+    {
+      "finding_id": "SEC-006",
+      "severity": "Minor",
+      "confidence": "Medium",
+      "source_trust": "Internal",
+      "file": "internal/controller/dscinitialization/monitoring.go",
+      "lines": "100-108",
+      "title": "Secret values written to YAML config files on disk via string substitution",
+      "evidence": "configureAlertManager() writes SNITCH_URL, PAGERDUTY_KEY, SMTP credentials to alertmanager-configs.yaml via common.ReplaceStringsInFile(). Plaintext credentials on filesystem.",
+      "category": "secret_management"
+    },
+    {
+      "finding_id": "SEC-007",
+      "severity": "Minor",
+      "confidence": "Medium",
+      "source_trust": "Privileged",
+      "file": "internal/controller/services/gateway/gateway_controller_actions.go",
+      "lines": "80-115",
+      "title": "Gateway listener allows routes from all namespaces with no restrictions",
+      "evidence": "CreateListeners() uses NamespacesFromAll in AllowedRoutes. Any namespace can create HTTPRoutes attaching to this gateway. Security depends on RBAC for HTTPRoute creation.",
+      "category": "rbac"
+    },
+    {
+      "finding_id": "SEC-009",
+      "severity": "Minor",
+      "confidence": "High",
+      "source_trust": "Internal",
+      "file": "pkg/cluster/cluster_config.go",
+      "lines": "190-192",
+      "title": "Unchecked array index access on ClusterVersion History could panic",
+      "evidence": "getOCPVersion() accesses clusterVersion.Status.History[0].Version without bounds check. Empty History during cluster bootstrap causes panic, crashing operator.",
+      "category": "bounds_check"
+    },
+    {
+      "finding_id": "SEC-010",
+      "severity": "Minor",
+      "confidence": "Medium",
+      "source_trust": "Internal",
+      "file": "internal/controller/dscinitialization/utils.go",
+      "lines": "262-275",
+      "title": "GenerateRandomHex produces half expected entropy due to integer division",
+      "evidence": "GenerateRandomHex() computes numBytes := length / 2. Called with length=32, generates 16 bytes (128 bits). Function name and semantics are misleading.",
+      "category": "randomness"
+    },
+    {
+      "finding_id": "SEC-011",
+      "severity": "Important",
+      "confidence": "High",
+      "source_trust": "Privileged",
+      "file": "internal/controller/services/gateway/gateway_auth_actions.go",
+      "lines": "100-107",
+      "title": "OAuth client created with GrantHandlerAuto enables silent consent bypass",
+      "evidence": "OAuthClient created with GrantMethod: oauthv1.GrantHandlerAuto. Combined with user:full scope, any user clicking a gateway link automatically grants full access without consent screen. Removes last user-visible warning in OAuth phishing scenarios.",
+      "category": "rbac"
+    }
+  ]
+}

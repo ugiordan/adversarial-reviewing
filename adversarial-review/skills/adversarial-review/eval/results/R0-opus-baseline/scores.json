@@ -1,0 +1,96 @@
+{
+  "detection_rate": 0.4117647058823529,
+  "true_positives": 7,
+  "false_positives": 1,
+  "false_positive_rate": 0.1111111111111111,
+  "total_ground_truth": 17,
+  "total_findings": 9,
+  "severity_accuracy": 0.42857142857142855,
+  "severity_correct": 3,
+  "severity_total": 7,
+  "source_trust_accuracy": 0.0,
+  "source_trust_correct": 0,
+  "source_trust_total": 7,
+  "detected": [
+    "B2-ENTROPY",
+    "B2-MON-SECRET",
+    "B2-SECRET-NS",
+    "SEC-001",
+    "SEC-002",
+    "SEC-008",
+    "SEC-009"
+  ],
+  "missed": [
+    {
+      "id": "SEC-003",
+      "severity": "Important",
+      "category": "crypto",
+      "title": "100-year CA validity without renewal strategy"
+    },
+    {
+      "id": "SEC-006",
+      "severity": "Important",
+      "category": "randomness",
+      "title": "Weak certificate serial number entropy"
+    },
+    {
+      "id": "B2-OIDC-URL",
+      "severity": "Important",
+      "category": "input_validation",
+      "title": "OIDC IssuerURL accepts invalid URLs without format validation"
+    },
+    {
+      "id": "B2-DSCI-WEBHOOK",
+      "severity": "Important",
+      "category": "webhook",
+      "title": "DSCI webhook skips UPDATE validation"
+    },
+    {
+      "id": "B2-RBAC-SUB",
+      "severity": "Important",
+      "category": "rbac",
+      "title": "Overprivileged RBAC on subresources"
+    },
+    {
+      "id": "B2-CERT-NAME",
+      "severity": "Minor",
+      "category": "input_validation",
+      "title": "CertificateSpec.SecretName no format validation"
+    },
+    {
+      "id": "B2-ERR-EXPOSE",
+      "severity": "Minor",
+      "category": "info_disclosure",
+      "title": "Error messages expose internal implementation details"
+    },
+    {
+      "id": "SSRF-ISVC",
+      "severity": "Important",
+      "category": "data_flow",
+      "title": "SSRF via InferenceService storageUri"
+    },
+    {
+      "id": "RBAC-AGGREGATE",
+      "severity": "Important",
+      "category": "rbac",
+      "title": "aggregate-to-edit labels grant implicit CRD access"
+    },
+    {
+      "id": "CACHE-OOM",
+      "severity": "Important",
+      "category": "input_validation",
+      "title": "Unfiltered informer cache types cause OOM risk"
+    }
+  ],
+  "false_positive_details": [
+    {
+      "finding_id": "SEC-007",
+      "title": "Gateway listener allows routes from all namespaces with no restrictions",
+      "severity": "Minor",
+      "file": "internal/controller/services/gateway/gateway_controller_actions.go"
+    }
+  ],
+  "run_id": "R0-opus-baseline",
+  "representation": "R0",
+  "model": "opus"
+}

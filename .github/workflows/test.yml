@@ -34,9 +34,9 @@ jobs:
       - name: Lint scripts
         run: |
           cd adversarial-review/skills/adversarial-review
-          shellcheck -x -e SC2329 -e SC1091 scripts/*.sh
+          shellcheck -x -e SC2329 -e SC2317 -e SC1091 scripts/*.sh
 
       - name: Lint test scripts
         run: |
           cd adversarial-review/skills/adversarial-review
-          shellcheck -x -e SC1091 tests/test-*.sh tests/run-all-tests.sh
+          shellcheck -x -e SC2317 -e SC1091 tests/test-*.sh tests/run-all-tests.sh

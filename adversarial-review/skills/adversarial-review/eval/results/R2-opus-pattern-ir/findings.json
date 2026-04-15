@@ -1,0 +1,81 @@
+{
+  "findings": [
+    {
+      "finding_id": "SEC-001",
+      "severity": "Important",
+      "confidence": "High",
+      "source_trust": "Privileged",
+      "file": "internal/controller/services/auth/auth_controller_actions.go",
+      "lines": "61-98",
+      "title": "Operator precedence bug in admin group security check allows system:authenticated bypass",
+      "evidence": "In bindRole() the condition if roleName == admingroup-role && e == system:authenticated || e == '' has operator precedence issue. Same pattern in bindClusterRole(). Empty string guard fires for all role types due to missing parentheses.",
+      "category": "rbac"
+    },
+    {
+      "finding_id": "SEC-002",
+      "severity": "Important",
+      "confidence": "High",
+      "source_trust": "N/A",
+      "file": "internal/controller/dscinitialization/utils.go",
+      "lines": "261-269",
+      "title": "GenerateRandomHex produces half the expected entropy (16 bytes instead of 32)",
+      "evidence": "GenerateRandomHex(32) at monitoring.go line 401. Function does numBytes := length / 2 producing 16 bytes. Returns raw bytes not hex despite name. Session secret has 128 bits instead of expected 256.",
+      "category": "randomness"
+    },
+    {
+      "finding_id": "SEC-003",
+      "severity": "Important",
+      "confidence": "High",
+      "source_trust": "N/A",
+      "file": "pkg/cluster/cert.go",
+      "lines": "96-106",
+      "title": "Self-signed certificate uses IsCA=true and KeyUsageCertSign for server certificates",
+      "evidence": "generateCertificate sets KeyUsage with KeyUsageCertSign and IsCA: true. Server TLS certificate is a CA capable of signing other certificates. If key compromised, attacker mints arbitrary trusted certs.",
+      "category": "crypto"
+    },
+    {
+      "finding_id": "SEC-004",
+      "severity": "Minor",
+      "confidence": "Medium",
+      "source_trust": "N/A",
+      "file": "pkg/cluster/cert.go",
+      "lines": "89-102",
+      "title": "Certificate serial number entropy bounded by current time and 1-year validity without rotation",
+      "evidence": "Serial number uses rand.Int(rand.Reader, big.NewInt(time.Now().UnixNano())) giving ~60 bits of range. Validity is 365 days with no automated rotation.",
+      "category": "crypto"
+    },
+    {
+      "finding_id": "SEC-005",
+      "severity": "Minor",
+      "confidence": "Medium",
+      "source_trust": "Privileged",
+      "file": "api/services/v1alpha1/gateway_types.go",
+      "lines": "56-57",
+      "title": "IssuerURL field lacks format validation, potential for SSRF or misconfiguration",
+      "evidence": "OIDCConfig.IssuerURL has only Required validation. Passed directly to oauth2-proxy --oidc-issuer-url. Cluster admin could set internal URL.",
+      "category": "input_validation"
+    },
+    {
+      "finding_id": "SEC-006",
+      "severity": "Minor",
+      "confidence": "Medium",
+      "source_trust": "Privileged",
+      "file": "api/infrastructure/v1/servicemesh_types.go",
+      "lines": "37-41",
+      "title": "GatewaySpec.Domain field lacks format/pattern validation",
+      "evidence": "Domain field has no validation annotations. Flows into TLS cert generation, Gateway listener hostname, OAuth2 proxy redirect URL, cookie domain.",
+      "category": "input_validation"
+    },
+    {
+      "finding_id": "SEC-007",
+      "severity": "Minor",
+      "confidence": "Medium",
+      "source_trust": "N/A",
+      "file": "pkg/cluster/cluster_config.go",
+      "lines": "126",
+      "title": "Potential panic from unchecked array access on ClusterVersion.Status.History",
+      "evidence": "getOCPVersion() accesses History[0].Version without checking History slice length. Empty History causes panic during operator init.",
+      "category": "bounds_check"
+    }
+  ]
+}

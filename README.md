@@ -177,8 +177,9 @@ Strategy document review with text citation evidence and per-document verdicts (
 | Security Analyst | `--security` | Security risks, missing mitigations, auth patterns |
 | User Impact Analyst | `--user-impact` | Backward compatibility, migration burden, API usability |
 | Scope & Completeness | `--scope` | Right-sizing, acceptance criteria quality, completeness gaps |
+| Testability Analyst | `--testability` | Test strategy gaps, verification coverage, acceptance criteria testability |
 
-Default: all 5 specialists for the active profile. Use flags to select specific ones.
+Default: all specialists for the active profile. Use flags to select specific ones.
 
 ## Installation
 
@@ -260,7 +261,7 @@ mkdir -p .cursor/rules
 cp $HOME/.adversarial-review/.cursor/rules/adversarial-review.mdc .cursor/rules/
 ```
 
-Cursor cannot spawn isolated sub-agents. The plugin adapts to a sequential persona mode where the agent role-plays each specialist in sequence.
+Cursor cannot spawn isolated sub-agents. The plugin adapts to a sequential persona mode where the agent role-plays each specialist in sequence. The `.mdc` rules file supports code profile only. Strategy profile (`--profile strat`) is not available in Cursor mode.
 
 ### AGENTS.md (Universal)
 
@@ -295,7 +296,7 @@ Reference or inline `AGENTS.md` in your AI tool's context. Feature set depends o
 | `--gap-analysis` | Include coverage gap analysis in triage report |
 | `--strict-scope` | Reject (not demote) out-of-scope findings and patches |
 | `--fix --dry-run` | Preview remediation without writing anything |
-| `--arch-context [url\|path]` | Fetch architecture context (strat profile only) |
+| `--context <label>=<source>` | Inject labeled context (e.g., `architecture=./docs/arch`). Repeatable. Works with both profiles. |
 
 ### Reference Module Flags
 
@@ -336,7 +337,7 @@ Reference or inline `AGENTS.md` in your AI tool's context. Feature set depends o
 /adversarial-review artifacts/strat-tasks/ --profile strat
 
 # Strategy review with architecture context
-/adversarial-review artifacts/strat-tasks/ --profile strat --arch-context
+/adversarial-review artifacts/strat-tasks/ --profile strat --context architecture=https://github.com/org/repo
 
 # Quick security-only strategy review
 /adversarial-review artifacts/strat-tasks/ --profile strat --security --quick
@@ -449,10 +450,10 @@ graph TD
     SKILL --> SKILLMD["SKILL.md"]
     SKILL --> PROF["profiles/"]
     PROF --> CODE_P["code/ (5 agents, templates, references)"]
-    PROF --> STRAT_P["strat/ (5 agents, templates, references)"]
+    PROF --> STRAT_P["strat/ (6 agents, templates, references)"]
     SKILL --> PH["phases/ (5 procedures)"]
     SKILL --> PR["protocols/ (6 definitions)"]
-    SKILL --> SC["scripts/ (12 validators)"]
+    SKILL --> SC["scripts/ (20 validators + utilities)"]
     SKILL --> TS["tests/ (8 scripts + 20 fixtures)"]
 
     style ROOT fill:#f0f4ff,stroke:#4a6fa5
@@ -478,7 +479,12 @@ All agent outputs are validated through bash scripts -- not just LLM judgment:
 | `discover-references.sh` | Module discovery, frontmatter parsing, filtering, dedup, staleness, token counting |
 | `update-references.sh` | Fetch remote modules by `source_url`, compare versions, interactive update |
 | `profile-config.sh` | Profile configuration reader (agents, templates, settings from config.yml) |
-| `fetch-architecture-context.sh` | Architecture context fetcher (strat profile, clones/updates arch docs) |
+| `fetch-context.sh` | Generic context fetcher (git repos, local dirs, files) for `--context` flag |
+| `manage-cache.sh` | Cache lifecycle: init, populate, validate, cleanup, navigation generation |
+| `extract-threat-surface.py` | Deterministic keyword-based threat surface extraction (strat profile) |
+| `nfr-scan.py` | NFR checklist scanner with severity decision tree (strat profile) |
+| `findings-to-json.py` | Convert findings to structured JSON output |
+| `generate-visuals.py` | Generate review visualization charts |
 
 ## Testing
 

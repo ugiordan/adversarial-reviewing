@@ -215,6 +215,82 @@ During Phase 2, agents may issue verdict challenges (challenging another agent's
 - If an agent's verdict challenge is supported by majority, the target agent's verdict is overridden for resolution purposes
 - The original verdict and the challenge are both recorded in the report
 
+## Confidence Scoring
+
+After resolution, assign a confidence label (HIGH / MEDIUM / LOW) to each validated finding using tiered rules. This scoring is deterministic given the resolution inputs.
+
+### Confidence Signals
+
+Four independent signals feed confidence scoring:
+
+| Signal | Description | Values |
+|--------|-------------|--------|
+| **Specialist self-assessment** | The specialist's own Confidence field from the finding template | High=1.0, Medium=0.5, Low=0.25 |
+| **Cross-specialist corroboration** | Another specialist independently flagged a related issue (same document section + same risk category, or same NFR checklist item) | Corroborated=1.0, Uncorroborated=0.0 |
+| **Challenge survival** | Finding went through challenge round and was defended | Survived=1.0, Unchallenged=0.5, Challenged-and-weakened=0.25 |
+| **Evidence specificity** | Finding cites a specific section/AC vs. citing an omission | Specific citation=1.0, Omission="not mentioned"=0.5, Vague=0.25 |
+
+### Confidence Label Rules (Option C: Tiered)
+
+Apply rules in order. First matching rule determines the label.
+
+**HIGH confidence:**
+- Finding was corroborated by 2+ specialists from different domains, OR
+- Finding survived challenge round with defense accepted AND specialist self-assessed High, OR
+- Finding matches an NFR checklist item scored NO with Critical severity tree outcome
+
+**MEDIUM confidence:**
+- Single specialist, self-assessed High, with specific citation (not omission), OR
+- Corroborated by 2+ specialists but at least one self-assessed Low, OR
+- Survived challenge round but defense was partial (challenger withdrew on different grounds), OR
+- Finding matches an NFR checklist item scored NO with Important severity tree outcome
+
+**LOW confidence:**
+- Single specialist, self-assessed Medium or Low, with no corroboration, OR
+- Finding is about an omission (citation is "not mentioned" or similar) with no corroboration, OR
+- Did not go through challenge round AND no cross-specialist corroboration, OR
+- Finding matches an NFR checklist item scored PARTIAL
+
+### Signal Metadata
+
+For transparency, record all 4 signal values alongside the label. This allows stakeholders to understand why a finding received its confidence level.
+
+```
+Confidence: HIGH
+Signals:
+  self_assessment: High (1.0)
+  corroboration: SEC-003 + TEST-007 independently flagged (1.0)
+  challenge_survival: survived, defense accepted (1.0)
+  evidence_specificity: cites AC #4 specifically (1.0)
+```
+
+### NFR Scan Integration
+
+When Layer 2 (NFR checklist scan) is available, findings that align with NFR checklist gaps receive a confidence boost:
+
+- Finding aligns with NFR item scored NO → boost one tier (LOW→MEDIUM, MEDIUM→HIGH, HIGH stays HIGH)
+- Finding aligns with NFR item scored PARTIAL → no change
+- Finding has no NFR checklist alignment → no change (neither boost nor penalty)
+
+This rewards findings that are independently confirmed by the deterministic checklist layer.
+
+### Confidence in Requirements Output
+
+The confidence label determines placement in the requirements output:
+- **HIGH confidence** → "Required Amendments" (STRAT must address before approval)
+- **MEDIUM confidence** → "Recommended Amendments" (STRAT should address)
+- **LOW confidence** → "Findings Requiring Human Review" (team should evaluate)
+
+## Output Resolution Status
+
+After resolution completes, output a final progress status block (see SKILL.md "Progress Display") showing "Phase 3: Resolution" with the breakdown:
+
+```
+│ Consensus: N  │  Majority: N  │  Escalated: N  │  Dismissed: N  │
+```
+
+This is the last status block before the report. It gives the user an immediate sense of how the review went before the full report is assembled.
+
 ## Cache Interaction
 
 Phase 3 reads deduplicated findings from `{CACHE_DIR}/findings/`. No cache writes occur during resolution. Deduplication and ranking operate on the finding files already in the cache. The `cross-agent-summary.md` generated in Phase 2 provides the complete finding inventory for resolution.

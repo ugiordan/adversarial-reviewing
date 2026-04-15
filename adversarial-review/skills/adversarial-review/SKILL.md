@@ -239,6 +239,74 @@ See `protocols/guardrails.md` for the `PRE_FLIGHT_WARN_THRESHOLD` and `PRE_FLIGH
 
 ---
 
+## Step 2b: Deterministic Pre-Analysis (Strat Profile Only)
+
+When `--profile strat` is active, run two deterministic analysis layers before dispatching specialist agents. These layers provide structured context that improves specialist precision and enables confidence scoring.
+
+### Layer 1: Threat Surface Extraction
+
+Extract a keyword-based threat surface inventory from each strategy document. No LLM required.
+
+```bash
+python3 scripts/extract-threat-surface.py <strat-file>
+```
+
+**Output (stdout):** JSON with:
+- `tier`: review depth classification (`skip` / `light` / `standard` / `deep`)
+- `keyword_categories`: matched keywords by category (auth, crypto, network, data, multi_tenant, supply_chain, compliance, agentic)
+- `surface_hints`: extracted surface items (endpoints, data_stores, credentials, external_deps, trust_boundaries, crd_changes, agent_surfaces)
+- `sections`: markdown section headers for citation mapping
+- `acceptance_criteria`: extracted numbered ACs
+
+**Tier classification logic:**
+- `deep`: auth, crypto, multi_tenant, or agentic keywords present
+- `standard`: network, data, supply_chain, or compliance keywords present
+- `light`: keywords present but only in non-deep categories
+- `skip`: no security-relevant keywords found
+
+Save the output to `{CACHE_DIR}/threat-surface-<strat-id>.json`. Pass the tier to specialist agents for review depth calibration.
+
+### Layer 2: NFR Checklist Scan
+
+Run the recurring NFR checklist against each strategy document using a lightweight LLM call (haiku-tier).
+
+```bash
+# Generate scan prompt
+python3 scripts/nfr-scan.py --prompt <strat-file> [--surface <threat-surface.json>]
+
+# Parse scan output into structured JSON
+python3 scripts/nfr-scan.py --parse <scan-output-file>
+```
+
+The NFR checklist contains 23 items across 6 categories (Authentication & Authorization, Testability, Security, Feasibility, Compliance & Governance, Cross-Cutting). Each item has a deterministic severity decision tree: the answer (YES/NO/PARTIAL/N/A) combined with context conditions produces a severity level without LLM judgment.
+
+**Procedure:**
+1. Generate the scan prompt with `--prompt`, optionally passing the Layer 1 threat surface for N/A decisions
+2. Dispatch a single lightweight agent with the generated prompt
+3. Parse the agent output with `--parse` to get structured JSON with severity assignments
+4. Save to `{CACHE_DIR}/nfr-scan-<strat-id>.json`
+
+NFR scan results feed into:
+- **Specialist context:** agents see which NFR items scored NO/PARTIAL to focus their analysis
+- **Confidence scoring:** findings aligned with NFR gaps receive a confidence boost (see `phases/resolution.md` Confidence Scoring)
+- **Requirements output:** NFR gaps are listed separately in the requirements template
+
+### Layer 3: Specialist Analysis
+
+Phases 1-3 (self-refinement, challenge, resolution) form Layer 3. Specialists receive the Layer 1 and Layer 2 outputs as structured context alongside the strategy documents.
+
+### Structured Output
+
+After Phase 4 (Report), generate machine-readable JSON output:
+
+```bash
+python3 scripts/findings-to-json.py <findings-file> --profile strat [--metadata '{"strat_id": "..."}']
+```
+
+This produces enriched JSON with severity/confidence numeric mappings, specialist prefix extraction, evidence quality signals, and summary statistics. The JSON output is written alongside the report when `--save` is active.
+
+---
+
 ## Step 3: Initialize Cache
 
 After scope confirmation and pre-flight budget check, initialize the local context cache before dispatching any agents.
@@ -248,8 +316,9 @@ After scope confirmation and pre-flight budget check, initialize the local conte
 1. **Generate session hex:** Run `openssl rand -hex 16`. This identifies the cache session (separate from delimiter hex).
 2. **Initialize cache directory:**
    ```bash
-   scripts/manage-cache.sh init <session_hex>
+   SOURCE_ROOT=<absolute_path_to_source> scripts/manage-cache.sh init <session_hex>
    ```
+   `SOURCE_ROOT` is the absolute path to the directory containing the code under review. This is stored in the manifest and included in agent prompts so agents know where to search when verifying findings. If omitted, defaults to `$(pwd)`.
    Capture `CACHE_DIR` from the JSON output (`{"cache_dir": "<path>", "session_hex": "<hex>"}`).
 3. **Generate delimiter hex:** Run `scripts/generate-delimiters.sh` to produce a session-wide `REVIEW_TARGET` delimiter hex. Collision-check against all scope files.
 4. **Populate code:**
@@ -418,6 +487,10 @@ Generate the final report using the profile's report template: `profiles/<profil
 
 If `--save` was specified, write the report to `docs/reviews/YYYY-MM-DD-<topic>-review.md`.
 
+**Strat profile additional outputs (when `--save` is active):**
+- **Requirements output:** `docs/reviews/YYYY-MM-DD-<topic>-requirements.md` using `profiles/strat/templates/requirements-template.md`. Splits findings by confidence tier (Required Amendments / Recommended / Human Review) and includes NFR checklist gaps. This is addressed to the STRAT author.
+- **JSON output:** `docs/reviews/YYYY-MM-DD-<topic>-findings.json` via `scripts/findings-to-json.py`. Machine-readable findings with enrichment metadata for downstream tooling.
+
 **NEVER auto-commit.** The `--save` flag writes the file only.
 
 **Cache interaction:** The final report reads from `{CACHE_DIR}/findings/` for all consensus findings. If `--keep-cache` is specified, write `.adversarial-review/last-cache.json` with session hex and commit SHA before cleanup.
@@ -541,6 +614,81 @@ Update task status as each completes. For single-specialist mode, Phase 2 runs i
 
 ---
 
+## Progress Display
+
+The orchestrator outputs a status block at each phase transition and after each self-refinement iteration. This gives the user visibility into review progress without requiring them to parse agent tool calls.
+
+### Status Block Format
+
+```
+┌─────────────────────────────────────────────────┐
+│  ADVERSARIAL REVIEW: <topic>                    │
+│  <phase_name>  [<progress_detail>]              │
+├──────────┬──────────┬───────────────────────────┤
+│ Agent    │ Status   │ Findings                  │
+├──────────┼──────────┼───────────────────────────┤
+│ SEC      │ DONE     │ 5 → 3 (converged)         │
+│ PERF     │ RUNNING  │ 4                         │
+│ QUAL     │ DONE     │ 7 → 6                     │
+│ CORR     │ PENDING  │ -                         │
+│ ARCH     │ DONE     │ 3 → 3 (converged)         │
+├──────────┴──────────┴───────────────────────────┤
+│ Budget: ████████░░░░░░  127K / 500K (25%)       │
+└─────────────────────────────────────────────────┘
+```
+
+### Field Definitions
+
+| Field | Source | Description |
+|-------|--------|-------------|
+| `<topic>` | Step 1 invocation parsing | Review topic name |
+| `<phase_name>` | Current phase | "Phase 1: Self-Refinement", "Phase 2: Challenge Round", "Phase 3: Resolution" |
+| `<progress_detail>` | Phase-specific | Iteration N/M for Phase 1, "Iteration N" for Phase 2, empty for Phase 3 |
+| Agent Status | Agent dispatch state | `DONE`, `RUNNING`, `PENDING`, `CONVERGED`, `FAILED` |
+| Findings | Per-agent finding count | Current count, or `prev → curr` on iteration 2+. Append `(converged)` when stable. |
+| Budget bar | `track-budget.sh status` | Visual bar + consumed/limit tokens + percentage |
+
+### Agent Status Values
+
+| Status | Meaning |
+|--------|---------|
+| `PENDING` | Not yet dispatched this iteration |
+| `RUNNING` | Agent dispatched, awaiting response |
+| `DONE` | Agent completed this iteration |
+| `CONVERGED` | Agent's findings stabilized (no further iterations) |
+| `FAILED` | Agent failed validation (max retries exhausted) |
+
+### When to Output
+
+Output a status block at these points:
+
+1. **Phase 1 start:** After cache initialization, before dispatching iteration 1 agents. All agents show `PENDING`.
+2. **Phase 1 iteration complete:** After each iteration's agents finish and findings are validated. Show finding counts and convergence status.
+3. **Phase 2 start:** Before dispatching challenge round. Show total findings entering challenge.
+4. **Phase 2 iteration complete:** After each challenge iteration. Show positions collected.
+5. **Phase 3 complete:** After resolution. Show final validated/dismissed/escalated counts.
+
+Do NOT output a status block for every individual agent completion within a parallel dispatch. One block per iteration boundary is sufficient.
+
+### Budget Bar Construction
+
+Build the budget bar from `track-budget.sh status` output:
+
+```
+consumed_pct = (consumed / limit) * 100
+filled_blocks = round(consumed_pct / 100 * 14)
+empty_blocks = 14 - filled_blocks
+bar = "█" * filled_blocks + "░" * empty_blocks
+```
+
+Display as: `Budget: <bar>  <consumed_K>K / <limit_K>K (<pct>%)`
+
+### Minimal Mode
+
+For `--quick` reviews (2 specialists, 2 iterations), the status blocks are still output but the table is naturally smaller. No special handling needed.
+
+---
+
 ## Guardrail Trip Log
 
 The orchestrator maintains an in-memory list of guardrail events throughout the review. Each entry contains:
@@ -642,6 +790,7 @@ skills/adversarial-review/
         finding-template.md             # Finding format (Document/Citation evidence)
         challenge-response-template.md  # Challenge response format (with Verdict)
         report-template.md              # Report format (10 sections, verdict-based)
+        requirements-template.md        # Requirements output for STRAT authors (confidence-tiered)
       references/                       # Strat-specific reference modules
         all/                            # References for all strat specialists
   phases/
@@ -671,6 +820,11 @@ skills/adversarial-review/
     manage-cache.sh                     # Cache lifecycle: init, populate, validate, cleanup
     profile-config.sh                   # Profile configuration reader
     fetch-architecture-context.sh       # Architecture context fetcher (strat profile)
+    fetch-context.sh                    # Generic labeled context fetcher
+    extract-threat-surface.py           # Layer 1: deterministic keyword scan + tier classification (strat profile)
+    nfr-scan.py                         # Layer 2: NFR checklist scanner with severity decision trees (strat profile)
+    findings-to-json.py                 # Structured JSON output from findings (both profiles)
+    generate-visuals.py                 # Review visualization dashboard generator
   tests/
     ...                                 # Test suite (unchanged)
 ```

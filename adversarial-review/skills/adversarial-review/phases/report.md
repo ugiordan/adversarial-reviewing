@@ -150,11 +150,57 @@ If the `--save` flag is specified:
 3. **Create directories** if they do not exist: `mkdir -p docs/reviews/`
 4. **Write the file** — the metadata block MUST be the last element in the file
 
-### Step 5: Never Auto-Commit
+### Step 4b: Generate Requirements Output (Strat Profile, when `--save`)
+
+When the active profile is `strat` or `rfe` and `--save` is specified, generate the requirements output alongside the report:
+
+1. **Split findings by confidence tier** using the confidence labels from Phase 3:
+   - **HIGH confidence** → "Required Amendments" (STRAT must address before approval)
+   - **MEDIUM confidence** → "Recommended Amendments" (STRAT should address)
+   - **LOW confidence** → "Findings Requiring Human Review" (team should evaluate)
+
+2. **Include NFR checklist gaps** from the Layer 2 scan (items scored NO or PARTIAL) in a separate section. These are deterministic assessments, not specialist opinions.
+
+3. **Include all 4 confidence signals** for each finding (self_assessment, corroboration, challenge_survival, evidence_specificity) for transparency.
+
+4. **Write to** `docs/reviews/YYYY-MM-DD-<topic>-requirements.md` using `profiles/strat/templates/requirements-template.md`.
+
+5. **Generate JSON output** via `scripts/findings-to-json.py`:
+   ```bash
+   python3 scripts/findings-to-json.py <findings-file> --profile strat --metadata '{"strat_id": "...", "review_date": "..."}'
+   ```
+   Write to `docs/reviews/YYYY-MM-DD-<topic>-findings.json`.
+
+The requirements output is addressed to the STRAT author. Use "the strategy" not "we found."
+
+### Step 5: Generate Visualizations (Optional)
+
+After assembling the report, generate a visual dashboard summarizing review metrics. Collect the following data from the review session:
+
+- **Budget:** limit, consumed, per-phase breakdown, per-agent consumption (from `track-budget.sh status`)
+- **Funnel:** raw finding count, post-self-refinement count, post-challenge count, validated count, dismissed count
+- **Severity:** validated findings by severity level
+- **Convergence:** findings-per-iteration per agent (from self-refinement iterations)
+
+Pass this data as JSON to:
+
+```bash
+python3 scripts/generate-visuals.py --output <report_dir>/visuals --individual --inline '<json>'
+```
+
+The script generates:
+- `summary.png`: 4-panel dashboard (budget gauge, finding funnel, severity donut, convergence curves)
+- Individual charts: `budget.png`, `funnel.png`, `severity.png`, `convergence.png`
+
+If `--save` is active, the visuals directory is created alongside the report file. Always display the summary chart to the user in conversation using the Read tool on the generated PNG.
+
+If matplotlib is unavailable, skip visualization with a note in the report.
+
+### Step 6: Never Auto-Commit
 
 The report is **NEVER** automatically committed to git. The user must explicitly commit it themselves. This is a hard rule — do not offer to commit, do not stage the file, do not run `git add`.
 
-### Step 6: Remediation Gate (when `--fix` is active)
+### Step 7: Remediation Gate (when `--fix` is active)
 
 If the `--fix` flag was specified, present the user with a confirmation prompt before proceeding to Phase 5:
 
@@ -205,3 +251,7 @@ The final report reads consensus findings from `{CACHE_DIR}/findings/`. If `--ke
 - `protocols/delta-mode.md` — delta mode execution and report rules
 - `scripts/manage-cache.sh` — cache management (findings read from `{CACHE_DIR}/findings/`)
 - `phases/remediation.md` — Phase 5 classification that Section 10 feeds into
+- `profiles/strat/templates/requirements-template.md` — confidence-tiered requirements output for STRAT authors
+- `scripts/findings-to-json.py` — structured JSON output with enrichment metadata
+- `scripts/nfr-scan.py` — NFR checklist scanner (Layer 2 results for requirements output)
+- `scripts/extract-threat-surface.py` — threat surface extraction (Layer 1 context)
