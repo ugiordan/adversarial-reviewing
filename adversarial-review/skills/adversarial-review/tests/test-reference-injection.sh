@@ -99,7 +99,7 @@ PASS=$((PASS + 1))
 echo ""
 echo "Test 6: Empty reference directory produces no output"
 TEMP_DIR=$(mktemp -d)
-trap "rm -rf '$TEMP_DIR'" EXIT
+trap 'rm -rf "$TEMP_DIR"' EXIT
 result6=$("$SCRIPTS/discover-references.sh" security --builtin-dir "$TEMP_DIR" --user-dir "/nonexistent" --project-dir "/nonexistent" 2>/dev/null || true)
 if [[ -z "$result6" ]]; then
     echo "  PASS: Empty directory produces no output"
@@ -113,7 +113,7 @@ fi
 echo ""
 echo "Test 7: specialist:all module injected for all 5 specialists"
 TEMP_ALL_DIR=$(mktemp -d)
-trap "rm -rf '$TEMP_ALL_DIR'" EXIT
+trap 'rm -rf "$TEMP_ALL_DIR"' EXIT
 
 # Create all/ subdirectory with a specialist:all module
 mkdir -p "$TEMP_ALL_DIR/all"

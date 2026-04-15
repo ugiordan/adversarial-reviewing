@@ -21,4 +21,22 @@ jobs:
           cd adversarial-review/skills/adversarial-review
           bash tests/run-all-tests.sh 2>&1 | tee test-output.txt
           # Assert no failures
-          grep -q "0 failed" test-output.txt
+          grep -qE '\b0 failed\b' test-output.txt
+
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ShellCheck
+        run: sudo apt-get install -y shellcheck
+
+      - name: Lint scripts
+        run: |
+          cd adversarial-review/skills/adversarial-review
+          shellcheck -x -e SC2329 -e SC1091 scripts/*.sh
+
+      - name: Lint test scripts
+        run: |
+          cd adversarial-review/skills/adversarial-review
+          shellcheck -x -e SC1091 tests/test-*.sh tests/run-all-tests.sh

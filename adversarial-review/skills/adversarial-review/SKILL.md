@@ -271,18 +271,19 @@ The orchestrator synthesizes challenges and defenses, applies consensus rules, a
 
 Delegate to `phases/report.md`.
 
-Generate the final report using `templates/report-template.md` (or `templates/delta-report-template.md` for delta mode). The report includes up to 13 sections:
+Generate the final report using `templates/report-template.md` (or `templates/delta-report-template.md` for delta mode). The report includes up to 14 sections:
 
-- Executive summary
-- Validated findings with consensus status (Sections 2-5)
-- Dismissed findings (Section 6)
-- Challenge round findings (Section 7)
-- Co-located findings (Section 8)
-- **Remediation summary** (Section 9) — severity-sorted action list with remediation roadmap, blocked items, and top priorities. Always present, even without `--fix`.
-- **Change Impact** (Section 10) — conditional, when `--diff` is active
-- **Review Metrics** (Section 10b) — challenge round statistics
-- **Guardrails Triggered** (Section 10c) — populated from the guardrail trip log
-- **Audit Log** (Section 10d) — external actions taken during `--fix` and `--triage`
+- Executive summary (Section 1)
+- Review configuration (Section 2) — conditional, review parameters summary
+- Validated findings with consensus status (Sections 3-6)
+- Dismissed findings (Section 7)
+- Challenge round findings (Section 8)
+- Co-located findings (Section 9)
+- **Remediation summary** (Section 10) — severity-sorted action list with remediation roadmap, blocked items, and top priorities. Always present, even without `--fix`.
+- **Change Impact** (Section 11) — conditional, when `--diff` is active
+- **Review Metrics** (Section 12) — challenge round statistics
+- **Guardrails Triggered** (Section 13) — populated from the guardrail trip log
+- **Audit Log** (Section 14) — external actions taken during `--fix` and `--triage`
 
 If `--save` was specified, write the report to `docs/reviews/YYYY-MM-DD-<topic>-review.md`.
 

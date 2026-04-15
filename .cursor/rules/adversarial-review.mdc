@@ -24,11 +24,11 @@ For each active specialist (default: all five), do:
 
 | Tag  | Specialist        | Prompt file                                                                  |
 |------|-------------------|------------------------------------------------------------------------------|
-| SEC  | Security          | `$HOME/.adversarial-review/adversarial-review/agents/security.md`            |
-| PERF | Performance       | `$HOME/.adversarial-review/adversarial-review/agents/performance.md`         |
-| QUAL | Quality           | `$HOME/.adversarial-review/adversarial-review/agents/quality.md`             |
-| CORR | Correctness       | `$HOME/.adversarial-review/adversarial-review/agents/correctness.md`         |
-| ARCH | Architecture      | `$HOME/.adversarial-review/adversarial-review/agents/architecture.md`        |
+| SEC  | Security          | `$HOME/.adversarial-review/adversarial-review/agents/security-auditor.md`         |
+| PERF | Performance       | `$HOME/.adversarial-review/adversarial-review/agents/performance-analyst.md`      |
+| QUAL | Quality           | `$HOME/.adversarial-review/adversarial-review/agents/code-quality-reviewer.md`    |
+| CORR | Correctness       | `$HOME/.adversarial-review/adversarial-review/agents/correctness-verifier.md`     |
+| ARCH | Architecture      | `$HOME/.adversarial-review/adversarial-review/agents/architecture-reviewer.md`    |
 
 For each specialist:
 
@@ -77,7 +77,7 @@ Role-play a devil's advocate using the prompt at
 | `--save`         | Save the report to disk (see path below)            |
 | `--delta`        | Review only the diff, not the full file             |
 | `--fix`          | Propose concrete fixes alongside findings           |
-| `--quick`        | Reduce depth: skip Phase 2, shorter analysis        |
+| `--quick`        | 2 specialists (SEC + CORR), 2 iterations, 200K budget |
 | `--thorough`     | Increase depth: more detailed analysis per finding  |
 | `--diff`           | Enable change-impact analysis with caller/callee graph |
 | `--triage <source>`| Evaluate external comments (pr:<N>, file:<path>, -)   |

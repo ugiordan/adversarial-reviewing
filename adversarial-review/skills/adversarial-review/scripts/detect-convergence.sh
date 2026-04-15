@@ -23,7 +23,7 @@ PREVIOUS="${2:?Usage: detect-convergence.sh <current_iteration> <previous_iterat
 
 # Script-level temp file tracking and cleanup
 CONVERGENCE_TMPDIR=$(mktemp -d "/tmp/convergence_XXXXXXXXXX")
-cleanup() {
+cleanup() { # called via trap
     rm -rf "$CONVERGENCE_TMPDIR"
 }
 trap cleanup EXIT INT TERM
