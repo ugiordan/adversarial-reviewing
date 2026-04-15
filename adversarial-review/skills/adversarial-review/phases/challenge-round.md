@@ -14,37 +14,63 @@ Specialists challenge each other's findings through structured debate. All commu
 
 ### Step 1: Pre-Debate Deduplication
 
-Run `scripts/deduplicate.sh` on all Phase 1 findings combined:
+Run `scripts/deduplicate.sh` on all Phase 1 findings combined (unchanged):
 
 ```bash
 scripts/deduplicate.sh <all_phase1_findings>
 ```
 
-This removes exact and near-duplicate findings across specialists before debate begins. Deduplicated findings are logged but excluded from the challenge round.
+### Step 2: Build Cross-Agent Summary
 
-### Step 2: Assemble Sanitized Document
+```bash
+CACHE_DIR=$CACHE_DIR scripts/manage-cache.sh build-summary
+```
 
-Build the sanitized document using `templates/sanitized-document-template.md`:
+Merges all agents' `summary.md` files into `findings/cross-agent-summary.md`.
 
-1. **Generate field-level isolation markers** — run `scripts/generate-delimiters.sh` for each field of each finding to produce unique hex tokens
-2. **Add provenance markers** — tag each finding with `[PROVENANCE::Specialist_Name::VERIFIED]`
-3. **Wrap field content** — enclose every field value in `[FIELD_DATA_<hex>_START]...[FIELD_DATA_<hex>_END]` markers
-4. **Strip raw output** — include only validated finding fields; never include agent reasoning, self-refinement drafts, or intermediate output
+### Step 3: Generate Phase 2 Navigation
 
-See `protocols/mediated-communication.md` for the full mediation rules.
+```bash
+CACHE_DIR=$CACHE_DIR scripts/manage-cache.sh generate-navigation <iteration> 2
+```
 
-### Step 3: Context Cap Enforcement
+Updates `navigation.md` for Phase 2. On subsequent challenge iterations, pass resolved finding IDs:
 
-Check the sanitized document size against the **50,000 token per-iteration context cap**.
+```bash
+CACHE_DIR=$CACHE_DIR scripts/manage-cache.sh generate-navigation <iteration> 2 --resolved-ids <resolved_file>
+```
 
-If the cap is exceeded:
-1. Include only **unresolved findings**, ordered by severity (Critical first, then Important, then Minor)
-2. Summarize excluded findings as counts: "Additionally, N Important and M Minor findings were omitted due to context limits"
-3. Omitted findings are not debated but are carried forward to resolution with their Phase 1 status
+### Step 3.5: Generate Finding IDs File
 
-### Step 4: Broadcast and Collect Responses
+Extract the ID column from `cross-agent-summary.md` into a file (one ID per line) for challenge validation:
 
-Send the sanitized document to **all agents** (including the originator of each finding).
+```bash
+FINDING_IDS_FILE=$(mktemp "${TMPDIR:-/tmp}/finding-ids.XXXXXX")
+awk -F'|' 'NR>2 && NF>2 {gsub(/^[ \t]+|[ \t]+$/, "", $2); if ($2 != "") print $2}' \
+    "$CACHE_DIR/findings/cross-agent-summary.md" > "$FINDING_IDS_FILE"
+# Clean up after use (or at end of Phase 2 iteration):
+# rm -f "$FINDING_IDS_FILE"
+```
+
+### Step 4: Broadcast via Cache and Collect Responses
+
+Send each agent a minimal prompt (~2,825 tokens) with Phase 2 cache navigation:
+
+> ## Cache Access — Phase 2
+>
+> Your review materials are at: {CACHE_DIR}
+>
+> Read `{CACHE_DIR}/navigation.md` FIRST.
+>
+> 1. Read `findings/cross-agent-summary.md` — overview of all findings
+> 2. Read full finding files ONLY for findings you intend to challenge or that fall in your domain
+> 3. You MUST Read the full finding before issuing a Challenge — you cannot challenge based on the summary alone
+> 4. Use `templates/challenge-response-template.md` for your response format
+
+**Two-tier finding access:**
+
+- **Tier 1:** Agent reads `findings/cross-agent-summary.md` (~200 tokens) — ID, Severity, Category, File:Line, One-liner.
+- **Tier 2:** Agent reads individual finding files (`findings/<agent>/<ID>.md`) only for findings they challenge or that fall in their domain.
 
 Each agent responds using `templates/challenge-response-template.md`:
 
@@ -75,18 +101,26 @@ The same specialist-filtered modules and delimiter isolation apply. See `protoco
 
 ### Step 5: Validate Responses
 
-Run `scripts/validate-output.sh` on each agent's challenge response.
+Two distinct validation paths:
 
-- Failed validations: spawn fresh agent with error, up to 2 attempts (same as Phase 1)
-- Invalid new findings are excluded
+1. **Challenge responses:** Run `scripts/validate-output.sh` with challenge mode:
+   ```bash
+   scripts/validate-output.sh <response_file> <role_prefix> --mode challenge --finding-ids <ids_file>
+   ```
+2. **New findings raised during challenge:** Run through `manage-cache.sh populate-findings`:
+   ```bash
+   CACHE_DIR=$CACHE_DIR scripts/manage-cache.sh populate-findings <agent> <role_prefix> <new_findings_file> --scope <scope_file>
+   ```
+
+Failed validations: spawn fresh agent with error, up to 2 attempts (same as Phase 1).
 
 ### Step 6: Drop Resolved Findings
 
-After each iteration, identify **RESOLVED** findings — those where:
-- All specialists who took a position chose **Agree**
-- No challenges were raised
+After each iteration, identify **RESOLVED** findings (all specialists chose **Agree**, no challenges).
 
-Resolved findings are removed from subsequent iterations to reduce context. They proceed directly to the report as consensus findings.
+Add resolved finding IDs to the resolved file (one per line). Resolved findings remain in the cache for audit but are omitted from `navigation.md` via `--resolved-ids` on the next `generate-navigation` call.
+
+Resolved findings proceed directly to the report as consensus findings.
 
 ### Step 7: Detect Convergence
 
@@ -101,14 +135,14 @@ Phase 2 convergence requires all of:
 2. No position changes from previous iteration
 3. No new findings added
 
-Same iteration bounds as Phase 1:
-
 | Rule | Detail |
 |------|--------|
-| Minimum iterations | **2** — always run |
+| Minimum iterations | **1** if unanimous early exit applies (see below), otherwise **2** |
 | Maximum iterations | **3** (default) — hard cap |
 | Profile overrides | `--quick`: max 2, `--delta`: max 2, `--thorough`: max 3 |
-| Convergence honored | Only after minimum 2 iterations |
+| Convergence honored | After minimum iterations completed |
+
+**Unanimous early exit:** If ALL agents choose **Agree** on ALL findings in iteration 1 (zero Challenges, zero Abstains), skip iterations 2-3 and proceed directly to Phase 3. Full agreement on the first pass means debate is unnecessary. This saves 1-2 full iterations of token consumption. This early exit does NOT apply in `--thorough` mode, which always runs minimum 2 iterations.
 
 ### Step 8: Budget Check
 
@@ -134,23 +168,43 @@ This ensures challenge-round findings receive at least minimal self-critique bef
 ## Iteration Flow
 
 ### Iteration 1: Initial Challenges
-- All agents receive the full sanitized document
+- All agents read `findings/cross-agent-summary.md` from cache, then selectively read individual findings
 - Agents respond with Agree/Challenge/Abstain for each finding
 - New findings are **allowed**
 - Resolved findings are dropped from subsequent iterations
 
 ### Iteration 2: Responses to Challenges
-- Agents see updated document including iteration 1 challenges and any new findings from iteration 1
+- Agents read updated `navigation.md` and selectively read findings
 - Agents respond to updated positions
 - New findings are **allowed**
-- Iteration 2 new findings are included in the document
+- Iteration 2 new findings are included in the cache
 - Convergence check runs (but minimum 2 iterations always complete)
 
-### Iteration 3: Final Positions (only if not converged)
-- Agents see updated document including iteration 2 challenges and any new findings from iteration 2
-- Agents state **final positions only**
+### Iteration 3: Evidence-Based Rebuttal (only if not converged)
+
+Iteration 3 is a structured rebuttal round, not a simple "final positions" collection. The goal is to force resolution through evidence rather than opinion.
+
+- Agents read updated `navigation.md` and selectively read findings
 - New findings are **prohibited** — validation rejects any new findings in this iteration
+- For each finding with active disagreement (at least one Challenge after iteration 2):
+  - **Challengers** must either:
+    1. **Provide specific file:line evidence** demonstrating why the finding is invalid (e.g., "the call at `src/auth.go:42` is already guarded by `validateToken()` at line 38"), OR
+    2. **Retract their challenge** and change position to Agree or Abstain
+  - **Originators** must either:
+    1. **Provide specific file:line evidence** demonstrating the vulnerability path exists, OR
+    2. **Withdraw the finding**
+  - Challenges or defenses without file:line citations are treated as retractions
 - After completion, proceed to Phase 3 regardless of convergence
+
+The rebuttal prompt appended to iteration 3:
+
+> For each finding you are challenging or defending, you MUST cite specific file:line evidence.
+>
+> - If you are **challenging** a finding: show the specific code path that proves the finding is invalid (e.g., existing guard, unreachable code, wrong assumption about the call chain)
+> - If you are **defending** a finding: show the specific code path that proves the vulnerability exists (e.g., unvalidated input at file:line flows to dangerous function at file:line)
+> - If you cannot cite specific file:line evidence, **retract your position** (change to Agree or Abstain for challenges, Withdraw for defenses)
+>
+> Positions without evidence citations will be treated as retractions during resolution.
 
 ## Single-Specialist Mode
 

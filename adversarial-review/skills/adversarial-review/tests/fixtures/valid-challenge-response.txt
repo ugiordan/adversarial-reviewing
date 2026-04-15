@@ -1,0 +1,4 @@
+Finding ID: SEC-001
+Action: Challenge
+Severity: Important
+Evidence: The RBAC precedence issue at auth.go:142 is actually handled by the middleware layer. The condition on line 145 checks system:authenticated before the OR clause, preventing the escalation path described. The code at auth.go:142-150 shows explicit ordering that blocks this vector. The middleware validates roles in a separate pass at middleware.go:88-95 which catches any bypass.

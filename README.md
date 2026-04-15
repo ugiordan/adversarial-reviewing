@@ -1,8 +1,8 @@
 # Adversarial Review
 
-Multi-agent adversarial code review with isolated specialists, programmatic validation, and consensus-based findings.
+Multi-agent adversarial code review with isolated specialists, programmatic validation, and evidence-based resolution.
 
-This plugin orchestrates independent specialist agents who review code from different perspectives, debate their findings through structured challenge rounds, and surface only validated, high-confidence issues through consensus.
+This plugin orchestrates independent specialist agents who review code from different perspectives, debate their findings through structured challenge rounds with evidence-based rebuttals, and surface validated findings with transparent agreement labeling.
 
 ## How It Works
 
@@ -26,9 +26,9 @@ flowchart LR
 
     subgraph Phase3["Phase 3: Resolution"]
         direction TB
-        C1["Consensus rules"]
+        C1["Evidence-based resolution"]
         C2["Deduplication"]
-        C3["Final finding set"]
+        C3["Agreement level classification"]
         C1 --> C2 --> C3
     end
 
@@ -118,15 +118,19 @@ flowchart LR
 
 Agents never see each other's raw output. The orchestrator strips provenance markers, validates structure, and mediates every exchange.
 
+**Evidence-based rebuttal (iteration 3):** When agents disagree after iteration 2, iteration 3 requires challengers and originators to cite specific `file:line` evidence or retract their position. Positions without evidence citations are treated as retractions during resolution.
+
 **Single-specialist mode:** When only 1 specialist is active, a devil's advocate agent challenges the findings instead.
 
 ### Phase 3: Resolution
 
-The orchestrator synthesizes challenges and defenses, applies consensus rules, deduplicates findings via `deduplicate.sh`, and produces the final validated finding set.
+The orchestrator applies deterministic resolution rules, deduplicates findings via `deduplicate.sh`, and classifies overall agreement level. Each finding is categorized as consensus, majority, escalated, or dismissed. The report transparently shows which findings achieved full agreement and which were resolved by majority or remain disputed.
+
+**Agreement levels:** Full Consensus, Strong Agreement, Partial Agreement, Split Decision, No Agreement. Split Decision and No Agreement trigger explicit confidence disclaimers in the report.
 
 ### Phase 4: Report
 
-Generates a structured report with 9 sections: executive summary, validated findings by severity (Critical/Important/Minor), dismissed findings with rationale, challenge round highlights, co-located findings, and a remediation roadmap.
+Generates a structured report with up to 14 sections: executive summary with agreement level, validated findings by severity (Critical/Important/Minor), escalated disagreements with all specialist positions, dismissed findings with rationale, challenge round highlights, co-located findings, and a remediation roadmap.
 
 ### Phase 5: Remediation (optional, `--fix`)
 
@@ -259,12 +263,12 @@ Reference or inline `AGENTS.md` in your AI tool's context. Feature set depends o
 
 | Flag | Effect |
 |------|--------|
-| `--quick` | 2 specialists (SEC + CORR), 2 iterations, 200K budget |
+| `--quick` | 2 specialists (SEC + CORR), 2 iterations, 150K budget |
 | `--thorough` | All 5 specialists, 3 iterations, 800K budget |
 | `--delta` | Re-review only changes since last review |
 | `--save` | Write report to `docs/reviews/YYYY-MM-DD-<topic>-review.md` |
 | `--fix` | Enable Phase 5 (remediation with Jira drafts, worktree branches, PRs) |
-| `--budget <N>` | Override default 500K token budget |
+| `--budget <N>` | Override default 350K token budget |
 | `--force` | Override 200-file hard ceiling |
 | `--diff` | Enable diff-augmented input with change-impact graph |
 | `--diff --range <range>` | Specify git commit range (e.g., `main..HEAD`) |

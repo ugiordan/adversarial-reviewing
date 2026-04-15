@@ -291,10 +291,17 @@ After all PRs are created:
 - Each worktree is independent — a failure in one does not affect others
 - If a fix touches files outside the original finding scope, flag it to the user before committing
 
+## Cache Interaction
+
+Unless `--keep-cache` is specified, the cleanup trap (set during cache initialization) removes the cache directory after Phase 5 completes. If `--keep-cache` is active, the trap is skipped and the cache is preserved for future `--reuse-cache` use.
+
+Note: in agent-tool execution models (e.g., Claude Code), the trap may not persist across Bash tool invocations. The `cleanup_stale` function in `manage-cache.sh` provides a reliability backstop, removing caches older than 24 hours with dead orchestrator PIDs.
+
 ## References
 
 - `templates/jira-template.md` — Jira ticket description template
 - `templates/report-template.md` — finding format for reference
+- `scripts/manage-cache.sh` — cache management and cleanup
 - `protocols/guardrails.md` — guardrail definitions, constants, enforcement behavior
 - `protocols/audit-log.md` — external action audit log format
 - `protocols/destructive-patterns.txt` — regex patterns for destructive command detection

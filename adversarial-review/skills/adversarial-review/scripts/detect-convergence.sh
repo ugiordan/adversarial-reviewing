@@ -22,7 +22,7 @@ CURRENT="${1:?Usage: detect-convergence.sh <current_iteration> <previous_iterati
 PREVIOUS="${2:?Usage: detect-convergence.sh <current_iteration> <previous_iteration>}"
 
 # Script-level temp file tracking and cleanup
-CONVERGENCE_TMPDIR=$(mktemp -d "/tmp/convergence_XXXXXXXXXX")
+CONVERGENCE_TMPDIR=$(mktemp -d "${TMPDIR:-/tmp}/convergence_XXXXXXXXXX")
 cleanup() { # called via trap
     rm -rf "$CONVERGENCE_TMPDIR"
 }

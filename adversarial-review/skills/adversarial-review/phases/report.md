@@ -20,8 +20,10 @@ Build the report using `templates/report-template.md` with up to 14 sections (so
 - Finding count by severity (Critical / Important / Minor)
 - List of specialists involved
 - Scope of reviewed files (count and paths)
+- **Agreement level** from Phase 3 resolution (Full Consensus / Strong Agreement / Partial Agreement / Split Decision / No Agreement) with breakdown: N unanimous, N majority, N escalated, N dismissed
 - Configuration parameters: iterations completed, convergence status (achieved/not achieved per phase), token budget (used/total)
 - If budget was exceeded, include: **"Review truncated due to token budget"**
+- If agreement level is **Split Decision** or **No Agreement**, include a prominent disclaimer: **"Specialists significantly disagreed. Majority findings should be treated with reduced confidence."**
 
 #### Section 2: Review Configuration (conditional)
 
@@ -178,10 +180,19 @@ The topic for the saved report filename is derived as follows:
 
 When `--delta` is active, use `templates/delta-report-template.md` instead of the standard report template. The delta report includes finding classification (resolved/persists/regressed/new) and references to the prior report.
 
+## Cache Interaction
+
+The final report reads consensus findings from `{CACHE_DIR}/findings/`. If `--keep-cache` is specified, write `.adversarial-review/last-cache.json` with session hex and commit SHA after report generation (before the cleanup trap fires). Format:
+
+```json
+{"session_hex": "<hex>", "commit_sha": "<HEAD>"}
+```
+
 ## References
 
 - `templates/report-template.md` — standard report template with up to 14 sections
 - `templates/delta-report-template.md` — delta mode report template (also includes Remediation Summary)
 - `protocols/token-budget.md` — budget truncation behavior
 - `protocols/delta-mode.md` — delta mode execution and report rules
+- `scripts/manage-cache.sh` — cache management (findings read from `{CACHE_DIR}/findings/`)
 - `phases/remediation.md` — Phase 5 classification that Section 10 feeds into

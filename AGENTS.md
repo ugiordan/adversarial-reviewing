@@ -12,7 +12,7 @@ AR_HOME="${ADVERSARIAL_REVIEW_HOME:-$HOME/.adversarial-review/adversarial-review
 ## Overview
 
 Multi-agent adversarial code review with isolated specialists, programmatic
-validation, and consensus-based findings. Reviews code from 5 specialist
+validation, and evidence-based resolution. Reviews code from 5 specialist
 perspectives: Security, Performance, Code Quality, Correctness, Architecture.
 
 ## Multi-Agent Mode
@@ -28,8 +28,9 @@ sub-agents for each specialist and execute the following phases:
 - **Phase 2 -- Challenge round**: Cross-agent debate with mediated communication.
   Specialists challenge each other's findings through structured rebuttals.
 
-- **Phase 3 -- Resolution**: Consensus-based filtering and deduplication. Run
-  `bash $AR_HOME/scripts/deduplicate.sh` to merge overlapping findings.
+- **Phase 3 -- Resolution**: Evidence-based resolution with transparent agreement
+  labeling (Full Consensus / Strong Agreement / Partial Agreement / Split Decision / No Agreement).
+  Run `bash $AR_HOME/scripts/deduplicate.sh` to merge overlapping findings.
 
 - **Phase 4 -- Report generation**: Aggregate validated findings into a
   structured report. Run `bash $AR_HOME/scripts/validate-output.sh` to verify

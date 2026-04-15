@@ -20,8 +20,8 @@ Pre-configured profiles adjust both specialist count and budget:
 
 | Profile | Flag | Specialists | Budget |
 |---------|------|-------------|--------|
-| Quick | `--quick` | 2 | 200,000 |
-| Default | (none) | 5 | 500,000 |
+| Quick | `--quick` | 2 | 150,000 |
+| Default | (none) | 5 | 350,000 |
 | Thorough | `--thorough` | 5 | 800,000 |
 
 A custom `--budget` flag overrides the profile's default budget while keeping its specialist count.
@@ -79,7 +79,7 @@ The script accepts either a file path (counts its bytes) or a raw character coun
 
 ## Per-Iteration Context Cap
 
-Each iteration's sanitized document payload (the code under review, wrapped in isolation delimiters) is capped at **50,000 tokens**. If the input exceeds this cap, it is truncated with a marker indicating truncation occurred. This cap is independent of the overall budget.
+Each iteration's context is capped at **40,000 tokens**. When the local context cache is active, this cap is enforced as advisory guidance in `navigation.md`: `manage-cache.sh generate-navigation` sorts files by size descending and lists which files fit within the cap, with remaining files marked as "read only if needed". Agents are expected to prioritize the included files. This cap is independent of the overall budget.
 
 ## Truncation Behavior
 

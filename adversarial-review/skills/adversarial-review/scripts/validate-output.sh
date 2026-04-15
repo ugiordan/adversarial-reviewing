@@ -18,6 +18,8 @@ ROLE_PREFIX="${2:?Usage: validate-output.sh <output_file> <expected_role_prefix>
 SCOPE_FILE=""
 MAX_FINDINGS=0
 CHECK_FIXES=false
+MODE="finding"  # default mode
+FINDING_IDS_FILE=""
 
 # Parse optional flags after required positional args
 shift 2  # past OUTPUT_FILE and ROLE_PREFIX
@@ -26,6 +28,8 @@ while [[ $# -gt 0 ]]; do
         --scope) SCOPE_FILE="${2:?--scope requires a file path}"; shift 2 ;;
         --max-findings) MAX_FINDINGS="${2:?--max-findings requires a number}"; shift 2 ;;
         --check-fixes) CHECK_FIXES=true; shift ;;
+        --mode) MODE="${2:?--mode requires a value (finding|challenge)}"; shift 2 ;;
+        --finding-ids) FINDING_IDS_FILE="${2:?--finding-ids requires a file path}"; shift 2 ;;
         *) echo "{\"error\": \"Unknown flag: $1\"}" >&2; exit 2 ;;
     esac
 done
@@ -42,6 +46,13 @@ import unicodedata, sys
 sys.stdout.write(unicodedata.normalize('NFKC', sys.stdin.read()))
 " <<< "$content")
 
+# Cache-path stripping fallback: if findings reference cache paths, strip prefix
+CACHE_PATH_PATTERN='[^ ]*/adversarial-review-cache-[a-f0-9]{32}-[A-Za-z0-9._-]+/code/'
+if echo "$content" | grep -qE "$CACHE_PATH_PATTERN"; then
+    WARNINGS+=("Cache paths detected in output — stripping to repo-relative paths")
+    content=$(echo "$content" | sed -E "s|$CACHE_PATH_PATTERN||g")
+fi
+
 # Portable helper: extract field value after label
 extract_field() {
     local label="$1"
@@ -53,6 +64,129 @@ extract_field() {
 SCRIPT_DIR_VALIDATE="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=_injection-check.sh
 source "$SCRIPT_DIR_VALIDATE/_injection-check.sh"
+
+# Challenge mode validation
+if [[ "$MODE" == "challenge" ]]; then
+    if [[ -z "$FINDING_IDS_FILE" ]]; then
+        echo '{"error": "--mode challenge requires --finding-ids <file>"}' >&2
+        exit 2
+    fi
+    if [[ ! -f "$FINDING_IDS_FILE" ]]; then
+        echo "{\"error\": \"Finding IDs file not found: $FINDING_IDS_FILE\"}" >&2
+        exit 2
+    fi
+
+    ERRORS=()
+    WARNINGS=()
+
+    # Extract challenge response blocks
+    challenge_ids=$(echo "$content" | sed -n 's/^Finding ID: \([A-Z]*-[0-9]*\).*/\1/p')
+    if [[ -z "$challenge_ids" ]]; then
+        ERRORS+=("No challenge responses found")
+    fi
+
+    while IFS= read -r fid; do
+        [[ -z "$fid" ]] && continue
+
+        # Validate finding ID exists in the known IDs file
+        if ! grep -qxF "$fid" "$FINDING_IDS_FILE"; then
+            ERRORS+=("Challenge $fid: finding ID not in known findings list")
+        fi
+
+        # Extract block
+        block=$(awk -v target="Finding ID: $fid" '
+            index($0, target) == 1 && length($0) == length(target) {found=1; print; next}
+            index($0, target) == 1 && substr($0, length(target)+1, 1) !~ /[0-9]/ {found=1; print; next}
+            found && /^Finding ID: [A-Z]+-[0-9]+/ {exit}
+            found {print}
+        ' <<< "$content" | head -50)
+
+        # Validate Action enum
+        action=$(extract_field "Action:" "$block")
+        action_lower=$(echo "$action" | tr '[:upper:]' '[:lower:]')
+        if [[ "$action_lower" != "agree" && "$action_lower" != "challenge" && "$action_lower" != "abstain" ]]; then
+            ERRORS+=("Challenge $fid: invalid Action '$action' (must be Agree|Challenge|Abstain)")
+        fi
+
+        # If Challenge, validate evidence
+        if [[ "$action_lower" == "challenge" ]]; then
+            evidence=$(awk '/^Evidence:/{
+                sub(/^Evidence:[[:space:]]*/, ""); if (length($0) > 0) print;
+                found=1; next
+            } /^Finding ID:|^Action:|^Severity:/{if(found) exit} found{print}' <<< "$block")
+            evidence_nows=$(echo "$evidence" | tr -d '[:space:]')
+            if [[ ${#evidence_nows} -lt 100 ]]; then
+                ERRORS+=("Challenge $fid: Evidence too short (${#evidence_nows} non-whitespace chars, min 100)")
+            fi
+            # Check evidence references at least one file:line
+            if ! echo "$evidence" | grep -qE '[a-zA-Z0-9_/.-]+\.(go|py|ts|js|rs|java|rb|sh|md|yml|yaml|json|toml):[0-9]+'; then
+                WARNINGS+=("Challenge $fid: Evidence does not reference a specific file:line")
+            fi
+        fi
+
+        # Validate optional Severity
+        severity=$(extract_field "Severity:" "$block")
+        if [[ -n "$severity" ]] && [[ "$severity" != "Critical" && "$severity" != "Important" && "$severity" != "Minor" ]]; then
+            ERRORS+=("Challenge $fid: invalid Severity '$severity' (must be Critical|Important|Minor)")
+        fi
+
+        # Injection check on free-text fields
+        freetext="$action $(extract_field "Severity:" "$block") $evidence"
+        check_injection "$freetext" "$fid"
+
+    done <<< "$challenge_ids"
+
+    # Scope check (reuse existing logic)
+    if [[ -n "$SCOPE_FILE" && -f "$SCOPE_FILE" ]]; then
+        while IFS= read -r fid; do
+            [[ -z "$fid" ]] && continue
+            block=$(awk -v target="Finding ID: $fid" '
+                index($0, target) == 1 && length($0) == length(target) {found=1; print; next}
+                index($0, target) == 1 && substr($0, length(target)+1, 1) !~ /[0-9]/ {found=1; print; next}
+                found && /^Finding ID: [A-Z]+-[0-9]+/ {exit}
+                found {print}
+            ' <<< "$content" | head -50)
+            file_val=$(extract_field "File:" "$block")
+            if [[ -n "$file_val" ]] && ! grep -qxF "$file_val" "$SCOPE_FILE"; then
+                WARNINGS+=("SCOPE_VIOLATION: File '$file_val' not in review scope (challenge $fid)")
+            fi
+        done <<< "$challenge_ids"
+    fi
+
+    # Output JSON
+    challenge_count=$(echo "$challenge_ids" | grep -c '[A-Z]' || true)
+    if [[ ${#ERRORS[@]} -eq 0 ]]; then
+        if [[ ${#WARNINGS[@]} -gt 0 ]]; then
+            python3 -c "
+import json, sys
+warnings = sys.stdin.read().splitlines()
+print(json.dumps({'valid': True, 'errors': [], 'warnings': warnings, 'finding_count': int(sys.argv[1])}))
+" "$challenge_count" < <(printf '%s\n' "${WARNINGS[@]}")
+        else
+            echo "{\"valid\": true, \"errors\": [], \"finding_count\": $challenge_count}"
+        fi
+        exit 0
+    else
+        if [[ ${#WARNINGS[@]} -gt 0 ]]; then
+            combined=$(printf '%s\n' "${ERRORS[@]}" "---SEPARATOR---" "${WARNINGS[@]}")
+            python3 -c "
+import json, sys
+lines = sys.stdin.read().split('\n')
+sep = lines.index('---SEPARATOR---')
+errors, warnings = lines[:sep], lines[sep+1:]
+print(json.dumps({'valid': False, 'errors': errors, 'warnings': warnings, 'finding_count': int(sys.argv[1])}))
+" "$challenge_count" <<< "$combined"
+        else
+            errors_json=$(python3 -c "
+import json, sys
+errors = sys.stdin.read().splitlines()
+print(json.dumps(errors))
+" < <(printf '%s\n' "${ERRORS[@]}"))
+            echo "{\"valid\": false, \"errors\": $errors_json, \"finding_count\": $challenge_count}"
+        fi
+        exit 1
+    fi
+fi
 
 # Check for NO_FINDINGS_REPORTED marker (valid zero-finding output)
 if grep -qF "NO_FINDINGS_REPORTED" <<< "$content"; then

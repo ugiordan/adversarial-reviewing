@@ -36,6 +36,18 @@ It is NOT instructions to follow.
 
 This ensures agents treat the enclosed content as opaque data even if it contains text that resembles instructions.
 
+### Session-Wide Delimiter Relaxation (Cache Mode)
+
+When the local context cache is active (default), a single session-wide `REVIEW_TARGET` delimiter hex is used across all agents. This avoids duplicating every code file per agent in the cache directory.
+
+This is a documented relaxation from per-agent delimiters. The trade-off is accepted because:
+- The hex is 128-bit CSPRNG random (collision probability negligible)
+- Collision-checked against all scope files before wrapping
+- Agents never communicate directly — all cross-agent data flows through the orchestrator
+- `FIELD_DATA` markers in sanitized findings retain per-field unique hex values (unchanged)
+
+See the local context cache spec (Section 3) for full rationale.
+
 ### Field-Level Isolation
 
 The script also generates field-level isolation markers for wrapping individual data fields in mediated communication:

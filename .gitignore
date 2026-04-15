@@ -24,6 +24,9 @@ __pycache__/
 # Temp
 /tmp/
 
+# Local cache metadata
+.adversarial-review/
+
 # Internal planning docs (not published)
 /docs/specs/
 /docs/plans/

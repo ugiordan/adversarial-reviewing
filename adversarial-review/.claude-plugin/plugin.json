@@ -1,6 +1,6 @@
 {
   "name": "adversarial-review",
-  "description": "Multi-agent adversarial code review with isolated specialists, programmatic validation, and consensus-based findings.",
+  "description": "Multi-agent adversarial code review with isolated specialists, programmatic validation, and evidence-based resolution.",
   "version": "1.0.0",
   "author": {
     "name": "Ugo Giordano",

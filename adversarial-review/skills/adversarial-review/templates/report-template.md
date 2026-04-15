@@ -20,6 +20,7 @@ Summary of the review including:
 **Review Date:** YYYY-MM-DD
 **Specialists:** [list of active specialists]
 **Files Reviewed:** [count] files
+**Agreement Level:** [Full Consensus | Strong Agreement | Partial Agreement | Split Decision | No Agreement] ([N]/[N] findings unanimous, [N] majority, [N] escalated, [N] dismissed)
 **Configuration:** [iterations] iterations, convergence [achieved/not achieved], budget [used/total]
 
 | Severity | Count |
@@ -28,6 +29,19 @@ Summary of the review including:
 | Important| N     |
 | Minor    | N     |
 | **Total**| **N** |
+```
+
+**Agreement Level values:**
+- **Full Consensus**: All findings unanimously agreed upon by all specialists
+- **Strong Agreement**: >75% consensus/majority findings, no escalated disagreements
+- **Partial Agreement**: Mix of consensus, majority, and escalated findings
+- **Split Decision**: >25% of findings escalated or dismissed, significant specialist disagreement
+- **No Agreement**: Majority of findings unresolved, specialists fundamentally disagree
+
+When the agreement level is **Split Decision** or **No Agreement**, add a prominent note after the severity table:
+
+```
+> **Note:** Specialists significantly disagreed on this review. [N] findings were resolved by majority override and [N] remain escalated. See Sections 4-6 for the full positions. Treat majority findings with reduced confidence.
 ```
 
 ## Section 2: Review Configuration

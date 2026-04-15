@@ -12,53 +12,72 @@ Each specialist independently reviews the code and iteratively refines their fin
 
 ## Procedure
 
-### Step 1: Generate Isolation Delimiters
+### Step 1: Agent Prompt Composition
 
-Run `scripts/generate-delimiters.sh` to produce unique random delimiters for wrapping the code under review. Each agent receives its own delimiter pair to prevent cross-contamination.
+For each active specialist, compose a minimal prompt (~2,825 tokens) containing:
 
-```bash
-scripts/generate-delimiters.sh <code_file>
-```
+| Content | Source | ~Tokens |
+|---------|--------|---------|
+| Role definition | `agents/<specialist>.md` (includes inoculation) | ~1,500 |
+| Inoculation paragraphs (3) | Already in role files | ~500 |
+| Delimiter values | Session-wide hex from cache initialization (Step 3) | ~125 |
+| Finding template | `templates/finding-template.md` inline | ~500 |
+| Cache navigation block | See below | ~200 |
 
-The script outputs start/end delimiters in the format `===REVIEW_TARGET_<hex>_START===` / `===REVIEW_TARGET_<hex>_END===`. See `protocols/input-isolation.md` for full specification.
+**Cache navigation block (included in prompt):**
+
+> ## Cache Access
+>
+> Your review materials are at: {CACHE_DIR}
+>
+> Read `{CACHE_DIR}/navigation.md` FIRST — it tells you what's available and what to read.
+>
+> ## Mandatory Reads
+> Read these files before producing findings:
+> - {CACHE_DIR}/code/{file1}
+> - {CACHE_DIR}/code/{file2}
+> - ...
+>
+> Rules:
+> - Read code files from `code/` before making claims about them
+> - Use repo-relative paths in findings (e.g., `src/auth/handler.go`), not cache paths
+> - Read references on iteration 2+
+
+The mandatory reads list includes all scope files to ensure agents read code even if they skip `navigation.md`.
 
 ### Step 2: Spawn Agents in Parallel
 
-For each active specialist, spawn an agent with **isolated context** containing:
+Dispatch each agent with the minimal prompt from Step 1. Agents run in **parallel** within each iteration. Each agent's first action is to Read `navigation.md`, then Read code files from the cache.
 
-1. **Role prompt** — the specialist's role file from `agents/<specialist>.md`, including inoculation instructions
-2. **Self-refinement protocol** — instructions to review, then self-critique
-3. **Isolated code** — the code under review wrapped in the agent's unique random delimiters, with anti-instruction wrapper text
-4. **Finding template** — `templates/finding-template.md` defining the required output schema
+### Step 3: Collect and Cache Output
 
-Each agent operates independently. Agents within the same iteration run in **parallel** — do not serialize agent calls within an iteration.
+Gather raw output from each agent.
 
-### Step 3: Collect Initial Output
+### Step 4: Validate, Sanitize, and Cache Findings
 
-Gather the raw output from each agent after their first pass.
-
-### Step 4: Validate Output
-
-Run `scripts/validate-output.sh` on each agent's output.
+Run `manage-cache.sh populate-findings` on each agent's output:
 
 ```bash
-scripts/validate-output.sh <agent_output_file> <role_prefix>
+CACHE_DIR=$CACHE_DIR scripts/manage-cache.sh populate-findings <agent_name> <role_prefix> <output_file> --scope <scope_file>
 ```
 
-**If validation fails:**
-1. Spawn a **fresh agent** (new context, no memory of the failed attempt) with the validation error message appended to the prompt
-2. Allow up to **2 validation attempts** per agent per iteration
-3. If both attempts fail, exclude the agent's findings for this iteration and log the failure
+This single call replaces the separate `validate-output.sh` invocation. It:
+1. Validates output format and scope compliance
+2. Applies sanitized document template (field isolation + provenance markers)
+3. Splits into individual finding files
+4. Generates summary table
 
-**If the agent reports zero findings**, the output must contain the `NO_FINDINGS_REPORTED` marker. An empty response without this marker is a validation failure.
+**If validation fails:** Same as before — spawn a **fresh agent** with the validation error appended to the prompt. Up to **2 validation attempts** per agent per iteration.
+
+**If the agent reports zero findings:** The output must contain the `NO_FINDINGS_REPORTED` marker. An empty response without this marker is a validation failure.
 
 ### Step 5: Self-Refinement Re-prompt
 
-Re-prompt each agent with validated output from their own prior iteration:
+Re-prompt each agent with:
 
-> "Review your own findings. What did you miss? What's a false positive? Refine."
+> "Review your prior findings at `{CACHE_DIR}/findings/<agent>/sanitized.md`. What did you miss? What's a false positive? Refine."
 
-The agent sees only its own previous findings — never another agent's output. This is a self-critique loop, not a debate.
+The agent reads its own prior findings from the cache. The orchestrator does NOT feed prior output back into the prompt.
 
 #### Verification Gate (Iteration 2+)
 
@@ -102,13 +121,15 @@ When reference modules are available (see `scripts/discover-references.sh`), app
 > 3. Do the references identify false positive patterns relevant to
 >    any comments you evaluated?
 
+> Read reference modules from `{CACHE_DIR}/references/` for cross-checking.
+
 ### Step 6: Iterate with Convergence Detection
 
 Repeat Steps 3-5 for up to **3 total iterations** per agent. On iteration 2+, each agent receives its own prior iteration's validated output as context (per Step 5), not a fresh spawn. Subject to these rules:
 
 | Rule | Detail |
 |------|--------|
-| Minimum iterations | **2** — always run, even if output appears stable after iteration 1 |
+| Minimum iterations | **2** — always run, unless the zero-findings early exit applies (see below) |
 | Maximum iterations | **3** (default) — hard cap, proceed to Phase 2 regardless of convergence |
 | Safety hard cap | `MAX_ITERATIONS` (default 4, quick 2, thorough 4) — absolute ceiling. If convergence detection fails to stabilize within this many iterations, force-stop and emit `FORCED_CONVERGENCE` guardrail. See `protocols/guardrails.md`. |
 | Profile overrides | `--quick`: max 2, `--delta`: max 2, `--thorough`: max 3 |
@@ -126,6 +147,14 @@ scripts/detect-convergence.sh <iteration_N_output> <iteration_N_minus_1_output>
 
 **Key invariant:** Convergence is detected by the shell script, **NOT** self-reported by the agent. Never ask an agent "are you done?" or "have you converged?"
 
+**Zero-findings early exit:** If ALL agents report `NO_FINDINGS_REPORTED` after iteration 1, skip iteration 2 and proceed directly to Phase 4 (report) with an "all clear" result. There is no value in asking agents to self-refine zero findings. This saves one full iteration of token consumption across all agents.
+
+After convergence check, update navigation for the next iteration:
+
+```bash
+CACHE_DIR=$CACHE_DIR scripts/manage-cache.sh generate-navigation <iteration+1> 1
+```
+
 ### Step 7: Budget Check
 
 After each iteration, track token consumption:
@@ -142,27 +171,25 @@ If the budget is exceeded:
 
 ### Step 8: Collect Final Findings
 
-After all iterations complete (via convergence, max iterations, or budget exhaustion), collect the **final validated findings** from each agent's last successful iteration.
-
-These findings are the input to Phase 2 (Challenge Round).
+After all iterations complete, the final validated findings for each agent are in the cache at `{CACHE_DIR}/findings/<agent>/sanitized.md`. These are the input to Phase 2 (Challenge Round).
 
 ## Parallel Execution Model
 
 ```
 Iteration 1:
-  Agent A ──┐
-  Agent B ──┼── parallel ──> Validate ──> Collect
-  Agent C ──┘
+  Agent A ──┐                              ┌── populate-findings A
+  Agent B ──┼── parallel (Read from cache) ─┼── populate-findings B ──> Collect
+  Agent C ──┘                              └── populate-findings C
 
 Iteration 2:
-  Agent A (sees own iter-1 output) ──┐
-  Agent B (sees own iter-1 output) ──┼── parallel ──> Validate ──> Convergence check
-  Agent C (sees own iter-1 output) ──┘
+  Agent A (reads own findings from cache) ──┐
+  Agent B (reads own findings from cache) ──┼── parallel ──> populate-findings ──> Convergence check
+  Agent C (reads own findings from cache) ──┘
 
 Iteration 3 (only if not converged):
-  Agent A (sees own iter-2 output) ──┐
-  Agent B (sees own iter-2 output) ──┼── parallel ──> Validate ──> Collect final
-  Agent C (sees own iter-2 output) ──┘
+  Agent A (reads own findings from cache) ──┐
+  Agent B (reads own findings from cache) ──┼── parallel ──> populate-findings ──> Collect final
+  Agent C (reads own findings from cache) ──┘
 ```
 
 ## Error Handling
@@ -181,8 +208,7 @@ Iteration 3 (only if not converged):
 - `protocols/convergence-detection.md` — convergence criteria and iteration bounds
 - `protocols/token-budget.md` — budget tracking and enforcement
 - `protocols/guardrails.md` — guardrail definitions, constants, enforcement behavior
-- `scripts/generate-delimiters.sh` — delimiter generation implementation
-- `scripts/validate-output.sh` — output schema validation
+- `scripts/manage-cache.sh` — cache management and finding validation
 - `scripts/detect-convergence.sh` — convergence detection implementation
 - `scripts/discover-references.sh` — reference module discovery and filtering
 - `scripts/track-budget.sh` — budget tracking implementation

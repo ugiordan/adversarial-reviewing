@@ -15,7 +15,7 @@ ACTION="${1:?Usage: track-budget.sh <init|add|estimate|status> [args]}"
 if [[ -n "${BUDGET_STATE_FILE:-}" ]]; then
     STATE_FILE="$BUDGET_STATE_FILE"
 elif [[ "$ACTION" == "init" ]]; then
-    STATE_FILE=$(mktemp /tmp/adversarial-review-budget-XXXXXXXXXX)
+    STATE_FILE=$(mktemp "${TMPDIR:-/tmp}/adversarial-review-budget-XXXXXXXXXX")
 elif [[ "$ACTION" == "estimate" ]]; then
     STATE_FILE=""  # estimate is a pure calculation, no state needed
 else
@@ -156,6 +156,10 @@ print(json.dumps(result))
         validate_int "$NUM_WORK_ITEMS" "num_work_items"
         validate_int "$IMPACT_GRAPH_TOKENS" "impact_graph_tokens"
         validate_int "$REFERENCE_TOKENS" "reference_tokens"
+        # Prompt overhead: minimal prompt (~2825 tokens) per agent per iteration
+        # Covers: role (~1500) + inoculation (~500) + delimiters (~125) + template (~500) + nav (~200)
+        PROMPT_TOKENS_PER_AGENT=2825
+        prompt_overhead=$((PROMPT_TOKENS_PER_AGENT * NUM_AGENTS * (ITERATIONS + ITERATIONS)))  # phase1 + phase2 iterations
         # Phase 1: agents * ((code + impact_graph) * iterations + reference_tokens * (iterations - 1))
         # References only injected at iteration 2+, so (iterations - 1) factor
         ref_iterations=$((ITERATIONS > 1 ? ITERATIONS - 1 : 0))
@@ -168,23 +172,24 @@ print(json.dumps(result))
         phase34=10000
         # Phase 5: remediation overhead
         phase5=$((NUM_WORK_ITEMS * 15000))
-        total=$((phase1 + phase2 + phase34 + phase5))
+        total=$((prompt_overhead + phase1 + phase2 + phase34 + phase5))
 
         python3 -c "
 import json, sys
 result = {
     'estimated_tokens': int(sys.argv[1]),
-    'phase1': int(sys.argv[2]),
-    'phase2': int(sys.argv[3]),
-    'phase34': int(sys.argv[4]),
-    'phase5_remediation': int(sys.argv[5])
+    'prompt_overhead': int(sys.argv[2]),
+    'phase1': int(sys.argv[3]),
+    'phase2': int(sys.argv[4]),
+    'phase34': int(sys.argv[5]),
+    'phase5_remediation': int(sys.argv[6])
 }
-if sys.argv[6] == 'true':
-    result['impact_graph'] = int(sys.argv[7])
-if int(sys.argv[8]) > 0:
-    result['reference_tokens'] = int(sys.argv[8])
+if sys.argv[7] == 'true':
+    result['impact_graph'] = int(sys.argv[8])
+if int(sys.argv[9]) > 0:
+    result['reference_tokens'] = int(sys.argv[9])
 print(json.dumps(result))
-" "$total" "$phase1" "$phase2" "$phase34" "$phase5" "$DIFF_MODE" "$IMPACT_GRAPH_TOKENS" "$REFERENCE_TOKENS"
+" "$total" "$prompt_overhead" "$phase1" "$phase2" "$phase34" "$phase5" "$DIFF_MODE" "$IMPACT_GRAPH_TOKENS" "$REFERENCE_TOKENS"
         ;;
     status)
         if [[ ! -f "$STATE_FILE" ]]; then

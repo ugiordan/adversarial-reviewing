@@ -1,13 +1,13 @@
 ---
 name: adversarial-review
-description: Multi-agent adversarial review with isolated specialists, programmatic validation, and consensus-based findings. Use for reviewing code, designs, or documentation from multiple perspectives.
+description: Multi-agent adversarial review with isolated specialists, programmatic validation, and evidence-based resolution. Use for reviewing code, designs, or documentation from multiple perspectives.
 ---
 
 # Adversarial Review
 
 ## Overview
 
-This skill spawns multiple specialist sub-agents in fully isolated environments to review code, documentation, or designs from different perspectives. Agents self-refine their findings through internal iteration. The orchestrator mediates all cross-agent communication with programmatic validation via shell scripts — agents never see each other's raw output. All findings require consensus before reaching the user.
+This skill spawns multiple specialist sub-agents in fully isolated environments to review code, documentation, or designs from different perspectives. Agents self-refine their findings through internal iteration. The orchestrator mediates all cross-agent communication with programmatic validation via shell scripts — agents never see each other's raw output. Findings are resolved through evidence-based debate with transparent agreement labeling — the report clearly shows whether findings achieved full consensus, majority agreement, or remain disputed.
 
 **Architecture:** Secured [Blackboard pattern](https://en.wikipedia.org/wiki/Blackboard_%28design_pattern%29) — the sanitized findings pool is the shared blackboard, specialist agents are knowledge sources, and the orchestrator is the controller. Unlike classic Blackboard, all reads/writes are mediated through programmatic validation — agents never access the blackboard directly.
 
@@ -35,11 +35,12 @@ The orchestrator creates tasks dynamically based on the configuration:
 
 - [ ] **Step 1:** Parse invocation flags and resolve scope
 - [ ] **Step 2:** Confirm scope with user (MANDATORY — never skip)
-- [ ] **Step 3:** Phase 1 — Self-refinement (delegate to `phases/self-refinement.md`)
-- [ ] **Step 4:** Phase 2 — Challenge round (delegate to `phases/challenge-round.md`; devil's advocate mode if single-specialist)
-- [ ] **Step 5:** Phase 3 — Resolution (delegate to `phases/resolution.md`; simplified if single-specialist)
-- [ ] **Step 6:** Phase 4 — Report (delegate to `phases/report.md`)
-- [ ] **Step 7:** Phase 5 — Remediation (delegate to `phases/remediation.md`; only when `--fix`)
+- [ ] **Step 3:** Initialize cache (delegate to cache initialization procedure)
+- [ ] **Step 4:** Phase 1 — Self-refinement (delegate to `phases/self-refinement.md`)
+- [ ] **Step 5:** Phase 2 — Challenge round (delegate to `phases/challenge-round.md`; devil's advocate mode if single-specialist)
+- [ ] **Step 6:** Phase 3 — Resolution (delegate to `phases/resolution.md`; simplified if single-specialist)
+- [ ] **Step 7:** Phase 4 — Report (delegate to `phases/report.md`)
+- [ ] **Step 8:** Phase 5 — Remediation (delegate to `phases/remediation.md`; only when `--fix`)
 
 ---
 
@@ -63,7 +64,7 @@ If no specialist flags are provided, activate **all 5 specialists**.
 
 | Flag | Effect |
 |------|--------|
-| `--delta` | Delta mode — re-review only changes since last review. Also overrides max iterations to 2 (matching minimum, so exactly 2 iterations always run). See `protocols/delta-mode.md`. |
+| `--delta` | Delta mode — re-review only changes since last review. Also overrides max iterations to 2 (matching minimum, so exactly 2 iterations always run). See `protocols/delta-mode.md`. When `.adversarial-review/last-cache.json` exists, prompts user to reuse previous cache. |
 | `--save` | Write report to file. Does NOT commit to git. |
 | `--topic <name>` | Override the auto-derived topic name for the review. |
 | `--budget <tokens>` | Override the default 500K token budget. |
@@ -75,24 +76,36 @@ If no specialist flags are provided, activate **all 5 specialists**.
 | `--gap-analysis` | Include coverage gap analysis in triage report (auto-enabled by `--thorough --triage`) |
 | `--update-references` | Run `scripts/update-references.sh` before starting review. If used alone (without files/dirs), runs update and exits. If combined with review flags, runs update then proceeds with review. |
 | `--list-references` | Show all discovered reference modules and exit. Ignores all other flags. |
+| `--keep-cache` | Preserve cache after review. Writes `.adversarial-review/last-cache.json` with session hex + commit SHA. Prints session hex for reuse. |
+| `--reuse-cache <hex>` | Reuse an existing cache by session hex. Validates manifest (SHA-256 per file + commit SHA). Skips code/template/reference population. Findings regenerated. |
 | `--strict-scope` | Reject (not demote) out-of-scope findings and patches |
 | `--fix --dry-run` | Preview remediation without writing anything |
 
 > **Note:** `--strict-scope` is an orchestrator-level flag. `validate-output.sh` always emits scope violations as warnings; the orchestrator decides whether to demote or reject based on `--strict-scope`.
 
+### Flag Interaction: Cache Flags
+
+| Combination | Behavior |
+|------------|----------|
+| `--delta` + `--reuse-cache` | **Mutually exclusive.** Error: "Use --delta for auto-discovery or --reuse-cache for explicit reuse, not both." |
+| `--diff` + `--reuse-cache` | **Mutually exclusive.** Error: "--diff creates a minimal cache from changed files; --reuse-cache expects a complete cache." |
+| `--delta` + `--keep-cache` | Composable. Reuses previous cache if confirmed, preserves after completion. |
+| `--reuse-cache` + `--keep-cache` | Composable. Reuses specified cache and preserves after completion. |
+| `--diff` + `--delta` | Composable. Delta discovers previous cache; diff limits scope to changed files. |
+
 ### Preset Profiles
 
 | Flag | Specialists | Iterations | Budget |
 |------|------------|------------|--------|
-| `--quick` | 2 (Security + Correctness) | 2 (min=max, convergence check runs but early exit cannot trigger) | 200K |
+| `--quick` | 2 (Security + Correctness) | 2 (min=max, convergence check runs but early exit cannot trigger) | 150K |
 | `--thorough` | 5 (all) | 3 | 800K |
-| *(default)* | All specified or all 5 | 3 (convergence exit) | 500K |
+| *(default)* | All specified or all 5 | 3 (convergence exit) | 350K |
 
 ### Defaults
 
 - **Specialists:** All 5 (if none specified)
 - **Iterations:** 3 self-refinement rounds (with convergence-based early exit, minimum 2)
-- **Budget:** 500K tokens
+- **Budget:** 350K tokens
 - **Topic:** Auto-derived from scope (primary directory or file name)
 
 ---
@@ -188,38 +201,94 @@ See `protocols/guardrails.md` for the `PRE_FLIGHT_WARN_THRESHOLD` and `PRE_FLIGH
 
 ---
 
-## Step 3: Phase 1 — Self-Refinement
+## Step 3: Initialize Cache
+
+After scope confirmation and pre-flight budget check, initialize the local context cache before dispatching any agents.
+
+### Cache Initialization Procedure
+
+1. **Generate session hex:** Run `openssl rand -hex 16`. This identifies the cache session (separate from delimiter hex).
+2. **Initialize cache directory:**
+   ```bash
+   scripts/manage-cache.sh init <session_hex>
+   ```
+   Capture `CACHE_DIR` from the JSON output (`{"cache_dir": "<path>", "session_hex": "<hex>"}`).
+3. **Generate delimiter hex:** Run `scripts/generate-delimiters.sh` to produce a session-wide `REVIEW_TARGET` delimiter hex. Collision-check against all scope files.
+4. **Populate code:**
+   ```bash
+   CACHE_DIR=$CACHE_DIR scripts/manage-cache.sh populate-code <scope_file> <delimiter_hex>
+   ```
+5. **Populate templates:**
+   ```bash
+   CACHE_DIR=$CACHE_DIR scripts/manage-cache.sh populate-templates
+   ```
+6. **Populate references:**
+   ```bash
+   CACHE_DIR=$CACHE_DIR scripts/manage-cache.sh populate-references
+   ```
+7. **Generate navigation:**
+   ```bash
+   CACHE_DIR=$CACHE_DIR scripts/manage-cache.sh generate-navigation 1 1
+   ```
+8. **Set cleanup trap** (via Bash tool):
+   ```bash
+   trap "CACHE_DIR='$CACHE_DIR' '$SCRIPT_DIR/manage-cache.sh' cleanup" EXIT HUP INT TERM
+   ```
+   **Skip this step if `--keep-cache` is specified.** Note: in agent-tool execution models (e.g., Claude Code Bash tool), the trap may not persist across invocations. The `cleanup_stale` function in `manage-cache.sh` provides a reliability backstop.
+9. **Export `CACHE_DIR`** — all subsequent steps use this path.
+
+**Session-wide delimiters:** In cache mode, a single `REVIEW_TARGET` delimiter hex is shared across all agents (see `protocols/input-isolation.md` Session-Wide Delimiter Relaxation). `FIELD_DATA` markers in sanitized findings retain per-field unique hex values.
+
+**Failure:** If any step 2-7 fails, abort the review with error. See the Cache Errors table in Error Handling.
+
+### `--reuse-cache <hex>` Override
+
+When `--reuse-cache` is specified, replace steps 2-7 above with:
+
+1. Validate hex: must match `^[a-f0-9]{32}$`.
+2. Scan `$TMPDIR` for directories matching `adversarial-review-cache-<hex>-*`.
+3. Run `scripts/manage-cache.sh validate-cache <path>`. If invalid, abort with mismatch details.
+4. Set `CACHE_DIR` to the resolved path. Skip all populate steps.
+5. Clear findings: `rm -rf "$CACHE_DIR/findings/"*` then `mkdir -p "$CACHE_DIR/findings"`.
+6. Regenerate navigation: `scripts/manage-cache.sh generate-navigation 1 1`.
+
+### `--delta` Auto-Discovery
+
+When `--delta` is specified, check for `.adversarial-review/last-cache.json` in the repo root before cache initialization:
+
+- **If found:** Display the session hex and commit SHA. Ask user to confirm reuse.
+- **If confirmed:** Follow the `--reuse-cache` flow above with the discovered hex.
+- **If declined or not found:** Proceed with normal cache initialization.
+
+### `--keep-cache` Post-Review
+
+After Phase 4 (Report) completes:
+
+1. Write `.adversarial-review/last-cache.json`:
+   ```json
+   {"session_hex": "<hex>", "commit_sha": "<HEAD>"}
+   ```
+2. Print: "Cache preserved. Reuse with `--reuse-cache <hex>`"
+
+---
+
+## Step 4: Phase 1 — Self-Refinement
 
 Delegate to `phases/self-refinement.md`.
 
 ### Agent Dispatch Procedure
 
-For each active specialist:
+Agent dispatch uses the local context cache (initialized in Step 3). For the detailed cache-based prompt composition and iteration flow, see `phases/self-refinement.md`.
 
-1. **Generate delimiters** — Run `scripts/generate-delimiters.sh` on the input files to produce unique random delimiters for wrapping code. Each agent receives its own delimiter pair. See `protocols/input-isolation.md`.
+Summary:
 
-   ```bash
-   scripts/generate-delimiters.sh <code_file>
-   ```
+1. **Compose minimal prompt (~2,825 tokens)** — role definition, delimiter values, finding template, and cache navigation block pointing agents to `{CACHE_DIR}`. Agents read code from the cache via the Read tool.
 
-2. **Compose agent prompt** — Assemble the full prompt containing:
-   - The specialist's role prompt from `agents/<specialist>.md` (includes inoculation instructions)
-   - The code under review wrapped in the generated delimiters
-   - Reference to `templates/finding-template.md` for output format
-   - Self-refinement instructions from the phase file
-   - **Iteration 2+ only:** Reference modules discovered by `scripts/discover-references.sh`, each wrapped in `REFERENCE_DATA` delimiters with anti-instruction text. See `protocols/input-isolation.md`.
-   - **Iteration 2+ only:** Verification gate instructions (see `phases/self-refinement.md`)
-   - **Iteration 2+ only:** Reference cross-check instructions (see `phases/self-refinement.md`)
+2. **Spawn agents in parallel** — dispatch via the host platform's subagent mechanism. Each agent reads `navigation.md` first, then code files from the cache.
 
-3. **Spawn agent** — Dispatch via the host platform's subagent mechanism (e.g., Agent tool in Claude Code, agent spawn in other platforms). Each agent runs in isolation — agents never see each other's output during this phase.
+3. **Validate and cache findings** — run `manage-cache.sh populate-findings` on each agent's output (replaces separate `validate-output.sh` invocation). This validates, sanitizes, splits findings, and generates the summary table.
 
-4. **Validate output** — Run `scripts/validate-output.sh` on each agent's response to ensure structural compliance with the finding template. Pass the scope file generated in Step 2.
-
-   ```bash
-   scripts/validate-output.sh <agent_output_file> <role_prefix> --scope <scope_file>
-   ```
-
-5. **Track budget** — After each agent completes, update the budget tracker with per-agent tracking.
+4. **Track budget** — after each agent completes, update the budget tracker with per-agent tracking.
 
    ```bash
    scripts/track-budget.sh add <iteration_char_count> --agent <role_prefix> --per-agent-cap <cap>
@@ -249,7 +318,7 @@ See `protocols/guardrails.md` for the `SEVERITY_INFLATION_CRITICAL_THRESHOLD` an
 
 ---
 
-## Step 4: Phase 2 — Challenge Round
+## Step 5: Phase 2 — Challenge Round
 
 Delegate to `phases/challenge-round.md`.
 
@@ -259,15 +328,17 @@ In this phase, specialists challenge each other's findings through structured de
 
 ---
 
-## Step 5: Phase 3 — Resolution
+## Step 6: Phase 3 — Resolution
 
 Delegate to `phases/resolution.md`.
 
 The orchestrator synthesizes challenges and defenses, applies consensus rules, and produces the final validated finding set. Convergence detection uses `scripts/detect-convergence.sh`. Deduplication uses `scripts/deduplicate.sh`.
 
+**Cache interaction:** Phase 3 reads deduplicated findings from `{CACHE_DIR}/findings/`. No cache writes — deduplication and ranking operate on the finding files already in the cache.
+
 ---
 
-## Step 6: Phase 4 — Report
+## Step 7: Phase 4 — Report
 
 Delegate to `phases/report.md`.
 
@@ -289,6 +360,8 @@ If `--save` was specified, write the report to `docs/reviews/YYYY-MM-DD-<topic>-
 
 **NEVER auto-commit.** The `--save` flag writes the file only.
 
+**Cache interaction:** The final report reads from `{CACHE_DIR}/findings/` for all consensus findings. If `--keep-cache` is specified, write `.adversarial-review/last-cache.json` with session hex and commit SHA before cleanup.
+
 ---
 
 ## Single-Specialist Mode
@@ -303,7 +376,7 @@ When only one specialist is active (e.g., `--security` alone), the full multi-ag
 
 ---
 
-## Step 7: Phase 5 — Remediation
+## Step 8: Phase 5 — Remediation
 
 **Only when `--fix` is specified.** Delegate to `phases/remediation.md`.
 
@@ -339,6 +412,8 @@ The remediation phase has **four mandatory confirmation gates**:
 
 The orchestrator NEVER proceeds past a gate without explicit user approval.
 
+**Cache interaction:** Unless `--keep-cache` is specified, the cleanup trap (set during cache initialization in Step 3) removes the cache directory. If `--keep-cache` is active, the trap is skipped and the cache is preserved for future `--reuse-cache` use.
+
 ---
 
 ## Error Handling
@@ -361,6 +436,19 @@ The orchestrator NEVER proceeds past a gate without explicit user approval.
 | No shell execution available | Fall back to LLM-based validation with disclaimer in report |
 | All findings dismissed in challenge | Report with "all clear" executive summary |
 
+### Cache Errors
+
+| Scenario | Response |
+|----------|----------|
+| `manage-cache.sh init` fails | Abort review with error |
+| `populate-code` fails (collision, missing file) | Abort review — cache integrity cannot be guaranteed |
+| `populate-templates` or `populate-references` fails | Abort review — agents need templates and references |
+| `populate-findings` fails | Spawn fresh agent with error, max 2 retries. Exclude agent if retries exhausted. |
+| `validate-cache` fails on `--reuse-cache` | Abort with mismatch details |
+| `generate-navigation` fails | Non-fatal warning — agents use mandatory reads list from prompt |
+| Cache directory disappears mid-review | Abort review — unrecoverable |
+| `last-cache.json` missing on `--delta` | Treat as not found — create new cache, inform user |
+
 ---
 
 ## Task Tracking
@@ -369,23 +457,24 @@ Create tasks dynamically based on specialist count and phase progression. Exampl
 
 ```
 Task: Parse invocation and resolve scope          [Step 1-2]
-Task: SEC self-refinement (iteration 1)            [Step 3]
-Task: PERF self-refinement (iteration 1)           [Step 3]
-Task: QUAL self-refinement (iteration 1)           [Step 3]
-Task: CORR self-refinement (iteration 1)           [Step 3]
-Task: ARCH self-refinement (iteration 1)           [Step 3]
-Task: SEC self-refinement (iteration 2)            [Step 3]
-Task: PERF self-refinement (iteration 2)           [Step 3]
-Task: QUAL self-refinement (iteration 2)           [Step 3]
-Task: CORR self-refinement (iteration 2)           [Step 3]
-Task: ARCH self-refinement (iteration 2)           [Step 3]
-Task: Challenge round                              [Step 4]
-Task: Resolution                                   [Step 5]
-Task: Final report                                 [Step 6]
-Task: Classify findings (jira/chore/blocked)       [Step 7, --fix only]
-Task: Draft Jira tickets                           [Step 7, --fix only]
-Task: Implement fixes (per work item)              [Step 7, --fix only]
-Task: Propose PRs                                  [Step 7, --fix only]
+Task: Initialize cache                             [Step 3]
+Task: SEC self-refinement (iteration 1)            [Step 4]
+Task: PERF self-refinement (iteration 1)           [Step 4]
+Task: QUAL self-refinement (iteration 1)           [Step 4]
+Task: CORR self-refinement (iteration 1)           [Step 4]
+Task: ARCH self-refinement (iteration 1)           [Step 4]
+Task: SEC self-refinement (iteration 2)            [Step 4]
+Task: PERF self-refinement (iteration 2)           [Step 4]
+Task: QUAL self-refinement (iteration 2)           [Step 4]
+Task: CORR self-refinement (iteration 2)           [Step 4]
+Task: ARCH self-refinement (iteration 2)           [Step 4]
+Task: Challenge round                              [Step 5]
+Task: Resolution                                   [Step 6]
+Task: Final report                                 [Step 7]
+Task: Classify findings (jira/chore/blocked)       [Step 8, --fix only]
+Task: Draft Jira tickets                           [Step 8, --fix only]
+Task: Implement fixes (per work item)              [Step 8, --fix only]
+Task: Propose PRs                                  [Step 8, --fix only]
 ```
 
 Update task status as each completes. For single-specialist mode, Phase 2 runs in devil's advocate mode (not skipped). Phase 5 tasks are only created when `--fix` is specified.
@@ -498,6 +587,7 @@ skills/adversarial-review/
     track-budget.sh                     # Token budget tracking
     discover-references.sh              # Reference module discovery and filtering
     update-references.sh                # Reference module auto-update
+    manage-cache.sh                   # Cache lifecycle: init, populate, validate, cleanup
   templates/
     finding-template.md                 # Required output format for findings
     challenge-response-template.md      # Challenge/defense exchange format
