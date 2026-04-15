@@ -38,6 +38,10 @@ sub-agents for each specialist and execute the following phases:
 - **Phase 5 -- Remediation** (optional, with `--fix`): Generate and apply
   patches for confirmed findings.
 
+- **Triage mode** (`--triage`): Specialists evaluate external review comments
+  instead of finding issues. Use `validate-triage-output.sh` for output validation.
+  Convergence detection uses `detect-convergence.sh --triage`.
+
 ### Script References
 
 All scripts use the `$AR_HOME/` prefix:
@@ -47,6 +51,9 @@ All scripts use the `$AR_HOME/` prefix:
 - `bash $AR_HOME/scripts/deduplicate.sh` -- deduplicate findings
 - `bash $AR_HOME/scripts/track-budget.sh` -- track token budget consumption
 - `bash $AR_HOME/scripts/generate-delimiters.sh` -- generate unique delimiters
+- `bash $AR_HOME/scripts/build-impact-graph.sh` -- build change-impact graph from git diff
+- `bash $AR_HOME/scripts/parse-comments.sh` -- normalize external review comments
+- `bash $AR_HOME/scripts/validate-triage-output.sh` -- validate triage output format
 
 ## Degraded Single-Agent Mode
 
@@ -86,6 +93,10 @@ Mode flags:
 - `--quick` -- Reduced iteration count for faster reviews
 - `--thorough` -- Increased iteration count for deeper analysis
 - `--budget <tokens>` -- Set token budget cap
+- `--diff` -- Enable change-impact analysis (diff + caller/callee graph)
+- `--diff --range <range>` -- Specify git commit range for diff analysis
+- `--triage <source>` -- Evaluate external review comments (pr:<N>, file:<path>, -)
+- `--gap-analysis` -- Include coverage gap analysis in triage report
 
 ## Report Save Path
 
@@ -118,3 +129,5 @@ Companion files in `$AR_HOME/`:
 
 - bash 4.0+
 - python3
+- git (for `--diff` change-impact analysis)
+- GitHub MCP tools (optional, for `--triage pr:<N>`)

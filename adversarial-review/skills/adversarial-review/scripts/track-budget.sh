@@ -98,36 +98,47 @@ print(json.dumps({'limit': limit, 'consumed': consumed, 'remaining': remaining, 
 " "$limit" "$new_consumed" "$remaining" "$tokens" "$exceeded" "$STATE_FILE"
         ;;
     estimate)
-        NUM_AGENTS="${2:?Usage: track-budget.sh estimate <num_agents> <code_tokens> <iterations> [num_work_items]}"
+        # Parse optional --diff flag
+        DIFF_MODE=false
+        if [[ "${2:-}" == "--diff" ]]; then
+            DIFF_MODE=true
+            shift
+        fi
+        NUM_AGENTS="${2:?Usage: track-budget.sh estimate [--diff] <num_agents> <code_tokens> <iterations> [num_work_items] [impact_graph_tokens]}"
         CODE_TOKENS="${3:?}"
         ITERATIONS="${4:?}"
         NUM_WORK_ITEMS="${5:-0}"
+        IMPACT_GRAPH_TOKENS="${6:-0}"
         validate_int "$NUM_AGENTS" "num_agents"
         validate_int "$CODE_TOKENS" "code_tokens"
         validate_int "$ITERATIONS" "iterations"
         validate_int "$NUM_WORK_ITEMS" "num_work_items"
-        # Phase 1: agents * code_tokens * iterations (self-refinement)
-        phase1=$((NUM_AGENTS * CODE_TOKENS * ITERATIONS))
+        validate_int "$IMPACT_GRAPH_TOKENS" "impact_graph_tokens"
+        # Phase 1: agents * (code_tokens + impact_graph) * iterations
+        phase1=$((NUM_AGENTS * (CODE_TOKENS + IMPACT_GRAPH_TOKENS) * ITERATIONS))
         # Phase 2: agents * (agents * avg_findings * finding_size) * iterations
         avg_findings=5
-        finding_size=500  # tokens per finding
+        finding_size=500
         phase2=$((NUM_AGENTS * NUM_AGENTS * avg_findings * finding_size * ITERATIONS))
         # Phase 3 + 4: fixed overhead
         phase34=10000
-        # Phase 5: remediation overhead (only if work items specified)
+        # Phase 5: remediation overhead
         phase5=$((NUM_WORK_ITEMS * 15000))
         total=$((phase1 + phase2 + phase34 + phase5))
 
         python3 -c "
 import json, sys
-print(json.dumps({
+result = {
     'estimated_tokens': int(sys.argv[1]),
     'phase1': int(sys.argv[2]),
     'phase2': int(sys.argv[3]),
     'phase34': int(sys.argv[4]),
     'phase5_remediation': int(sys.argv[5])
-}))
-" "$total" "$phase1" "$phase2" "$phase34" "$phase5"
+}
+if sys.argv[6] == 'true':
+    result['impact_graph'] = int(sys.argv[7])
+print(json.dumps(result))
+" "$total" "$phase1" "$phase2" "$phase34" "$phase5" "$DIFF_MODE" "$IMPACT_GRAPH_TOKENS"
         ;;
     status)
         if [[ ! -f "$STATE_FILE" ]]; then

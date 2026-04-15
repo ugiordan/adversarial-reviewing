@@ -1,0 +1,3 @@
+src/auth/login.py:42 - SQL injection in user search endpoint
+pkg/reconciler/component.go:155 - Early return before baseline reset
+General comment: Consider using dependency injection for testability

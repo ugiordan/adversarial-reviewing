@@ -6,6 +6,13 @@
 
 set -euo pipefail
 
+# Parse optional --triage flag
+TRIAGE_MODE=false
+if [[ "${1:-}" == "--triage" ]]; then
+    TRIAGE_MODE=true
+    shift
+fi
+
 if ! command -v python3 &>/dev/null; then
     echo '{"error": "python3 is required but not found"}' >&2
     exit 2
@@ -45,8 +52,30 @@ extract_signature() {
     done < "$tmpfile" | sort
 }
 
-CURRENT_SIG=$(extract_signature "$CURRENT")
-PREVIOUS_SIG=$(extract_signature "$PREVIOUS")
+# Extract Triage ID + Verdict pairs for triage mode
+extract_triage_signature() {
+    local file="$1"
+    local tmpfile
+    tmpfile=$(mktemp "$CONVERGENCE_TMPDIR/triage_ids_XXXXXXXXXX")
+    sed -n 's/^Triage ID: \(TRIAGE-[A-Z]*-[0-9]*\).*/\1/p' "$file" | sort > "$tmpfile"
+    while IFS= read -r tid; do
+        [[ -z "$tid" ]] && continue
+        verdict=$(awk -v target="Triage ID: $tid" '
+            index($0, target) == 1 {found=1; next}
+            found && /^Triage ID:/ {exit}
+            found && /^Verdict:/ {print; exit}
+        ' "$file" | sed -n 's/^Verdict: *\([A-Za-z-]*\).*/\1/p' | head -1)
+        echo "$tid:$verdict"
+    done < "$tmpfile" | sort
+}
+
+if [[ "$TRIAGE_MODE" == true ]]; then
+    CURRENT_SIG=$(extract_triage_signature "$CURRENT")
+    PREVIOUS_SIG=$(extract_triage_signature "$PREVIOUS")
+else
+    CURRENT_SIG=$(extract_signature "$CURRENT")
+    PREVIOUS_SIG=$(extract_signature "$PREVIOUS")
+fi
 
 if [[ "$CURRENT_SIG" == "$PREVIOUS_SIG" ]]; then
     echo '{"converged": true, "added": [], "removed": []}'

@@ -1,0 +1,11 @@
+Triage ID: TRIAGE-CORR-001
+External Comment ID: EXT-001
+Specialist: Correctness Verifier
+Verdict: Fix
+Confidence: High
+Severity-If-Fix: Important
+File: pkg/reconciler/component.go
+Lines: 155-158
+Comment Summary: Early return before baseline reset leaves stale conditions
+Analysis: The early return at line 155 exits ReconcileComponent when disabled. SetCondition and ResetBaseline are called after this point and will be skipped.
+Recommended Action: Move ResetBaseline call before the disabled check.
