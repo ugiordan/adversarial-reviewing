@@ -1768,7 +1768,24 @@
 <p>Adversarial Review orchestrates independent specialist agents who review code or strategy documents from different perspectives, debate their findings through structured challenge rounds with evidence-based rebuttals, and surface validated findings with transparent agreement labeling.</p>
 <p>Unlike single-pass review tools, findings must survive cross-agent scrutiny before reaching the final report. This reduces false positives and catches issues that single-perspective reviews miss.</p>
 <h2 id="how-it-works">How It Works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h2>
-<p>The review runs in 5 phases. Specialists first work independently, refining their findings through multiple iterations until convergence. Then they challenge each other's findings with evidence-based rebuttals. The orchestrator resolves disagreements by classifying agreement levels (unanimous, majority, escalated). The final report shows exactly where specialists agreed and disagreed, with transparent labeling. Phase 5 (remediation) is optional and only available for code reviews.</p>
+<p>The review runs in 5 phases:</p>
+<ol>
+<li>
+<p><strong>Self-Refinement.</strong> Each specialist agent runs independently in its own isolated context. It reads the code or strategy, produces findings, then iterates 2-3 times, refining its analysis until the finding set stabilizes (convergence detection). Agents don't see each other's work at this stage. Reference modules (OWASP, ASVS, K8s patterns) are loaded on iteration 2+ for cross-checking.</p>
+</li>
+<li>
+<p><strong>Challenge Round.</strong> Findings from all agents are sanitized (stripped of raw output, validated structurally) and routed to other specialists based on domain affinity. Each agent reviews findings in its domain and can challenge them with a counter-argument citing specific evidence, or concur. The original author then defends or retracts.</p>
+</li>
+<li>
+<p><strong>Resolution.</strong> Duplicate findings are merged. Each finding is classified by agreement level: <em>unanimous</em> (all specialists agree), <em>majority</em> (most agree), <em>escalated</em> (significant disagreement), or <em>dismissed</em> (retracted by author). For strategy reviews, per-document verdicts (Approve/Revise/Reject) are resolved using conservative tiebreak.</p>
+</li>
+<li>
+<p><strong>Report.</strong> The final report is assembled with an executive summary, findings grouped by agreement level, and a remediation roadmap. The report transparently labels which findings had full consensus vs. majority overrides vs. unresolved disputes. Optional: finding persistence tracks new/recurring/resolved across runs.</p>
+</li>
+<li>
+<p><strong>Remediation</strong> (code profile only, <code>--fix</code>). Confirmed findings are classified (Jira-worthy, quick chore, blocked), Jira tickets are drafted, worktree branches created, and fixes implemented. Each fix is verified by re-invoking the original specialist. Every step requires explicit user confirmation.</p>
+</li>
+</ol>
 <pre class="mermaid"><code>flowchart LR
     subgraph Phase1["Phase 1: Self-Refinement"]
         direction TB
@@ -2001,7 +2018,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="April 15, 2026 13:53:26 UTC">April 15, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="April 15, 2026 13:56:55 UTC">April 15, 2026</span>
   </span>
 
     
