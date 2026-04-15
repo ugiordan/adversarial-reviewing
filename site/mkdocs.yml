@@ -1,0 +1,87 @@
+site_name: Adversarial Review
+site_url: https://ugiordan.github.io/adversarial-review
+repo_url: https://github.com/ugiordan/adversarial-review
+repo_name: ugiordan/adversarial-review
+edit_uri: edit/main/site/docs/
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: deep purple
+      accent: amber
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: deep purple
+      accent: amber
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.indexes
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+
+plugins:
+  - search
+  - git-revision-date-localized:
+      enable_creation_date: true
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.snippets
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation: getting-started/installation.md
+    - Quick Start: getting-started/quickstart.md
+    - First Review: getting-started/first-review.md
+  - Guides:
+    - Code Reviews: guides/code-reviews.md
+    - Strategy Reviews: guides/strategy-reviews.md
+    - Triage Mode: guides/triage-mode.md
+    - Change-Impact Analysis: guides/change-impact.md
+    - Remediation: guides/remediation.md
+    - Reference Modules: guides/reference-modules.md
+    - Context Injection: guides/context-injection.md
+  - Reference:
+    - CLI Flags: reference/cli-flags.md
+    - Agents & Profiles: reference/agents.md
+    - Templates: reference/templates.md
+    - Scripts: reference/scripts.md
+    - Protocols: reference/protocols.md
+  - Architecture:
+    - Design Overview: architecture/overview.md
+    - Multi-Agent Isolation: architecture/multi-agent-isolation.md
+    - Security Model: architecture/security-model.md
+    - Profile System: architecture/profile-system.md
+  - Contributing:
+    - Development Setup: contributing/development-setup.md
+    - Adding Profiles: contributing/adding-profiles.md
