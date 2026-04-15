@@ -1,0 +1,5 @@
+Finding ID: SEC-001
+Specialist: Security Auditor
+Severity: URGENT
+Title: Something is wrong
+Evidence: I found a bug

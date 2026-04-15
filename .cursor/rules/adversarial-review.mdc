@@ -1,0 +1,104 @@
+<!-- If you cloned to a different location, replace the path below -->
+<!-- Default install path: $HOME/.adversarial-review/adversarial-review -->
+
+# Adversarial Review -- Cursor Rules (Degraded Single-Agent Mode)
+
+## Why "degraded mode"
+
+Cursor cannot spawn isolated sub-agents. Unlike Claude Code (which can fork
+independent agent threads), everything here runs inside a single agent context.
+The agent **role-plays** each specialist sequentially, switching persona by
+reading the corresponding prompt file. Mediated communication and agent
+isolation are advisory only -- output validation depends on agent compliance.
+
+---
+
+## Workflow
+
+When the user invokes `@adversarial-review` (or asks for an adversarial review),
+execute the following steps **sequentially** inside the single agent context.
+
+### Phase 1 -- Specialist analysis
+
+For each active specialist (default: all five), do:
+
+| Tag  | Specialist        | Prompt file                                                                  |
+|------|-------------------|------------------------------------------------------------------------------|
+| SEC  | Security          | `$HOME/.adversarial-review/adversarial-review/agents/security.md`            |
+| PERF | Performance       | `$HOME/.adversarial-review/adversarial-review/agents/performance.md`         |
+| QUAL | Quality           | `$HOME/.adversarial-review/adversarial-review/agents/quality.md`             |
+| CORR | Correctness       | `$HOME/.adversarial-review/adversarial-review/agents/correctness.md`         |
+| ARCH | Architecture      | `$HOME/.adversarial-review/adversarial-review/agents/architecture.md`        |
+
+For each specialist:
+
+1. Read the specialist prompt from the path above.
+2. Adopt that specialist persona and analyze the code under review from that perspective.
+3. Produce findings using the standard template at
+   `$HOME/.adversarial-review/adversarial-review/templates/finding-template.md`.
+
+### Phase 1.5 -- Output validation (optional)
+
+If a shell is available, run:
+
+```
+bash $HOME/.adversarial-review/adversarial-review/scripts/validate-output.sh
+```
+
+on the collected output to check structural compliance.
+
+### Phase 2 -- Self-challenge (Devil's Advocate)
+
+Role-play a devil's advocate using the prompt at
+`$HOME/.adversarial-review/adversarial-review/agents/devils-advocate.md`.
+
+- Challenge each finding from Phase 1.
+- Discard findings that do not survive scrutiny.
+- Adjust severity of findings that are partially valid.
+
+### Phase 3 -- Report
+
+- Deduplicate surviving findings across specialists.
+- Produce the final report using the template at
+  `$HOME/.adversarial-review/adversarial-review/templates/report-template.md`.
+
+---
+
+## Flags
+
+| Flag             | Effect                                              |
+|------------------|-----------------------------------------------------|
+| `--security`     | Run only the SEC specialist                         |
+| `--performance`  | Run only the PERF specialist                        |
+| `--quality`      | Run only the QUAL specialist                        |
+| `--correctness`  | Run only the CORR specialist                        |
+| `--architecture` | Run only the ARCH specialist                        |
+| (no flag)        | Run all five specialists (default)                  |
+| `--save`         | Save the report to disk (see path below)            |
+| `--delta`        | Review only the diff, not the full file             |
+| `--fix`          | Propose concrete fixes alongside findings           |
+| `--quick`        | Reduce depth: skip Phase 2, shorter analysis        |
+| `--thorough`     | Increase depth: more detailed analysis per finding  |
+
+Multiple specialist flags can be combined (e.g. `--security --performance`).
+
+---
+
+## Report save path
+
+When `--save` is used, write the report to:
+
+```
+docs/reviews/YYYY-MM-DD-<topic>-review.md
+```
+
+where `<topic>` is a short slug derived from the reviewed file or feature name.
+
+---
+
+## Security note
+
+In degraded single-agent mode, mediated communication and agent isolation are
+**advisory only**. There is no enforcement boundary between specialist personas.
+Output validation depends entirely on agent compliance with the structured
+templates and the validate-output script.
