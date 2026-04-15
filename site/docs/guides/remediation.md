@@ -1,5 +1,8 @@
 # Remediation
 
+!!! info "Code profile only"
+    Remediation (Phase 5) is only available with the code profile (default). Strategy findings require manual revision of the strategy documents by the author.
+
 Phase 5 generates and applies fixes for confirmed findings. It requires explicit user confirmation at every step.
 
 ## Activation
@@ -21,14 +24,19 @@ flowchart LR
     DRAFT --> GATE2{{"User confirms\ntickets"}}
     GATE2 --> WORKTREE["Create worktree\nbranches"]
     WORKTREE --> IMPLEMENT["Implement fixes"]
-    IMPLEMENT --> GATE3{{"User confirms\nPRs"}}
+    IMPLEMENT --> VERIFY["Fix verification\n(re-invoke specialist)"]
+    VERIFY --> |"verified"| GATE3{{"User confirms\nPRs"}}
+    VERIFY --> |"incomplete"| RETRY{{"User decides:\nretry / accept / revert"}}
+    RETRY --> |"retry (max 1)"| IMPLEMENT
 
     style GATE1 fill:#ffe6e6,stroke:#cc4444
     style GATE2 fill:#ffe6e6,stroke:#cc4444
     style GATE3 fill:#ffe6e6,stroke:#cc4444
+    style RETRY fill:#fff3cd,stroke:#ffc107
+    style VERIFY fill:#e8f5e9,stroke:#28a745
 ```
 
-Every red gate requires explicit user confirmation before proceeding.
+Every red gate requires explicit user confirmation before proceeding. The green verification step re-invokes the original specialist to confirm the fix resolves the finding. Yellow gates appear only when a fix is incomplete.
 
 ## Step 1: Classification
 

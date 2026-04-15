@@ -116,6 +116,20 @@ Strategy profile includes built-in reference modules:
 
 See [Reference Modules](reference-modules.md) for details on adding custom modules.
 
+## Cross-run analysis
+
+Track how findings evolve across multiple reviews of the same strategy:
+
+```bash
+# Enable finding persistence
+/adversarial-review docs/strat/ --profile strat --persist
+
+# Add output normalization for stability metrics
+/adversarial-review docs/strat/ --profile strat --persist --normalize
+```
+
+With `--persist`, each run classifies findings as new, recurring, resolved, or regressed. History is stored in `.adversarial-review/findings-history.jsonl`.
+
 ## Quick mode for strategy
 
 ```bash
@@ -123,3 +137,14 @@ See [Reference Modules](reference-modules.md) for details on adding custom modul
 ```
 
 Uses 2 specialists (SEC + FEAS), 2 iterations, 150K budget.
+
+## Flags not available for strategy reviews
+
+The following flags are code profile only and will produce an error if used with `--profile strat`:
+
+- `--fix` / `--dry-run`: Strategy findings require manual revision by the document author
+- `--triage`: Evaluates code review comments, not strategy documents
+- `--diff`: Change-impact analysis requires source code with git history
+- `--delta`: Delta re-review requires a previous code review cache
+
+See [CLI Flags](../reference/cli-flags.md#flag-compatibility-matrix) for the full compatibility matrix.

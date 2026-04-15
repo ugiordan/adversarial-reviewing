@@ -90,6 +90,33 @@ Guardrails enforce behavioral constraints:
 | Destructive pattern check | Regex scan of recommended fixes |
 | Severity inflation | Warning when > 50% of agent's findings are Critical |
 
+## Domain-Aware Challenge Routing
+
+**Behavior**: During the challenge round (Phase 2), findings are routed to specialists based on domain affinity. Each specialist has primary and adjacent domains:
+
+**Code profile:**
+
+| Specialist | Primary | Adjacent |
+|-----------|---------|----------|
+| SEC | injection, auth, crypto, secrets | input-validation, error-handling |
+| PERF | complexity, memory, io, caching | concurrency, scalability |
+| QUAL | naming, duplication, solid, error-handling | readability, testing |
+| CORR | logic, edge-cases, races, invariants | error-propagation, null-safety |
+| ARCH | coupling, cohesion, boundaries, extensibility | patterns, dependencies |
+
+**Strategy profile:**
+
+| Specialist | Primary | Adjacent |
+|-----------|---------|----------|
+| FEAS | effort, dependencies, phasing, technical-risk | timeline, resources |
+| ARCH | integration, api-contracts, boundaries, failure-modes | patterns, scalability |
+| SEC | threat-model, auth, data-handling, compliance | crypto, network |
+| USER | backward-compat, migration, usability, documentation | api-design, ux |
+| SCOP | scope, acceptance-criteria, completeness, nfr | edge-cases, priorities |
+| TEST | testability, coverage, test-strategy, verification | ci-cd, environments |
+
+Routing is advisory: specialists can still challenge any finding, but the hint saves 40-60% of cross-agent token consumption by guiding attention to relevant findings first.
+
 ## Audit Log
 
 **File**: `protocols/audit-log.md`

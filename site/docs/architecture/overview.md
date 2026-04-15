@@ -9,8 +9,9 @@ graph TD
     USER["User invocation"] --> SKILL["SKILL.md\n(orchestration procedure)"]
 
     SKILL --> PARSE["Parse flags\n& resolve scope"]
-    PARSE --> CACHE["Initialize cache\n(manage-cache.sh)"]
-    CACHE --> CONTEXT["Fetch context\n(fetch-context.sh)"]
+    PARSE --> CACHE["Initialize cache\n(manage_cache.py)"]
+    CACHE --> REFS["Discover references\n(discover_references.py)"]
+    REFS --> CONTEXT["Fetch context\n(fetch-context.sh)"]
 
     CONTEXT --> P1["Phase 1: Self-Refinement"]
     P1 --> P2["Phase 2: Challenge Round"]
@@ -20,29 +21,48 @@ graph TD
 
     subgraph P1_detail["Phase 1 internals"]
         direction TB
-        SPAWN["Spawn isolated agents"] --> ITER["Iterate (2-3x)"]
+        SPAWN["Spawn isolated agents\n+ reference modules"] --> ITER["Iterate (2-3x)"]
         ITER --> VALIDATE["validate-output.sh"]
         VALIDATE --> CONVERGE["detect-convergence.sh"]
     end
 
     subgraph P2_detail["Phase 2 internals"]
         direction TB
-        SANITIZE["Sanitize findings"] --> ROUTE["Route challenges"]
+        SANITIZE["Sanitize findings"] --> AFFINITY["Domain-aware routing\n(affinity matrix)"]
+        AFFINITY --> ROUTE["Route challenges"]
         ROUTE --> DEFENSE["Collect defenses"]
         DEFENSE --> EVIDENCE["Evidence-based rebuttal\n(iteration 3)"]
     end
 
     subgraph P3_detail["Phase 3 internals"]
         direction TB
-        DEDUP["deduplicate.sh"] --> CLASSIFY["Classify agreement"]
+        DEDUP["deduplicate.py"] --> CLASSIFY["Classify agreement"]
         CLASSIFY --> RESOLVE["Resolve verdicts"]
+    end
+
+    subgraph P4_detail["Phase 4 internals"]
+        direction TB
+        REPORT["Assemble report"] --> META["Metadata block\n+ prompt versions"]
+        META --> PERSIST["Finding persistence\n(fingerprint_findings.py)"]
+        PERSIST --> NORM["Output normalization\n(normalize_findings.py)"]
+    end
+
+    subgraph P5_detail["Phase 5 internals"]
+        direction TB
+        FIX_CLASSIFY["Classify findings"] --> FIX_IMPL["Implement fixes"]
+        FIX_IMPL --> FIX_VERIFY["Fix verification\n(re-invoke specialist)"]
+        FIX_VERIFY --> |"incomplete"| FIX_IMPL
     end
 
     P1 -.-> P1_detail
     P2 -.-> P2_detail
     P3 -.-> P3_detail
+    P4 -.-> P4_detail
+    P5 -.-> P5_detail
 
     style P5 stroke-dasharray: 5 5
+    style PERSIST stroke-dasharray: 3 3
+    style NORM stroke-dasharray: 3 3
 ```
 
 ## Key design decisions

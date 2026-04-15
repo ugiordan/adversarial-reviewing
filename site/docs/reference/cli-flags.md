@@ -43,19 +43,26 @@ Default (no specialist flags): all specialists for the active profile.
 
 ## Mode flags
 
-| Flag | Description |
-|------|-------------|
-| `--quick` | 2 specialists, 2 iterations, 150K budget |
-| `--thorough` | All specialists, 3 iterations, 800K budget |
-| `--delta` | Re-review only changes since last review |
-| `--save` | Write report to `docs/reviews/YYYY-MM-DD-<topic>-review.md` |
-| `--fix` | Enable Phase 5 remediation (Jira drafts, worktree branches, PRs) |
-| `--fix --dry-run` | Preview remediation without writing anything |
-| `--budget <N>` | Override default 350K token budget |
-| `--force` | Override 200-file hard ceiling |
-| `--strict-scope` | Reject (not demote) out-of-scope findings and patches |
+| Flag | Profiles | Description |
+|------|----------|-------------|
+| `--quick` | Both | 2 specialists, 2 iterations, 150K budget |
+| `--thorough` | Both | All specialists, 3 iterations, 800K budget |
+| `--delta` | Code only | Re-review only changes since last review |
+| `--save` | Both | Write report to `docs/reviews/YYYY-MM-DD-<topic>-review.md` |
+| `--fix` | Code only | Enable Phase 5 remediation (Jira drafts, worktree branches, PRs) |
+| `--fix --dry-run` | Code only | Preview remediation without writing anything |
+| `--budget <N>` | Both | Override default 350K token budget |
+| `--force` | Both | Override 200-file hard ceiling |
+| `--strict-scope` | Both | Reject (not demote) out-of-scope findings and patches |
+| `--persist` | Both | Enable cross-run finding persistence via fingerprinting |
+| `--normalize` | Both | Enable output normalization for stability metrics |
+
+!!! warning "Code-only flags with strat profile"
+    Using `--delta`, `--diff`, `--triage`, or `--fix` with `--profile strat` produces an error. Strategy findings require manual revision of the strategy documents; automated remediation and diff-based analysis are not applicable.
 
 ## Diff and triage flags
+
+These flags are **code profile only**.
 
 | Flag | Description |
 |------|-------------|
@@ -69,11 +76,18 @@ Default (no specialist flags): all specialists for the active profile.
 
 ## Context flag
 
-| Flag | Description |
-|------|-------------|
-| `--context <label>=<source>` | Inject labeled context (repeatable) |
+| Flag | Profiles | Description |
+|------|----------|-------------|
+| `--context <label>=<source>` | Both | Inject labeled context (repeatable) |
 
 Sources: git URL, local directory, or local file. Labels must be alphanumeric with optional hyphens.
+
+## Cross-run analysis flags
+
+| Flag | Profiles | Description |
+|------|----------|-------------|
+| `--persist` | Both | Track findings across runs via content-based fingerprinting. Classifies findings as new, recurring, resolved, or regressed. History stored in `.adversarial-review/findings-history.jsonl`. |
+| `--normalize` | Both | Canonicalize output ordering and formatting. When combined with `--persist`, computes cross-run stability metrics (Jaccard similarity). |
 
 ## Reference module flags
 
@@ -108,3 +122,20 @@ Sources: git URL, local directory, or local file. Labels must be alphanumeric wi
 | Specialists | All |
 | Iterations | 2 |
 | Budget | 350K tokens |
+
+## Flag compatibility matrix
+
+Use this table to understand which flag combinations are valid:
+
+| Combination | Behavior |
+|------------|----------|
+| `--delta` + `--reuse-cache` | **Mutually exclusive**. Use `--delta` for auto-discovery or `--reuse-cache` for explicit reuse, not both. |
+| `--diff` + `--reuse-cache` | **Mutually exclusive**. `--diff` creates a minimal cache from changed files; `--reuse-cache` expects a complete cache. |
+| `--delta` + `--keep-cache` | Composable. Reuses previous cache if confirmed, preserves after completion. |
+| `--reuse-cache` + `--keep-cache` | Composable. Reuses specified cache and preserves after completion. |
+| `--diff` + `--delta` | Composable. Delta discovers previous cache; diff limits scope to changed files. |
+| `--persist` + `--normalize` | Composable. Adds stability metrics to the finding persistence report. |
+| `--fix` + `--profile strat` | **Error**. Strategy findings require manual revision. |
+| `--triage` + `--profile strat` | **Error**. Triage evaluates code review comments. |
+| `--diff` + `--profile strat` | **Error**. Change-impact analysis requires source code. |
+| `--delta` + `--profile strat` | **Error**. Delta re-review requires previous code review cache. |

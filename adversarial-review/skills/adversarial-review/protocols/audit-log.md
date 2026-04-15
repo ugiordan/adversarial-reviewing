@@ -25,7 +25,7 @@ Each entry is a single line:
 ```
 [2026-03-26T14:32:00Z] ACTION: github.create_branch branch=fix/SEC-001 base=main
 [2026-03-26T14:32:15Z] ACTION: github.create_pr title="Fix SEC-001" branch=fix/SEC-001
-[2026-03-26T14:33:00Z] ACTION: jira.create_issue project=RHOAI type=Bug summary="SQL injection"
+[2026-03-26T14:33:00Z] ACTION: jira.create_issue project=MYPROJ type=Bug summary="SQL injection"
 ```
 
 ## Dry-Run Mode

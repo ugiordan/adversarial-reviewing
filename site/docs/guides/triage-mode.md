@@ -1,5 +1,8 @@
 # Triage Mode
 
+!!! info "Code profile only"
+    Triage mode is only available with the code profile (default). It is not supported with `--profile strat` because strategy reviews evaluate documents, not PR comments.
+
 Triage mode evaluates external review comments instead of performing independent review. Use it to assess feedback from CodeRabbit, human reviewers, or PR conversations.
 
 ## Usage

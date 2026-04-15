@@ -1,5 +1,8 @@
 # Change-Impact Analysis
 
+!!! info "Code profile only"
+    Change-impact analysis is only available with the code profile (default). It requires source code with git history and is not applicable to strategy document reviews.
+
 The `--diff` flag enriches the review with git diff context and a change-impact graph showing callers and callees of modified symbols.
 
 ## Usage

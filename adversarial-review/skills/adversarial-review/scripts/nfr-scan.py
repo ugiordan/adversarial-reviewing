@@ -34,7 +34,7 @@ NFR_CHECKLIST = [
     {
         "id": "NFR-AUTH-01",
         "category": "Authentication & Authorization",
-        "question": "Does the strategy specify which RHOAI-approved auth pattern (kube-auth-proxy via Istio, kube-rbac-proxy sidecar, or Kuadrant) gates every new API/UI surface?",
+        "question": "Does the strategy specify which approved auth pattern gates every new API/UI surface? (If architecture context is provided, check against documented auth mechanisms.)",
         "severity_tree": {
             "NO": {"new_api_or_state_store": "Critical", "modifies_existing": "Important"},
             "PARTIAL": "Important",

@@ -96,6 +96,22 @@ By default, findings on files outside the review target are demoted to Minor. Us
 /adversarial-review src/auth/ --strict-scope
 ```
 
+## Advanced modes
+
+The code profile supports several additional modes. Each has its own guide:
+
+| Mode | Flag | Description |
+|------|------|-------------|
+| [Triage](triage-mode.md) | `--triage pr:<N>` | Evaluate external review comments (CodeRabbit, human reviewers) |
+| [Change-impact](change-impact.md) | `--diff` | Enrich review with git diff context and caller/callee graph |
+| [Remediation](remediation.md) | `--fix` | Classify findings, draft Jira tickets, implement fixes in worktree branches |
+| Dry run | `--fix --dry-run` | Preview remediation without writing anything |
+| [Context injection](context-injection.md) | `--context <label>=<source>` | Inject architecture docs or other reference material |
+| Finding persistence | `--persist` | Track findings across runs (new, recurring, resolved, regressed) |
+| Output normalization | `--normalize` | Canonical ordering for cross-run stability metrics |
+
+These modes are composable. For example, `--triage pr:42 --diff --thorough` gives specialists both external comments and the full change-impact graph.
+
 ## Finding severity levels
 
 | Severity | Criteria |

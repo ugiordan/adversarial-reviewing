@@ -16,6 +16,7 @@ flowchart TB
     end
 
     CODE["Code Under Review"] --> |"delimited input\n(generate-delimiters.sh)"| Isolation
+    REFS["Reference modules\n(discover_references.py)"] -.-> |"specialist-filtered"| Isolation
 
     SEC --> V1["validate-output.sh"]
     PERF --> V2["validate-output.sh"]
@@ -31,7 +32,10 @@ flowchart TB
 
     style Isolation fill:#f0f4ff,stroke:#4a6fa5
     style BUDGET stroke-dasharray: 5 5
+    style REFS stroke-dasharray: 3 3
 ```
+
+The diagram shows the code profile agents. The strategy profile uses 6 specialists (FEAS, ARCH, SEC, USER, SCOP, TEST) with the same isolation model.
 
 ## How isolation works in Claude Code
 
@@ -58,18 +62,22 @@ flowchart LR
     subgraph Orchestrator["Orchestrator (mediates all communication)"]
         direction TB
         SANITIZE["Sanitize findings\n(strip raw output)"]
+        AFFINITY["Domain affinity routing\n(route by category)"]
         ROUTE["Route challenges\nto relevant specialists"]
         COLLECT["Collect defenses"]
+        SANITIZE --> AFFINITY --> ROUTE
     end
 
     SPEC_A["Specialist A\nfindings"] --> SANITIZE
-    SANITIZE --> ROUTE
     ROUTE --> SPEC_B["Specialist B\nchallenges"]
     SPEC_B --> COLLECT
     COLLECT --> SPEC_A
 
     style Orchestrator fill:#fff4e6,stroke:#d4a843
+    style AFFINITY fill:#e8f5e9,stroke:#28a745
 ```
+
+Domain affinity routing (green) uses a specialist-to-category mapping to guide challenges to the most relevant reviewer. This is advisory: specialists can still challenge any finding, but the routing hint reduces unnecessary cross-agent token consumption by 40-60%.
 
 Agents never see each other's raw output. They see sanitized finding summaries. This prevents:
 

@@ -58,6 +58,8 @@ block-beta
     INP["Input isolation"]:1 CC_INP["Orchestrator"]:1 CU_INP["Advisory only"]:1 AG_INP["Advisory only"]:1
     PRV["Provenance markers"]:1 CC_PRV["Verified"]:1 CU_PRV["Not enforced"]:1 AG_PRV["Not enforced"]:1
     INJ["Injection detection"]:1 CC_INJ["Enforced"]:1 CU_INJ["Advisory only"]:1 AG_INJ["Advisory only"]:1
+    STR["Strategy profile"]:1 CC_STR["Full support"]:1 CU_STR["Not available"]:1 AG_STR["Advisory only"]:1
+    FIX["Fix verification"]:1 CC_FIX["Re-invokes specialist"]:1 CU_FIX["Advisory only"]:1 AG_FIX["Advisory only"]:1
 
     style CC_ISO fill:#d4edda,stroke:#28a745
     style CC_MED fill:#d4edda,stroke:#28a745
@@ -65,21 +67,27 @@ block-beta
     style CC_INP fill:#d4edda,stroke:#28a745
     style CC_PRV fill:#d4edda,stroke:#28a745
     style CC_INJ fill:#d4edda,stroke:#28a745
+    style CC_STR fill:#d4edda,stroke:#28a745
+    style CC_FIX fill:#d4edda,stroke:#28a745
     style CU_ISO fill:#f8d7da,stroke:#dc3545
     style CU_MED fill:#fff3cd,stroke:#ffc107
     style CU_VAL fill:#fff3cd,stroke:#ffc107
     style CU_INP fill:#fff3cd,stroke:#ffc107
     style CU_PRV fill:#f8d7da,stroke:#dc3545
     style CU_INJ fill:#fff3cd,stroke:#ffc107
+    style CU_STR fill:#f8d7da,stroke:#dc3545
+    style CU_FIX fill:#fff3cd,stroke:#ffc107
     style AG_ISO fill:#cce5ff,stroke:#004085
     style AG_MED fill:#fff3cd,stroke:#ffc107
     style AG_VAL fill:#fff3cd,stroke:#ffc107
     style AG_INP fill:#fff3cd,stroke:#ffc107
     style AG_PRV fill:#f8d7da,stroke:#dc3545
     style AG_INJ fill:#fff3cd,stroke:#ffc107
+    style AG_STR fill:#fff3cd,stroke:#ffc107
+    style AG_FIX fill:#fff3cd,stroke:#ffc107
 ```
 
-The full security model is only enforced when running as a Claude Code plugin with the Agent tool available.
+The full security model is only enforced when running as a Claude Code plugin with the Agent tool available. Strategy profile and fix verification require multi-agent capabilities that Cursor cannot provide.
 
 ## Guardrails as defense-in-depth
 

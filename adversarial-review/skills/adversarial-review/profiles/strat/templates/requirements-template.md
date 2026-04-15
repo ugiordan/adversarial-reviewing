@@ -28,7 +28,7 @@ Generated alongside the review report when profile is `strat` or `rfe`. Written 
 - **Category:** [category]
 - **Document:** [STRAT reference]
 - **What's missing:** [evidence text, citing specific section/AC or noting omission]
-- **What to add:** [concrete recommended fix with RHOAI-specific guidance]
+- **What to add:** [concrete recommended fix with platform-specific guidance where applicable]
 - **Confidence signals:** self=[High|Medium|Low], corroboration=[yes: IDs | no], challenge=[survived|unchallenged], evidence=[specific|omission|vague]
 
 ---

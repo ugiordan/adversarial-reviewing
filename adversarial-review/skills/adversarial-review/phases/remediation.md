@@ -281,7 +281,7 @@ After all PRs are created:
 
 | Type | Pattern | Example |
 |------|---------|---------|
-| Jira fix | `fix/<jira-id>-<kebab-description>` | `fix/RHOAIENG-123-rbac-hardening` |
+| Jira fix | `fix/<jira-id>-<kebab-description>` | `fix/PROJ-123-rbac-hardening` |
 | Chore batch | `chore/security-hardening-batch-<N>` | `chore/security-hardening-batch-1` |
 | Single chore | `chore/<kebab-description>` | `chore/fix-file-permissions` |
 | Blocked | No branch created | — |

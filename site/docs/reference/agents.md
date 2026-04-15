@@ -159,3 +159,28 @@ Both profiles include a devil's advocate agent used in single-specialist mode or
 - Applies **survivorship framing**: retained findings are explicitly annotated with why they could not be refuted, strengthening the final report's credibility
 
 The devil's advocate is not a specialist. It does not produce findings independently. It only challenges and strengthens existing ones.
+
+## Prompt versioning
+
+All agent prompts include version frontmatter with a content-based SHA-256 hash:
+
+```yaml
+---
+version: "1.0"
+content_hash: "2305fdeae..."
+last_modified: "2026-04-15"
+---
+```
+
+This enables reproducibility analysis: if findings changed between runs, you can determine whether the prompt or the code changed. Use `scripts/prompt_version.py verify <file>` to check if a prompt's content matches its declared hash, or `manifest <dir>` to generate a version manifest for all agents in a profile.
+
+## Single-specialist mode
+
+When only one specialist is selected (e.g., `--security` alone), the system adapts:
+
+1. **Phase 1**: Self-refinement runs normally
+2. **Phase 2**: Instead of cross-agent debate, the devil's advocate challenges the specialist's findings. The specialist responds once.
+3. **Phase 3**: Findings the specialist maintained are included with a reduced-confidence flag. Withdrawn findings are dismissed.
+4. **Phase 4**: Report includes a disclaimer noting findings were not cross-validated
+
+This mode is available in both profiles. It provides a faster, cheaper review at the cost of reduced adversarial scrutiny.
