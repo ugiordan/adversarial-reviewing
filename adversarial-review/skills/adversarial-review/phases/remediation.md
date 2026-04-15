@@ -10,6 +10,19 @@ Classify validated findings into actionable work items, draft Jira tickets where
 - Git repository is clean (no uncommitted changes)
 - User has confirmed they want to proceed with remediation
 
+## Dry-Run Mode (`--fix --dry-run`)
+
+When `--dry-run` is specified alongside `--fix`, the full remediation pipeline runs but writes nothing:
+
+- Classification: computed and displayed, not persisted.
+- Jira tickets: drafted and displayed, not created.
+- Code patches: generated and displayed as unified diffs, not applied.
+- Branches/PRs: described but not created.
+- No user confirmation gates fire (nothing to confirm).
+- Audit log entries are prefixed with `[DRY-RUN]` (see `protocols/audit-log.md`).
+
+Output appears in the `## Remediation Preview` report section.
+
 ## Procedure
 
 ### Step 1: Classify Findings
@@ -130,6 +143,8 @@ After user approval, create Jira tickets using the MCP Atlassian tools (if avail
 
 Record the Jira ticket IDs for use in branch names and PR descriptions.
 
+> **Audit:** Log this action to the audit trail. See `protocols/audit-log.md`.
+
 ### Step 5: Implement Fixes
 
 Process work items in this order:
@@ -154,6 +169,8 @@ git worktree add /tmp/chore-<batch-id> -b chore/security-hardening-batch-<N> <ba
 
 Base branch should be `upstream/main` or the project's default branch.
 
+> **Audit:** Log this action to the audit trail. See `protocols/audit-log.md`.
+
 #### 5b. Implement Fix
 
 Spawn a fix agent in the worktree with:
@@ -167,6 +184,14 @@ The fix agent should:
 2. Implement the fix as described in the finding
 3. Run any relevant tests
 4. Commit with an appropriate message
+
+**Scope Lock:** Before applying any patch, verify all files in the patch are in the review scope (same file list used for `validate-output.sh --scope`). If a patch touches out-of-scope files:
+- Default: warn user per-patch. User can approve or skip.
+- `--strict-scope`: auto-reject out-of-scope patches.
+
+**Destructive Pattern Check:** Before applying any patch, scan the diff against `protocols/destructive-patterns.txt`. If matched, flag `DESTRUCTIVE_PATTERN` to user before applying.
+
+> **Audit:** Log this action to the audit trail. See `protocols/audit-log.md`.
 
 #### 5c. Commit Message Format
 
@@ -228,6 +253,8 @@ For each approved PR, create it using `gh pr create` with:
   - List of changes made
   - Test plan
 
+> **Audit:** Log this action to the audit trail. See `protocols/audit-log.md`.
+
 ### Step 7: Cleanup
 
 After all PRs are created:
@@ -268,3 +295,6 @@ After all PRs are created:
 
 - `templates/jira-template.md` — Jira ticket description template
 - `templates/report-template.md` — finding format for reference
+- `protocols/guardrails.md` — guardrail definitions, constants, enforcement behavior
+- `protocols/audit-log.md` — external action audit log format
+- `protocols/destructive-patterns.txt` — regex patterns for destructive command detection

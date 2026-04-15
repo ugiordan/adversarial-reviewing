@@ -110,6 +110,7 @@ Repeat Steps 3-5 for up to **3 total iterations** per agent. On iteration 2+, ea
 |------|--------|
 | Minimum iterations | **2** — always run, even if output appears stable after iteration 1 |
 | Maximum iterations | **3** (default) — hard cap, proceed to Phase 2 regardless of convergence |
+| Safety hard cap | `MAX_ITERATIONS` (default 4, quick 2, thorough 4) — absolute ceiling. If convergence detection fails to stabilize within this many iterations, force-stop and emit `FORCED_CONVERGENCE` guardrail. See `protocols/guardrails.md`. |
 | Profile overrides | `--quick`: max 2, `--delta`: max 2, `--thorough`: max 3 |
 | Convergence detection | Run `scripts/detect-convergence.sh` after each iteration (starting from iteration 2) |
 | Convergence criteria | Finding ID + Severity identity between consecutive iterations |
@@ -179,6 +180,7 @@ Iteration 3 (only if not converged):
 - `protocols/input-isolation.md` — delimiter generation and anti-injection wrapping
 - `protocols/convergence-detection.md` — convergence criteria and iteration bounds
 - `protocols/token-budget.md` — budget tracking and enforcement
+- `protocols/guardrails.md` — guardrail definitions, constants, enforcement behavior
 - `scripts/generate-delimiters.sh` — delimiter generation implementation
 - `scripts/validate-output.sh` — output schema validation
 - `scripts/detect-convergence.sh` — convergence detection implementation

@@ -15,7 +15,23 @@ fi
 OUTPUT_FILE="${1:?Usage: validate-output.sh <output_file> <expected_role_prefix>}"
 ROLE_PREFIX="${2:?Usage: validate-output.sh <output_file> <expected_role_prefix>}"
 
+SCOPE_FILE=""
+MAX_FINDINGS=0
+CHECK_FIXES=false
+
+# Parse optional flags after required positional args
+shift 2  # past OUTPUT_FILE and ROLE_PREFIX
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --scope) SCOPE_FILE="${2:?--scope requires a file path}"; shift 2 ;;
+        --max-findings) MAX_FINDINGS="${2:?--max-findings requires a number}"; shift 2 ;;
+        --check-fixes) CHECK_FIXES=true; shift ;;
+        *) echo "{\"error\": \"Unknown flag: $1\"}" >&2; exit 2 ;;
+    esac
+done
+
 ERRORS=()
+WARNINGS=()
 FINDING_COUNT=0
 
 content=$(cat "$OUTPUT_FILE")
@@ -114,6 +130,12 @@ while IFS= read -r fid; do
         ERRORS+=("Finding $fid: Evidence exceeds 2000 chars (${#evidence})")
     fi
 
+    # Evidence threshold check for high-severity findings
+    evidence_nows=$(echo "$evidence" | tr -d '[:space:]')
+    if [[ ${#evidence_nows} -lt 100 ]] && [[ "$severity" == "Critical" || "$severity" == "Important" ]]; then
+        WARNINGS+=("WEAK_EVIDENCE: Finding $fid has ${#evidence_nows} non-whitespace chars in evidence (min 100 for $severity)")
+    fi
+
     fix=$(awk '/^Recommended [Ff]ix:/,/^$|^Finding ID:/' <<< "$block" | tail -n +2)
     if [[ ${#fix} -gt 1000 ]]; then
         ERRORS+=("Finding $fid: Recommended fix exceeds 1000 chars (${#fix})")
@@ -125,16 +147,82 @@ while IFS= read -r fid; do
 
 done <<< "$finding_ids"
 
+# Scope confinement check
+if [[ -n "$SCOPE_FILE" && -f "$SCOPE_FILE" ]]; then
+    while IFS= read -r fid; do
+        [[ -z "$fid" ]] && continue
+        block=$(awk -v target="Finding ID: $fid" '
+            index($0, target) == 1 && length($0) == length(target) {found=1; print; next}
+            index($0, target) == 1 && substr($0, length(target)+1, 1) !~ /[0-9]/ {found=1; print; next}
+            found && /^Finding ID: [A-Z]+-[0-9]+/ {exit}
+            found {print}
+        ' <<< "$content" | head -50)
+        file_val=$(extract_field "File:" "$block")
+        if [[ -n "$file_val" ]] && ! grep -qxF "$file_val" "$SCOPE_FILE"; then
+            WARNINGS+=("SCOPE_VIOLATION: File '$file_val' not in review scope (finding $fid)")
+        fi
+    done <<< "$finding_ids"
+fi
+
+# Max findings check
+if [[ $MAX_FINDINGS -gt 0 && $FINDING_COUNT -gt $MAX_FINDINGS ]]; then
+    ERRORS+=("MAX_FINDINGS_EXCEEDED: $FINDING_COUNT findings exceed limit of $MAX_FINDINGS")
+fi
+
+# Destructive pattern check
+if [[ "$CHECK_FIXES" == "true" && -f "$SCRIPT_DIR_VALIDATE/../protocols/destructive-patterns.txt" ]]; then
+    patterns_file="$SCRIPT_DIR_VALIDATE/../protocols/destructive-patterns.txt"
+    while IFS= read -r fid; do
+        [[ -z "$fid" ]] && continue
+        block=$(awk -v target="Finding ID: $fid" '
+            index($0, target) == 1 && length($0) == length(target) {found=1; print; next}
+            index($0, target) == 1 && substr($0, length(target)+1, 1) !~ /[0-9]/ {found=1; print; next}
+            found && /^Finding ID: [A-Z]+-[0-9]+/ {exit}
+            found {print}
+        ' <<< "$content" | head -50)
+        fix_firstline=$(extract_field "Recommended fix:" "$block")
+        [[ -z "$fix_firstline" ]] && fix_firstline=$(extract_field "Recommended Fix:" "$block")
+        fix_rest=$(awk '/^Recommended [Ff]ix:/,/^$|^Finding ID:/' <<< "$block" | tail -n +2)
+        fix="${fix_firstline}"$'\n'"${fix_rest}"
+        while IFS= read -r pattern; do
+            [[ "$pattern" =~ ^# ]] && continue
+            [[ -z "$pattern" ]] && continue
+            if echo "$fix" | grep -qiE "$pattern"; then
+                WARNINGS+=("DESTRUCTIVE_PATTERN: Finding $fid recommended fix matches pattern '$pattern'")
+            fi
+        done < "$patterns_file"
+    done <<< "$finding_ids"
+fi
+
 # Build JSON output with proper escaping via python3
 if [[ ${#ERRORS[@]} -eq 0 ]]; then
-    python3 -c "import json; print(json.dumps({'valid': True, 'errors': [], 'finding_count': int('$FINDING_COUNT')}))"
+    if [[ ${#WARNINGS[@]} -gt 0 ]]; then
+        python3 -c "
+import json, sys
+warnings = sys.stdin.read().splitlines()
+print(json.dumps({'valid': True, 'errors': [], 'warnings': warnings, 'finding_count': int(sys.argv[1])}))
+" "$FINDING_COUNT" < <(printf '%s\n' "${WARNINGS[@]}")
+    else
+        python3 -c "import json; print(json.dumps({'valid': True, 'errors': [], 'finding_count': int('$FINDING_COUNT')}))"
+    fi
     exit 0
 else
-    errors_json=$(python3 -c "
+    if [[ ${#WARNINGS[@]} -gt 0 ]]; then
+        combined=$(printf '%s\n' "${ERRORS[@]}" "---SEPARATOR---" "${WARNINGS[@]}")
+        python3 -c "
+import json, sys
+lines = sys.stdin.read().split('\n')
+sep = lines.index('---SEPARATOR---')
+errors, warnings = lines[:sep], lines[sep+1:]
+print(json.dumps({'valid': False, 'errors': errors, 'warnings': warnings, 'finding_count': int(sys.argv[1])}))
+" "$FINDING_COUNT" <<< "$combined"
+    else
+        errors_json=$(python3 -c "
 import json, sys
 errors = sys.stdin.read().splitlines()
 print(json.dumps(errors))
 " < <(printf '%s\n' "${ERRORS[@]}"))
-    echo "{\"valid\": false, \"errors\": $errors_json, \"finding_count\": $FINDING_COUNT}"
+        echo "{\"valid\": false, \"errors\": $errors_json, \"finding_count\": $FINDING_COUNT}"
+    fi
     exit 1
 fi

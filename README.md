@@ -270,6 +270,8 @@ Reference or inline `AGENTS.md` in your AI tool's context. Feature set depends o
 | `--diff --range <range>` | Specify git commit range (e.g., `main..HEAD`) |
 | `--triage <source>` | Evaluate external review comments (`pr:<N>`, `file:<path>`, `-`) |
 | `--gap-analysis` | Include coverage gap analysis in triage report |
+| `--strict-scope` | Reject (not demote) out-of-scope findings and patches |
+| `--fix --dry-run` | Preview remediation without writing anything |
 
 ### Reference Module Flags
 
@@ -340,6 +342,25 @@ See `references/README.md` for the module format and authoring guidelines.
 # List all discovered modules
 /adversarial-review --list-references
 ```
+
+## Guardrails
+
+The review enforces programmatic guardrails across agent behavior, cost, safety, and output quality:
+
+| Guardrail | Effect |
+|-----------|--------|
+| Scope confinement | Findings on files outside the review target are demoted or rejected |
+| Iteration hard cap | Agents force-stopped after MAX_ITERATIONS (prevents infinite loops) |
+| Budget enforcement | Review stops when token budget is exhausted |
+| Per-agent budget cap | No single agent can consume > 150% of its fair share |
+| Evidence threshold | Findings with < 100 chars of evidence auto-demoted to Minor |
+| Destructive pattern check | Recommended fixes scanned for rm -rf, DROP TABLE, force-push, etc. |
+| Severity inflation detection | Warning when > 50% of an agent's findings are Critical |
+
+Use `--strict-scope` to reject (not demote) out-of-scope findings.
+Use `--fix --dry-run` to preview remediation without writing anything.
+
+See `protocols/guardrails.md` for full definitions and constants.
 
 ## Security Properties by Install Path
 

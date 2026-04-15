@@ -1,0 +1,23 @@
+# Destructive command patterns (one regex per line)
+# Used by validate-output.sh --check-fixes and orchestrator patch scanning
+# Lines starting with # are comments
+
+# Shell destructive commands
+rm\s+-rf\b
+rm\s+-r\s+/
+>\s*/dev/
+\bmkfs\b
+\bdd\s+if=
+
+# Git destructive commands
+push\s+--force\b
+push\s+-f\b
+reset\s+--hard\b
+clean\s+-fd\b
+
+# SQL destructive commands
+# Note: patterns are matched case-insensitively via grep -iE
+DROP\s+TABLE\b
+DROP\s+DATABASE\b
+TRUNCATE\s+
+DELETE\s+FROM\s+\w+\s*$

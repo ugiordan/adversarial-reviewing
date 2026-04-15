@@ -75,6 +75,10 @@ If no specialist flags are provided, activate **all 5 specialists**.
 | `--gap-analysis` | Include coverage gap analysis in triage report (auto-enabled by `--thorough --triage`) |
 | `--update-references` | Run `scripts/update-references.sh` before starting review. If used alone (without files/dirs), runs update and exits. If combined with review flags, runs update then proceeds with review. |
 | `--list-references` | Show all discovered reference modules and exit. Ignores all other flags. |
+| `--strict-scope` | Reject (not demote) out-of-scope findings and patches |
+| `--fix --dry-run` | Preview remediation without writing anything |
+
+> **Note:** `--strict-scope` is an orchestrator-level flag. `validate-output.sh` always emits scope violations as warnings; the orchestrator decides whether to demote or reject based on `--strict-scope`.
 
 ### Preset Profiles
 
@@ -128,6 +132,10 @@ The following patterns are excluded by default:
 
 If any files matching these patterns appear in scope, they require **explicit separate confirmation** from the user before inclusion. Do not bundle this confirmation with the general scope confirmation.
 
+### Scope File Generation
+
+Write the list of in-scope files (one repo-relative path per line) to a temporary file. Pass this file to `validate-output.sh --scope <file>` during all subsequent validation calls. In `--diff` mode, only changed files are in scope — impact graph files are context-only and do not appear in the scope file.
+
 ### Scope Confirmation (MANDATORY)
 
 Before proceeding, display to the user:
@@ -162,6 +170,24 @@ When `--force` is specified, the 200-file hard ceiling is lifted. The orchestrat
 
 ---
 
+### Pre-flight Budget Gate
+
+After scope resolution and before dispatching Phase 1, run:
+
+```bash
+scripts/track-budget.sh estimate <num_agents> <estimated_code_tokens> <configured_iterations>
+```
+
+Capture the `estimated_tokens` value from the JSON output. Compare against the configured budget:
+
+- If `estimated_tokens > budget * 0.9`: warn the user with the estimate and budget values. Ask whether to proceed.
+- If `estimated_tokens > budget * 1.5`: recommend `--quick` or a narrower scope.
+- Users who want to proceed past the gate should set a higher `--budget` value. There is no bypass flag.
+
+See `protocols/guardrails.md` for the `PRE_FLIGHT_WARN_THRESHOLD` and `PRE_FLIGHT_RECOMMEND_THRESHOLD` constants.
+
+---
+
 ## Step 3: Phase 1 — Self-Refinement
 
 Delegate to `phases/self-refinement.md`.
@@ -187,22 +213,39 @@ For each active specialist:
 
 3. **Spawn agent** — Dispatch via the host platform's subagent mechanism (e.g., Agent tool in Claude Code, agent spawn in other platforms). Each agent runs in isolation — agents never see each other's output during this phase.
 
-4. **Validate output** — Run `scripts/validate-output.sh` on each agent's response to ensure structural compliance with the finding template.
+4. **Validate output** — Run `scripts/validate-output.sh` on each agent's response to ensure structural compliance with the finding template. Pass the scope file generated in Step 2.
 
    ```bash
-   scripts/validate-output.sh <agent_output_file> <role_prefix>
+   scripts/validate-output.sh <agent_output_file> <role_prefix> --scope <scope_file>
    ```
 
-5. **Track budget** — After each agent completes, update the budget tracker.
+5. **Track budget** — After each agent completes, update the budget tracker with per-agent tracking.
 
    ```bash
-   scripts/track-budget.sh add <iteration_char_count>
+   scripts/track-budget.sh add <iteration_char_count> --agent <role_prefix> --per-agent-cap <cap>
    scripts/track-budget.sh status
    ```
 
-### Budget Check
+### Iteration Hard Cap and Budget Enforcement
+
+Before dispatching each iteration, the orchestrator checks **all three** conditions. If any fails, stop iterating for that agent and use the last iteration's output.
+
+1. **Iteration hard cap:** `iteration_count < MAX_ITERATIONS` (see `protocols/guardrails.md` for values by profile: default 4, quick 2, thorough 4). If exceeded, emit `FORCED_CONVERGENCE` to the guardrail trip log.
+2. **Global budget:** `track-budget.sh status` must not return `exceeded: true`. If exceeded, emit `BUDGET_EXCEEDED` to the guardrail trip log.
+3. **Agent-level budget:** The response from `track-budget.sh add --agent` must not return `agent_exceeded: true`. If exceeded, emit `AGENT_BUDGET_EXCEEDED` to the guardrail trip log.
 
 After each iteration, check remaining budget. If budget is exceeded, complete the current iteration but do not start another. Proceed to resolution.
+
+### Severity Inflation Check
+
+After all specialists complete self-refinement, compute the severity distribution for each specialist. If any specialist has:
+
+- More than 50% of findings at **Critical** severity, or
+- More than 80% of findings at **Critical + Important** combined
+
+emit a `SEVERITY_INFLATION` warning to the guardrail trip log. Include this warning in the specialist's challenge round context so challengers can scrutinize severity assignments.
+
+See `protocols/guardrails.md` for the `SEVERITY_INFLATION_CRITICAL_THRESHOLD` and `SEVERITY_INFLATION_COMBINED_THRESHOLD` constants.
 
 ---
 
@@ -228,7 +271,7 @@ The orchestrator synthesizes challenges and defenses, applies consensus rules, a
 
 Delegate to `phases/report.md`.
 
-Generate the final report using `templates/report-template.md` (or `templates/delta-report-template.md` for delta mode). The report includes 9 sections:
+Generate the final report using `templates/report-template.md` (or `templates/delta-report-template.md` for delta mode). The report includes up to 13 sections:
 
 - Executive summary
 - Validated findings with consensus status (Sections 2-5)
@@ -236,6 +279,10 @@ Generate the final report using `templates/report-template.md` (or `templates/de
 - Challenge round findings (Section 7)
 - Co-located findings (Section 8)
 - **Remediation summary** (Section 9) — severity-sorted action list with remediation roadmap, blocked items, and top priorities. Always present, even without `--fix`.
+- **Change Impact** (Section 10) — conditional, when `--diff` is active
+- **Review Metrics** (Section 10b) — challenge round statistics
+- **Guardrails Triggered** (Section 10c) — populated from the guardrail trip log
+- **Audit Log** (Section 10d) — external actions taken during `--fix` and `--triage`
 
 If `--save` was specified, write the report to `docs/reviews/YYYY-MM-DD-<topic>-review.md`.
 
@@ -344,6 +391,22 @@ Update task status as each completes. For single-specialist mode, Phase 2 runs i
 
 ---
 
+## Guardrail Trip Log
+
+The orchestrator maintains an in-memory list of guardrail events throughout the review. Each entry contains:
+
+```
+{timestamp, guardrail_id, agent (optional), details}
+```
+
+Guardrail events are appended whenever a guardrail fires (e.g., `FORCED_CONVERGENCE`, `BUDGET_EXCEEDED`, `AGENT_BUDGET_EXCEEDED`, `SCOPE_VIOLATION`, `SEVERITY_INFLATION`, `WEAK_EVIDENCE`, `DESTRUCTIVE_PATTERN`, `MAX_FINDINGS_EXCEEDED`).
+
+The trip log is rendered in the final report as a `## Guardrails Triggered` section. If no guardrails fired during the review, the section reads "None."
+
+See `protocols/guardrails.md` for the full list of guardrail definitions, constants, thresholds, and enforcement behavior.
+
+---
+
 ## Token Budget Protocol
 
 Budget management uses `scripts/track-budget.sh`. See `protocols/token-budget.md` for full specification.
@@ -423,6 +486,9 @@ skills/adversarial-review/
     delta-mode.md                       # Re-review protocol
     token-budget.md                     # Budget tracking protocol
     injection-resistance.md             # Two-tier injection detection
+    guardrails.md                       # Guardrail definitions, constants, enforcement
+    audit-log.md                        # External action audit log format
+    destructive-patterns.txt            # Regex patterns for destructive command detection
   scripts/
     generate-delimiters.sh              # Produces unique code delimiters
     validate-output.sh                  # Validates agent output structure
@@ -447,6 +513,7 @@ skills/adversarial-review/
     test-discover-references.sh         # Reference discovery tests
     test-update-references.sh           # Reference update tests
     test-reference-injection.sh         # Reference injection resistance tests
+    test-guardrails.sh                  # Guardrail feature tests
     fixtures/
       sample-code.py                    # Sample code for testing
       sample-code-with-injection.py     # Code with embedded injection attempts
