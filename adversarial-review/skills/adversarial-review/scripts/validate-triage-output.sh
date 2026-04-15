@@ -38,11 +38,13 @@ extract_field() {
 SCRIPT_DIR_VALIDATE="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR_VALIDATE/_injection-check.sh"
 
-# Check for NO_TRIAGE_EVALUATIONS marker (valid zero-triage output)
+# Check for NO_TRIAGE_EVALUATIONS marker (zero triage verdicts, but discovery findings may follow)
+ZERO_TRIAGE=false
 if grep -qF "NO_TRIAGE_EVALUATIONS" <<< "$content"; then
-    echo '{"valid": true, "errors": [], "triage_count": 0, "discovery_count": 0, "zero_evaluations": true}'
-    exit 0
+    ZERO_TRIAGE=true
 fi
+
+if [[ "$ZERO_TRIAGE" == false ]]; then
 
 # Extract triage IDs (TRIAGE-ROLE-NNN format)
 triage_ids=$(echo "$content" | sed -n 's/^Triage ID: \(TRIAGE-[A-Z]*-[0-9]*\).*/\1/p')
@@ -99,22 +101,22 @@ while IFS= read -r tid; do
 
     # Validate Severity-If-Fix conditional
     severity_if_fix=$(extract_field "Severity-If-Fix:" "$block")
-    if [[ "$verdict" == "Fix" || "$verdict" == "Investigate" ]]; then
-        # When verdict is Fix or Investigate, Severity-If-Fix must be a valid severity
+    if [[ "$verdict" == "Fix" ]]; then
+        # When verdict is Fix, Severity-If-Fix must be a valid severity
         if [[ "$severity_if_fix" != "Critical" && "$severity_if_fix" != "Important" && "$severity_if_fix" != "Minor" ]]; then
-            ERRORS+=("Triage $tid: Verdict=$verdict requires Severity-If-Fix to be Critical|Important|Minor, got '$severity_if_fix'")
+            ERRORS+=("Triage $tid: Verdict=Fix requires Severity-If-Fix to be Critical|Important|Minor, got '$severity_if_fix'")
         fi
-    elif [[ "$verdict" == "No-Fix" ]]; then
-        # When verdict is No-Fix, Severity-If-Fix must be N/A
+    elif [[ "$verdict" == "No-Fix" || "$verdict" == "Investigate" ]]; then
+        # When verdict is No-Fix or Investigate, Severity-If-Fix must be N/A
         if [[ "$severity_if_fix" != "N/A" ]]; then
-            ERRORS+=("Triage $tid: Verdict=No-Fix requires Severity-If-Fix to be N/A, got '$severity_if_fix'")
+            ERRORS+=("Triage $tid: Verdict=$verdict requires Severity-If-Fix to be N/A, got '$severity_if_fix'")
         fi
     fi
 
-    # Check Lines format
+    # Check Lines format (N/A valid for general/file-level comments)
     lines_val=$(extract_field "Lines:" "$block")
-    if [[ -n "$lines_val" ]] && ! [[ "$lines_val" =~ ^[0-9]+(-[0-9]+)?$ ]]; then
-        ERRORS+=("Triage $tid: invalid Lines format '$lines_val' (must be NNN or NNN-NNN)")
+    if [[ -n "$lines_val" ]] && ! [[ "$lines_val" =~ ^([0-9]+(-[0-9]+)?|N/A)$ ]]; then
+        ERRORS+=("Triage $tid: invalid Lines format '$lines_val' (must be NNN, NNN-NNN, or N/A)")
     fi
 
     # Check length caps
@@ -160,6 +162,8 @@ while IFS= read -r tid; do
     check_injection "$freetext" "$tid"
 
 done <<< "$triage_ids"
+
+fi  # end ZERO_TRIAGE check
 
 # Extract and process discovery findings (ROLE-NNN format, not TRIAGE-ROLE-NNN)
 finding_ids=$(echo "$content" | sed -n 's/^Finding ID: \([A-Z]*-[0-9]*\).*/\1/p' | grep -v '^TRIAGE-' || true)
@@ -220,10 +224,10 @@ while IFS= read -r fid; do
         ERRORS+=("Finding $fid: invalid confidence '$confidence' (must be High|Medium|Low)")
     fi
 
-    # Check Lines format
+    # Check Lines format (N/A valid for general/file-level comments)
     lines_val=$(extract_field "Lines:" "$block")
-    if [[ -n "$lines_val" ]] && ! [[ "$lines_val" =~ ^[0-9]+(-[0-9]+)?$ ]]; then
-        ERRORS+=("Finding $fid: invalid Lines format '$lines_val' (must be NNN or NNN-NNN)")
+    if [[ -n "$lines_val" ]] && ! [[ "$lines_val" =~ ^([0-9]+(-[0-9]+)?|N/A)$ ]]; then
+        ERRORS+=("Finding $fid: invalid Lines format '$lines_val' (must be NNN, NNN-NNN, or N/A)")
     fi
 
     # Check length caps
@@ -250,7 +254,7 @@ done <<< "$finding_ids"
 
 # Build JSON output with proper escaping via python3
 if [[ ${#ERRORS[@]} -eq 0 ]]; then
-    python3 -c "import json; print(json.dumps({'valid': True, 'errors': [], 'triage_count': int('$TRIAGE_COUNT'), 'discovery_count': int('$DISCOVERY_COUNT')}))"
+    python3 -c "import json; d={'valid': True, 'errors': [], 'triage_count': int('$TRIAGE_COUNT'), 'discovery_count': int('$DISCOVERY_COUNT')}; d.update({'zero_evaluations': True} if '$ZERO_TRIAGE' == 'true' else {}); print(json.dumps(d))"
     exit 0
 else
     errors_json=$(python3 -c "
