@@ -118,12 +118,11 @@ This catches near-duplicates that survived the challenge round because they were
 
 ### Step 6: Flag Co-located Findings
 
-Identify cross-specialist findings that target **overlapping file and line ranges**:
+**Code profile:** Identify cross-specialist findings that target **overlapping file and line ranges** (same file path, overlapping or adjacent line ranges).
 
-- Same file path
-- Overlapping or adjacent line ranges
+**Strat/RFE profiles:** Identify cross-specialist findings that target **the same document and citation** (same Document value, same or overlapping section/paragraph reference).
 
-Co-located findings are **not merged** — they remain separate findings. They are flagged and grouped in report Section 9 (Co-located Findings) so the user can see how different specialist perspectives relate to the same code region.
+Co-located findings are **not merged** — they remain separate findings. They are flagged and grouped in report Section 9 (Co-located Findings) so the user can see how different specialist perspectives relate to the same region.
 
 ### Step 7: Classify Challenge Round Findings
 
@@ -167,6 +166,54 @@ This mode differs from Single-Specialist Mode: single-specialist has a devil's a
 | < ceil((N+1)/2) | >= 1 | any | Yes | No | Escalate (disagreement) |
 | any   | any       | many    | No          | N/A       | Escalate (no quorum) |
 | < ceil((N+1)/2) | >= ceil((N+1)/2) | any | Yes | No | Dismissed |
+
+## Verdict Resolution (strat/rfe profiles only)
+
+When the active profile has `has_verdicts: true` (strat, rfe), Phase 3 runs verdict resolution alongside finding resolution. This is a separate track that produces per-document verdicts.
+
+### Procedure
+
+For each reviewed document (strategy or RFE):
+
+1. **Collect verdicts:** Gather each agent's verdict (Approve / Revise / Reject) from their findings output and challenge round positions.
+
+2. **Apply resolution rules:**
+
+| Condition | Result |
+|-----------|--------|
+| All agents chose the same verdict | **Unanimous verdict** |
+| Strict majority agrees on a verdict | **Majority verdict** (note dissent) |
+| No majority (e.g., 2 Approve, 2 Revise, 1 Reject) | **Conservative tiebreak**: most conservative verdict wins (Reject > Revise > Approve) |
+
+3. **Record dissent:** For non-unanimous verdicts, preserve each dissenting agent's verdict and rationale in the report.
+
+### Conservative Tiebreaker Rationale
+
+When specialists can't agree, the conservative option protects quality:
+- A strategy where half the specialists want to reject should not be approved
+- "Revise" is always safer than "approve" when there's genuine disagreement
+- The dissenting positions are preserved in the report so the strategy author can see why
+
+### Verdict Agreement Level
+
+Verdict agreement level is computed separately from finding agreement level:
+
+| Verdict Agreement | Condition |
+|-------------------|-----------|
+| **Full Consensus** | All document verdicts are unanimous |
+| **Strong Agreement** | >75% of verdicts are unanimous or majority, no tiebreaks |
+| **Partial Agreement** | Mix of unanimous, majority, and tiebreak verdicts |
+| **Split Decision** | >25% of verdicts required conservative tiebreak |
+| **No Agreement** | Majority of verdicts required tiebreak |
+
+The report's executive summary uses the **verdict agreement level** (not the finding agreement level) as the primary indicator for strat/rfe profiles.
+
+### Verdict Challenges
+
+During Phase 2, agents may issue verdict challenges (challenging another agent's overall verdict independently of individual findings). These are processed during verdict resolution:
+
+- If an agent's verdict challenge is supported by majority, the target agent's verdict is overridden for resolution purposes
+- The original verdict and the challenge are both recorded in the report
 
 ## Cache Interaction
 

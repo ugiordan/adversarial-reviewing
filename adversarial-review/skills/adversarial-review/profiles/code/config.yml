@@ -1,0 +1,26 @@
+name: code
+description: Source code review
+evidence_format: file_line
+has_verdicts: false
+phase5_enabled: true
+
+agents:
+  - prefix: SEC
+    file: security-auditor.md
+  - prefix: PERF
+    file: performance-analyst.md
+  - prefix: QUAL
+    file: code-quality-reviewer.md
+  - prefix: CORR
+    file: correctness-verifier.md
+  - prefix: ARCH
+    file: architecture-reviewer.md
+
+quick_specialists: [SEC, CORR]
+default_specialists: all
+thorough_specialists: all
+
+templates:
+  finding: finding-template.md
+  challenge_response: challenge-response-template.md
+  report: report-template.md

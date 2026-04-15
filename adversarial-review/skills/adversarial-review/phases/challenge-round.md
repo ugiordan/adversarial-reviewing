@@ -72,7 +72,7 @@ Send each agent a minimal prompt (~2,825 tokens) with Phase 2 cache navigation:
 - **Tier 1:** Agent reads `findings/cross-agent-summary.md` (~200 tokens) — ID, Severity, Category, File:Line, One-liner.
 - **Tier 2:** Agent reads individual finding files (`findings/<agent>/<ID>.md`) only for findings they challenge or that fall in their domain.
 
-Each agent responds using `templates/challenge-response-template.md`:
+Each agent responds using `profiles/<profile>/templates/challenge-response-template.md`:
 
 ```
 Response to [FINDING-ID]:
@@ -80,6 +80,8 @@ Action: [Agree | Challenge | Abstain]
 Severity assessment: [Critical | Important | Minor]    (required if Agree)
 Evidence: [supporting or counter-evidence, max 2000 chars]
 ```
+
+**Strat profile addition:** When `has_verdicts: true`, challenge responses also include a `Verdict assessment: [Approve | Revise | Reject]` field for the overall document verdict.
 
 **New findings:** Agents may raise new findings in **iterations 1 and 2 only**. New findings are **prohibited in the final iteration** (iteration 3). New findings must use the standard finding template with `Source: Challenge Round` marker.
 
@@ -105,7 +107,7 @@ Two distinct validation paths:
 
 1. **Challenge responses:** Run `scripts/validate-output.sh` with challenge mode:
    ```bash
-   scripts/validate-output.sh <response_file> <role_prefix> --mode challenge --finding-ids <ids_file>
+   scripts/validate-output.sh <response_file> <role_prefix> --mode challenge --finding-ids <ids_file> --profile <profile>
    ```
 2. **New findings raised during challenge:** Run through `manage-cache.sh populate-findings`:
    ```bash
@@ -196,7 +198,9 @@ Iteration 3 is a structured rebuttal round, not a simple "final positions" colle
   - Challenges or defenses without file:line citations are treated as retractions
 - After completion, proceed to Phase 3 regardless of convergence
 
-The rebuttal prompt appended to iteration 3:
+The rebuttal prompt appended to iteration 3 is profile-dependent:
+
+**Code profile:**
 
 > For each finding you are challenging or defending, you MUST cite specific file:line evidence.
 >
@@ -205,6 +209,16 @@ The rebuttal prompt appended to iteration 3:
 > - If you cannot cite specific file:line evidence, **retract your position** (change to Agree or Abstain for challenges, Withdraw for defenses)
 >
 > Positions without evidence citations will be treated as retractions during resolution.
+
+**Strat profile:**
+
+> For each finding you are challenging or defending, you MUST cite specific strategy text evidence.
+>
+> - If you are **challenging** a finding: quote the specific strategy text that disproves the finding (e.g., the strategy already addresses this in section X, the acceptance criterion Y covers this case)
+> - If you are **defending** a finding: quote the specific strategy text that creates the risk or gap (e.g., the technical approach in paragraph N proposes X without addressing Y)
+> - If you cannot cite specific strategy text evidence, **retract your position** (change to Agree or Abstain for challenges, Withdraw for defenses)
+>
+> Positions without strategy text citations will be treated as retractions during resolution.
 
 ## Single-Specialist Mode
 
@@ -251,7 +265,7 @@ Triage-Discovery findings are debated using the standard challenge response temp
 - `scripts/validate-output.sh` — response validation
 - `scripts/detect-convergence.sh` — convergence detection
 - `scripts/track-budget.sh` — budget tracking
-- `templates/sanitized-document-template.md` — sanitized document format
-- `templates/challenge-response-template.md` — challenge response format
-- `templates/finding-template.md` — new finding format (with Source marker)
-- `agents/devils-advocate.md` — single-specialist devil's advocate role
+- `profiles/<profile>/templates/challenge-response-template.md` — challenge response format (profile-specific)
+- `profiles/<profile>/templates/finding-template.md` — new finding format (profile-specific, with Source marker)
+- `templates/sanitized-document-template.md` — sanitized document format (shared)
+- `profiles/<profile>/agents/devils-advocate.md` — single-specialist devil's advocate role (profile-specific)

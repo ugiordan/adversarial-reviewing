@@ -30,3 +30,5 @@ __pycache__/
 # Internal planning docs (not published)
 /docs/specs/
 /docs/plans/
+/docs/arch-*.dot
+/docs/arch-*.png

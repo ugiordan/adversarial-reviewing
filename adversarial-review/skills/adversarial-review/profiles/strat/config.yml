@@ -1,0 +1,27 @@
+name: strat
+description: Strategy document review
+evidence_format: text_citation
+has_verdicts: true
+verdict_values: [approve, revise, reject]
+phase5_enabled: false
+
+agents:
+  - prefix: FEAS
+    file: feasibility-analyst.md
+  - prefix: ARCH
+    file: architecture-reviewer.md
+  - prefix: SEC
+    file: security-analyst.md
+  - prefix: USER
+    file: user-impact-analyst.md
+  - prefix: SCOP
+    file: scope-completeness-analyst.md
+
+quick_specialists: [SEC, FEAS]
+default_specialists: all
+thorough_specialists: all
+
+templates:
+  finding: finding-template.md
+  challenge_response: challenge-response-template.md
+  report: report-template.md

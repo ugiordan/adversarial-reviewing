@@ -7,8 +7,9 @@ Each specialist independently reviews the code and iteratively refines their fin
 ## Prerequisites
 
 - Active specialists selected (from configuration or `--quick`/`--thorough` profile)
-- Code under review identified and accessible
+- Review target identified and accessible (code files for `code` profile, strategy documents for `strat` profile)
 - Budget initialized via `scripts/track-budget.sh init <budget_limit>`
+- Active profile resolved (`code` or `strat`)
 
 ## Procedure
 
@@ -18,11 +19,13 @@ For each active specialist, compose a minimal prompt (~2,825 tokens) containing:
 
 | Content | Source | ~Tokens |
 |---------|--------|---------|
-| Role definition | `agents/<specialist>.md` (includes inoculation) | ~1,500 |
+| Role definition | `profiles/<profile>/agents/<specialist>.md` (includes inoculation) | ~1,500 |
 | Inoculation paragraphs (3) | Already in role files | ~500 |
 | Delimiter values | Session-wide hex from cache initialization (Step 3) | ~125 |
-| Finding template | `templates/finding-template.md` inline | ~500 |
+| Finding template | `profiles/<profile>/templates/finding-template.md` inline | ~500 |
 | Cache navigation block | See below | ~200 |
+
+Agent and template paths are resolved from the active profile directory (`profiles/code/` or `profiles/strat/`).
 
 **Cache navigation block (included in prompt):**
 
@@ -81,7 +84,9 @@ The agent reads its own prior findings from the cache. The orchestrator does NOT
 
 #### Verification Gate (Iteration 2+)
 
-On iteration 2 and later, append to the re-prompt:
+On iteration 2 and later, append to the re-prompt. The verification gate is profile-dependent:
+
+**Code profile:**
 
 > Before submitting refined findings, classify each as:
 > - **CODE-VERIFIED**: You traced the actual execution path and can cite
@@ -91,6 +96,17 @@ On iteration 2 and later, append to the re-prompt:
 >
 > Withdraw all ASSUMPTION-BASED findings, or investigate the code until they
 > become CODE-VERIFIED. Do not submit assumption-based findings.
+
+**Strat profile:**
+
+> Before submitting refined findings, classify each as:
+> - **TEXT-VERIFIED**: You can cite specific strategy text (section, paragraph,
+>   or acceptance criterion) that creates or evidences the issue
+> - **ASSUMPTION-BASED**: You inferred risk from general knowledge or common
+>   patterns without finding concrete evidence in the strategy text
+>
+> Withdraw all ASSUMPTION-BASED findings, or investigate the strategy text until
+> they become TEXT-VERIFIED. Do not submit assumption-based findings.
 
 Finding withdrawals due to the verification gate will trigger non-convergence
 in `scripts/detect-convergence.sh` (the finding set changed between iterations).
@@ -212,4 +228,4 @@ Iteration 3 (only if not converged):
 - `scripts/detect-convergence.sh` — convergence detection implementation
 - `scripts/discover-references.sh` — reference module discovery and filtering
 - `scripts/track-budget.sh` — budget tracking implementation
-- `templates/finding-template.md` — required finding output format
+- `profiles/<profile>/templates/finding-template.md` — required finding output format (profile-specific)

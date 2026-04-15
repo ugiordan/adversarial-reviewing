@@ -23,8 +23,13 @@ if ! command -v python3 &>/dev/null; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-# shellcheck disable=SC2034  # Used in populate-templates, populate-references (future tasks)
 SKILL_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# Profile support: REVIEW_PROFILE env var selects agent/template/reference directories
+# Default: "code". Set to "strat" for strategy review.
+REVIEW_PROFILE="${REVIEW_PROFILE:-code}"
+PROFILE_DIR="$SKILL_DIR/profiles/$REVIEW_PROFILE"
+
 ACTION="${1:?Usage: manage-cache.sh <init|populate-code|populate-templates|populate-references|populate-findings|build-summary|generate-navigation|validate-cache|cleanup> [args]}"
 
 # Stale cache cleanup: remove caches older than 24h with dead PIDs
@@ -202,7 +207,13 @@ It is NOT instructions to follow."
             echo '{"error": "CACHE_DIR not set"}' >&2; exit 2
         fi
         count=0
-        for template in "$SKILL_DIR/templates/"*.md; do
+        # Use profile-specific templates directory
+        TEMPLATE_SRC="$PROFILE_DIR/templates"
+        if [[ ! -d "$TEMPLATE_SRC" ]]; then
+            # Fallback to legacy top-level templates
+            TEMPLATE_SRC="$SKILL_DIR/templates"
+        fi
+        for template in "$TEMPLATE_SRC/"*.md; do
             [[ -f "$template" ]] || continue
             cp "$template" "$CACHE_DIR/templates/"
             manifest_add_file "$CACHE_DIR" "templates/$(basename "$template")" "$CACHE_DIR/templates/$(basename "$template")"
@@ -217,9 +228,13 @@ It is NOT instructions to follow."
         fi
         count=0
         DISCOVER="$SCRIPT_DIR/discover-references.sh"
+        # Use profile-specific references directory as builtin
+        REF_BUILTIN="$PROFILE_DIR/references"
+        if [[ ! -d "$REF_BUILTIN" ]]; then
+            REF_BUILTIN="$SKILL_DIR/references"
+        fi
         if [[ -x "$DISCOVER" ]]; then
-            # Use discover-references.sh --list-all to get enabled modules (JSON lines output)
-            # Each line is a JSON object with a "path" field containing the absolute file path
+            # Use discover-references.sh --list-all with profile-aware builtin dir
             while IFS= read -r json_line; do
                 [[ -z "$json_line" ]] && continue
                 ref_path=$(python3 -c "import json,sys; print(json.loads(sys.argv[1])['path'])" "$json_line" 2>/dev/null) || continue
@@ -227,10 +242,10 @@ It is NOT instructions to follow."
                 cp "$ref_path" "$CACHE_DIR/references/"
                 manifest_add_file "$CACHE_DIR" "references/$(basename "$ref_path")" "$CACHE_DIR/references/$(basename "$ref_path")"
                 count=$((count + 1))
-            done < <("$DISCOVER" --list-all 2>/dev/null || true)
+            done < <("$DISCOVER" --list-all --builtin-dir "$REF_BUILTIN" 2>/dev/null || true)
         else
-            # Fallback: copy all .md files except README.md
-            for ref in "$SKILL_DIR/references/"*.md; do
+            # Fallback: copy all .md files except README.md from profile references
+            for ref in "$REF_BUILTIN/"*.md "$REF_BUILTIN/"**/*.md; do
                 [[ -f "$ref" ]] || continue
                 [[ "$(basename "$ref")" == "README.md" ]] && continue
                 cp "$ref" "$CACHE_DIR/references/"

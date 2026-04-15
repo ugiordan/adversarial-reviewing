@@ -20,6 +20,7 @@ MAX_FINDINGS=0
 CHECK_FIXES=false
 MODE="finding"  # default mode
 FINDING_IDS_FILE=""
+PROFILE="code"  # default profile (code = file:line evidence, strat = text citations)
 
 # Parse optional flags after required positional args
 shift 2  # past OUTPUT_FILE and ROLE_PREFIX
@@ -30,6 +31,7 @@ while [[ $# -gt 0 ]]; do
         --check-fixes) CHECK_FIXES=true; shift ;;
         --mode) MODE="${2:?--mode requires a value (finding|challenge)}"; shift 2 ;;
         --finding-ids) FINDING_IDS_FILE="${2:?--finding-ids requires a file path}"; shift 2 ;;
+        --profile) PROFILE="${2:?--profile requires a value (code|strat)}"; shift 2 ;;
         *) echo "{\"error\": \"Unknown flag: $1\"}" >&2; exit 2 ;;
     esac
 done
@@ -118,9 +120,16 @@ if [[ "$MODE" == "challenge" ]]; then
             if [[ ${#evidence_nows} -lt 100 ]]; then
                 ERRORS+=("Challenge $fid: Evidence too short (${#evidence_nows} non-whitespace chars, min 100)")
             fi
-            # Check evidence references at least one file:line
-            if ! echo "$evidence" | grep -qE '[a-zA-Z0-9_/.-]+\.(go|py|ts|js|rs|java|rb|sh|md|yml|yaml|json|toml):[0-9]+'; then
-                WARNINGS+=("Challenge $fid: Evidence does not reference a specific file:line")
+            # Check evidence references (profile-dependent)
+            if [[ "$PROFILE" == "code" ]]; then
+                if ! echo "$evidence" | grep -qE '[a-zA-Z0-9_/.-]+\.(go|py|ts|js|rs|java|rb|sh|md|yml|yaml|json|toml):[0-9]+'; then
+                    WARNINGS+=("Challenge $fid: Evidence does not reference a specific file:line")
+                fi
+            else
+                # strat/rfe profiles: check for strategy text citation
+                if ! echo "$evidence" | grep -qEi '(paragraph|section|technical approach|acceptance criter|non-functional|business need|AC-[0-9])'; then
+                    WARNINGS+=("Challenge $fid: Evidence does not cite specific strategy text")
+                fi
             fi
         fi
 
@@ -190,6 +199,14 @@ fi
 
 # Check for NO_FINDINGS_REPORTED marker (valid zero-finding output)
 if grep -qF "NO_FINDINGS_REPORTED" <<< "$content"; then
+    if [[ "$PROFILE" != "code" ]]; then
+        # strat/rfe profiles require a Verdict even with zero findings
+        verdict=$(extract_field "Verdict:" "$content")
+        if [[ -z "$verdict" ]]; then
+            echo '{"valid": false, "errors": ["NO_FINDINGS_REPORTED but missing Verdict (strat/rfe profiles require Verdict: Approve with zero findings)"], "finding_count": 0}'
+            exit 1
+        fi
+    fi
     echo '{"valid": true, "errors": [], "finding_count": 0, "zero_findings": true}'
     exit 0
 fi
@@ -225,12 +242,28 @@ while IFS= read -r fid; do
         found {print}
     ' <<< "$content" | head -50)
 
-    # Check required fields
-    for field in "Specialist:" "Severity:" "Confidence:" "File:" "Lines:" "Title:" "Evidence:"; do
-        if ! grep -qF "$field" <<< "$block"; then
-            ERRORS+=("Finding $fid: missing required field '$field'")
+    # Check required fields (profile-dependent)
+    if [[ "$PROFILE" == "code" ]]; then
+        for field in "Specialist:" "Severity:" "Confidence:" "File:" "Lines:" "Title:" "Evidence:"; do
+            if ! grep -qF "$field" <<< "$block"; then
+                ERRORS+=("Finding $fid: missing required field '$field'")
+            fi
+        done
+    else
+        # strat/rfe profiles use Document/Citation instead of File/Lines, plus Verdict
+        for field in "Specialist:" "Severity:" "Confidence:" "Document:" "Citation:" "Title:" "Evidence:"; do
+            if ! grep -qF "$field" <<< "$block"; then
+                ERRORS+=("Finding $fid: missing required field '$field'")
+            fi
+        done
+        # Validate Verdict field
+        verdict=$(extract_field "Verdict:" "$block")
+        if [[ -z "$verdict" ]]; then
+            WARNINGS+=("Finding $fid: missing Verdict field (expected Approve|Revise|Reject)")
+        elif [[ "$verdict" != "Approve" && "$verdict" != "Revise" && "$verdict" != "Reject" ]]; then
+            ERRORS+=("Finding $fid: invalid Verdict '$verdict' (must be Approve|Revise|Reject)")
         fi
-    done
+    fi
     # Recommended fix: accept either casing of "fix"/"Fix"
     if ! grep -qF "Recommended fix:" <<< "$block" && ! grep -qF "Recommended Fix:" <<< "$block"; then
         ERRORS+=("Finding $fid: missing required field 'Recommended fix:'")
@@ -248,10 +281,12 @@ while IFS= read -r fid; do
         ERRORS+=("Finding $fid: invalid confidence '$confidence' (must be High|Medium|Low)")
     fi
 
-    # Check Lines format
-    lines_val=$(extract_field "Lines:" "$block")
-    if [[ -n "$lines_val" ]] && ! [[ "$lines_val" =~ ^[0-9]+(-[0-9]+)?$ ]]; then
-        ERRORS+=("Finding $fid: invalid Lines format '$lines_val' (must be NNN or NNN-NNN)")
+    # Check Lines format (code profile only)
+    if [[ "$PROFILE" == "code" ]]; then
+        lines_val=$(extract_field "Lines:" "$block")
+        if [[ -n "$lines_val" ]] && ! [[ "$lines_val" =~ ^[0-9]+(-[0-9]+)?$ ]]; then
+            ERRORS+=("Finding $fid: invalid Lines format '$lines_val' (must be NNN or NNN-NNN)")
+        fi
     fi
 
     # Check length caps
@@ -292,9 +327,16 @@ if [[ -n "$SCOPE_FILE" && -f "$SCOPE_FILE" ]]; then
             found && /^Finding ID: [A-Z]+-[0-9]+/ {exit}
             found {print}
         ' <<< "$content" | head -50)
-        file_val=$(extract_field "File:" "$block")
-        if [[ -n "$file_val" ]] && ! grep -qxF "$file_val" "$SCOPE_FILE"; then
-            WARNINGS+=("SCOPE_VIOLATION: File '$file_val' not in review scope (finding $fid)")
+        if [[ "$PROFILE" == "code" ]]; then
+            file_val=$(extract_field "File:" "$block")
+            if [[ -n "$file_val" ]] && ! grep -qxF "$file_val" "$SCOPE_FILE"; then
+                WARNINGS+=("SCOPE_VIOLATION: File '$file_val' not in review scope (finding $fid)")
+            fi
+        else
+            doc_val=$(extract_field "Document:" "$block")
+            if [[ -n "$doc_val" ]] && ! grep -qF "$doc_val" "$SCOPE_FILE"; then
+                WARNINGS+=("SCOPE_VIOLATION: Document '$doc_val' not in review scope (finding $fid)")
+            fi
         fi
     done <<< "$finding_ids"
 fi

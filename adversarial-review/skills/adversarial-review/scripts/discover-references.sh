@@ -2,7 +2,7 @@
 # discover-references.sh - Discover and filter reference modules for specialists
 # Usage: discover-references.sh <specialist> [--check-staleness] [--token-count]
 #        discover-references.sh --list-all [--check-staleness] [--token-count]
-# Directories can be overridden with: --builtin-dir, --user-dir, --project-dir
+# Directories can be overridden with: --builtin-dir, --user-dir, --project-dir, --extra-dir
 # Exit codes: 0 success, 1 error
 
 set -euo pipefail
@@ -25,6 +25,7 @@ TOTAL_BUDGET=0
 TRUNCATE_BUDGET="false"
 PER_ITERATION_BUDGET=0
 IMPACT_GRAPH_TOKENS_ARG=0
+EXTRA_DIR=""
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -63,6 +64,10 @@ while [[ $# -gt 0 ]]; do
             IMPACT_GRAPH_TOKENS_ARG="${3:?--truncate-budget requires impact_graph_tokens}"
             shift 3
             ;;
+        --extra-dir)
+            EXTRA_DIR="${2:?--extra-dir requires a path}"
+            shift 2
+            ;;
         -*)
             echo "Error: Unknown option: $1" >&2
             echo "Usage: discover-references.sh <specialist> [--check-staleness] [--token-count]" >&2
@@ -90,7 +95,7 @@ if [[ "$LIST_ALL" == "false" && -z "$SPECIALIST" ]]; then
 fi
 
 # Delegate to Python for YAML parsing and JSON output
-python3 - "$SPECIALIST" "$LIST_ALL" "$CHECK_STALENESS" "$TOKEN_COUNT" "$BUILTIN_DIR" "$USER_DIR" "$PROJECT_DIR" "$BUDGET_CHECK" "$TOTAL_BUDGET" "$TRUNCATE_BUDGET" "$PER_ITERATION_BUDGET" "$IMPACT_GRAPH_TOKENS_ARG" <<'PYTHON_SCRIPT'
+python3 - "$SPECIALIST" "$LIST_ALL" "$CHECK_STALENESS" "$TOKEN_COUNT" "$BUILTIN_DIR" "$USER_DIR" "$PROJECT_DIR" "$BUDGET_CHECK" "$TOTAL_BUDGET" "$TRUNCATE_BUDGET" "$PER_ITERATION_BUDGET" "$IMPACT_GRAPH_TOKENS_ARG" "$EXTRA_DIR" <<'PYTHON_SCRIPT'
 import json
 import sys
 import os
@@ -170,8 +175,8 @@ def discover_modules_in_dir(base_dir: str, specialist: str, list_all: bool, laye
     if not os.path.isdir(base_dir):
         return modules
 
-    # Specialist subdirectories
-    specialist_dirs = ['security', 'performance', 'quality', 'correctness', 'architecture']
+    # Dynamically discover specialist subdirectories (excludes 'all', handled separately)
+    specialist_dirs = [d for d in os.listdir(base_dir) if os.path.isdir(os.path.join(base_dir, d)) and d != 'all']
 
     # Discover from specialist subdirectory
     if list_all:
@@ -232,7 +237,7 @@ def scan_directory(directory: str, layer_priority: int) -> List[Tuple[Dict, str,
     return modules
 
 def main():
-    if len(sys.argv) < 13:
+    if len(sys.argv) < 14:
         print("Error: Missing arguments", file=sys.stderr)
         sys.exit(1)
 
@@ -248,6 +253,7 @@ def main():
     truncate_budget = sys.argv[10] == "true"
     per_iteration_budget = int(sys.argv[11])
     impact_graph_tokens = int(sys.argv[12])
+    extra_dir = sys.argv[13] if len(sys.argv) > 13 else ""
 
     # Discover modules from all three layers
     all_modules = []
@@ -260,6 +266,10 @@ def main():
 
     # Layer 3: Project (priority 3)
     all_modules.extend(discover_modules_in_dir(project_dir, specialist, list_all, 3))
+
+    # Layer 4: Extra dir (priority 4, highest, overrides all)
+    if extra_dir:
+        all_modules.extend(discover_modules_in_dir(extra_dir, specialist, list_all, 4))
 
     # Process and validate modules
     validated_modules = []

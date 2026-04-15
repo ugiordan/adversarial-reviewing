@@ -40,25 +40,48 @@ The orchestrator creates tasks dynamically based on the configuration:
 - [ ] **Step 5:** Phase 2 — Challenge round (delegate to `phases/challenge-round.md`; devil's advocate mode if single-specialist)
 - [ ] **Step 6:** Phase 3 — Resolution (delegate to `phases/resolution.md`; simplified if single-specialist)
 - [ ] **Step 7:** Phase 4 — Report (delegate to `phases/report.md`)
-- [ ] **Step 8:** Phase 5 — Remediation (delegate to `phases/remediation.md`; only when `--fix`)
+- [ ] **Step 8:** Phase 5 — Remediation (delegate to `phases/remediation.md`; only when `--fix`, code profile only)
 
 ---
 
 ## Step 1: Invocation Parsing
 
-Parse the user's invocation to determine specialist selection, mode, and budget.
+Parse the user's invocation to determine profile, specialist selection, mode, and budget.
 
-### Specialist Flags
+### Profile Flag
+
+| Flag | Profile | Description |
+|------|---------|-------------|
+| *(none)* | `code` | Source code review (default, current behavior) |
+| `--profile strat` | `strat` | Strategy document review |
+
+The profile determines the agent set, templates, reference modules, and validation mode. Read the profile config:
+
+```bash
+scripts/profile-config.sh profiles/<profile> <key>
+```
+
+### Specialist Flags (Code Profile)
 
 | Flag | Specialist | Agent File |
 |------|-----------|------------|
-| `--security` | Security Auditor | `agents/security-auditor.md` |
-| `--performance` | Performance Analyst | `agents/performance-analyst.md` |
-| `--quality` | Code Quality Reviewer | `agents/code-quality-reviewer.md` |
-| `--correctness` | Correctness Verifier | `agents/correctness-verifier.md` |
-| `--architecture` | Architecture Reviewer | `agents/architecture-reviewer.md` |
+| `--security` | Security Auditor | `profiles/code/agents/security-auditor.md` |
+| `--performance` | Performance Analyst | `profiles/code/agents/performance-analyst.md` |
+| `--quality` | Code Quality Reviewer | `profiles/code/agents/code-quality-reviewer.md` |
+| `--correctness` | Correctness Verifier | `profiles/code/agents/correctness-verifier.md` |
+| `--architecture` | Architecture Reviewer | `profiles/code/agents/architecture-reviewer.md` |
 
-If no specialist flags are provided, activate **all 5 specialists**.
+### Specialist Flags (Strat Profile)
+
+| Flag | Specialist | Agent File |
+|------|-----------|------------|
+| `--security` | Security Analyst | `profiles/strat/agents/security-analyst.md` |
+| `--feasibility` | Feasibility Analyst | `profiles/strat/agents/feasibility-analyst.md` |
+| `--architecture` | Architecture Reviewer | `profiles/strat/agents/architecture-reviewer.md` |
+| `--user-impact` | User Impact Analyst | `profiles/strat/agents/user-impact-analyst.md` |
+| `--scope` | Scope & Completeness Analyst | `profiles/strat/agents/scope-completeness-analyst.md` |
+
+If no specialist flags are provided, activate **all 5 specialists** for the active profile.
 
 ### Mode Flags
 
@@ -80,6 +103,17 @@ If no specialist flags are provided, activate **all 5 specialists**.
 | `--reuse-cache <hex>` | Reuse an existing cache by session hex. Validates manifest (SHA-256 per file + commit SHA). Skips code/template/reference population. Findings regenerated. |
 | `--strict-scope` | Reject (not demote) out-of-scope findings and patches |
 | `--fix --dry-run` | Preview remediation without writing anything |
+| `--arch-context [url\|path]` | Fetch architecture context for strat profile. Default repo: `opendatahub-io/architecture-context`. Strat profile only. |
+
+### Flag Compatibility
+
+| Flag | Code profile | Strat profile |
+|------|-------------|---------------|
+| `--delta`, `--diff`, `--triage`, `--fix` | Yes | No (error) |
+| `--arch-context` | No (error) | Yes |
+| `--save`, `--budget`, `--quick`, `--thorough` | Yes | Yes |
+| `--keep-cache`, `--reuse-cache` | Yes | Yes |
+| `--strict-scope` | Yes | Yes |
 
 > **Note:** `--strict-scope` is an orchestrator-level flag. `validate-output.sh` always emits scope violations as warnings; the orchestrator decides whether to demote or reject based on `--strict-scope`.
 
@@ -95,15 +129,18 @@ If no specialist flags are provided, activate **all 5 specialists**.
 
 ### Preset Profiles
 
-| Flag | Specialists | Iterations | Budget |
-|------|------------|------------|--------|
-| `--quick` | 2 (Security + Correctness) | 2 (min=max, convergence check runs but early exit cannot trigger) | 150K |
-| `--thorough` | 5 (all) | 3 | 800K |
-| *(default)* | All specified or all 5 | 3 (convergence exit) | 350K |
+Presets are decoupled from profiles. Which specialists are selected for `--quick` depends on the profile's `quick_specialists` config.
+
+| Flag | Code Profile | Strat Profile | Iterations | Budget |
+|------|-------------|---------------|------------|--------|
+| `--quick` | SEC + CORR (2) | SEC + FEAS (2) | 2 | 150K |
+| `--thorough` | All 5 | All 5 | 3 | 800K |
+| *(default)* | All 5 | All 5 | 3 | 350K |
 
 ### Defaults
 
-- **Specialists:** All 5 (if none specified)
+- **Profile:** `code` (if `--profile` not specified)
+- **Specialists:** All 5 for the active profile (if none specified)
 - **Iterations:** 3 self-refinement rounds (with convergence-based early exit, minimum 2)
 - **Budget:** 350K tokens
 - **Topic:** Auto-derived from scope (primary directory or file name)
@@ -220,12 +257,14 @@ After scope confirmation and pre-flight budget check, initialize the local conte
    ```
 5. **Populate templates:**
    ```bash
-   CACHE_DIR=$CACHE_DIR scripts/manage-cache.sh populate-templates
+   REVIEW_PROFILE=<profile> CACHE_DIR=$CACHE_DIR scripts/manage-cache.sh populate-templates
    ```
 6. **Populate references:**
    ```bash
-   CACHE_DIR=$CACHE_DIR scripts/manage-cache.sh populate-references
+   REVIEW_PROFILE=<profile> CACHE_DIR=$CACHE_DIR scripts/manage-cache.sh populate-references
    ```
+
+   `REVIEW_PROFILE` selects the profile directory for templates and references (`code` or `strat`). Defaults to `code` if not set.
 7. **Generate navigation:**
    ```bash
    CACHE_DIR=$CACHE_DIR scripts/manage-cache.sh generate-navigation 1 1
@@ -322,9 +361,9 @@ See `protocols/guardrails.md` for the `SEVERITY_INFLATION_CRITICAL_THRESHOLD` an
 
 Delegate to `phases/challenge-round.md`.
 
-In this phase, specialists challenge each other's findings through structured debate. The orchestrator mediates all communication — agents never see each other's raw output. See `protocols/mediated-communication.md` for the mediation protocol. Challenge prompts use `templates/challenge-response-template.md`.
+In this phase, specialists challenge each other's findings through structured debate. The orchestrator mediates all communication — agents never see each other's raw output. See `protocols/mediated-communication.md` for the mediation protocol. Challenge prompts use `profiles/<profile>/templates/challenge-response-template.md`.
 
-**Single-specialist mode:** When only 1 specialist is active, Phase 2 runs a devil's advocate pass instead of cross-agent debate (see `agents/devils-advocate.md` and the Single-Specialist Mode section in `phases/challenge-round.md`). Phase 2 is NOT skipped — it runs in devil's advocate mode.
+**Single-specialist mode:** When only 1 specialist is active, Phase 2 runs a devil's advocate pass instead of cross-agent debate (see `profiles/<profile>/agents/devils-advocate.md` and the Single-Specialist Mode section in `phases/challenge-round.md`). Phase 2 is NOT skipped — it runs in devil's advocate mode.
 
 ---
 
@@ -342,7 +381,9 @@ The orchestrator synthesizes challenges and defenses, applies consensus rules, a
 
 Delegate to `phases/report.md`.
 
-Generate the final report using `templates/report-template.md` (or `templates/delta-report-template.md` for delta mode). The report includes up to 14 sections:
+Generate the final report using the profile's report template: `profiles/<profile>/templates/report-template.md` (or `profiles/code/templates/delta-report-template.md` for delta mode, code profile only).
+
+**Code profile:** The report includes up to 14 sections:
 
 - Executive summary (Section 1)
 - Review configuration (Section 2) — conditional, review parameters summary
@@ -355,6 +396,18 @@ Generate the final report using `templates/report-template.md` (or `templates/de
 - **Review Metrics** (Section 12) — challenge round statistics
 - **Guardrails Triggered** (Section 13) — populated from the guardrail trip log
 - **Audit Log** (Section 14) — external actions taken during `--fix` and `--triage`
+
+**Strat profile:** The report includes up to 10 sections (see `profiles/strat/templates/report-template.md`):
+- Executive summary with verdict agreement level (Section 1)
+- Review configuration (Section 2)
+- Per-strategy review with verdict tables and categorized findings (Section 3)
+- Cross-strategy patterns (Section 4, when reviewing 2+ strategies)
+- Architecture context citations (Section 5, when architecture context loaded)
+- Dismissed findings (Section 6)
+- Challenge round highlights (Section 7)
+- Remediation roadmap (Section 8)
+- Methodology notes (Section 9)
+- Metadata (Section 10)
 
 If `--save` was specified, write the report to `docs/reviews/YYYY-MM-DD-<topic>-review.md`.
 
@@ -369,7 +422,7 @@ If `--save` was specified, write the report to `docs/reviews/YYYY-MM-DD-<topic>-
 When only one specialist is active (e.g., `--security` alone), the full multi-agent protocol is unnecessary. Instead:
 
 1. **Phase 1: Self-refinement** — The specialist reviews and self-refines as normal
-2. **Phase 2: Devil's advocate pass** — Instead of cross-agent debate, Phase 2 runs using `agents/devils-advocate.md` to challenge the specialist's findings. The originator responds once. See `phases/challenge-round.md` Single-Specialist Mode section.
+2. **Phase 2: Devil's advocate pass** — Instead of cross-agent debate, Phase 2 runs using `profiles/<profile>/agents/devils-advocate.md` to challenge the specialist's findings. The originator responds once. See `phases/challenge-round.md` Single-Specialist Mode section.
 3. **Phase 3: Simplified resolution** — Findings the specialist maintained are included with reduced-confidence flag. Findings withdrawn or conceded are dismissed. See `phases/resolution.md` Single-Specialist Mode section.
 4. **Phase 4: Report** — Generate report with a disclaimer noting that findings were not cross-validated by other specialists
 5. **Phase 5: Remediation** — Runs normally when `--fix` is specified (independent of specialist count)
@@ -378,7 +431,7 @@ When only one specialist is active (e.g., `--security` alone), the full multi-ag
 
 ## Step 8: Phase 5 — Remediation
 
-**Only when `--fix` is specified.** Delegate to `phases/remediation.md`.
+**Only when `--fix` is specified. Code profile only.** Delegate to `phases/remediation.md`. If `--fix` is used with `--profile strat`, emit an error: "Phase 5 (Remediation) is not available for the strat profile. Strategy findings require manual revision of the strategy documents."
 
 This phase transforms validated findings into tracked work items:
 
@@ -549,31 +602,52 @@ skills/adversarial-review/
   SKILL.md                              # This file — main orchestrator
   config/
     model-config.yml.example            # Future multi-model routing (v2)
-  references/
-    README.md                           # Authoring guidelines
-    security/
-      owasp-top10-2025.md               # OWASP Top 10:2025 verification patterns
-      agentic-ai-security.md            # OWASP Agentic AI ASI01-ASI10
-      asvs-5-highlights.md              # ASVS 5.0 key requirements
-      k8s-security.md                   # Kubernetes/operator security patterns
-  agents/
-    security-auditor.md                 # SEC specialist prompt
-    performance-analyst.md              # PERF specialist prompt
-    code-quality-reviewer.md            # QUAL specialist prompt
-    correctness-verifier.md             # CORR specialist prompt
-    architecture-reviewer.md            # ARCH specialist prompt
-    devils-advocate.md                  # Single-specialist challenge agent
+  profiles/
+    code/                               # Code review profile
+      config.yml                        # Profile configuration (agents, templates, settings)
+      agents/                           # Code-specific specialist prompts
+        security-auditor.md             # SEC specialist
+        performance-analyst.md          # PERF specialist
+        code-quality-reviewer.md        # QUAL specialist
+        correctness-verifier.md         # CORR specialist
+        architecture-reviewer.md        # ARCH specialist
+        devils-advocate.md              # Single-specialist challenge agent
+      templates/                        # Code-specific output templates
+        finding-template.md             # Finding format (File/Lines evidence)
+        challenge-response-template.md  # Challenge response format
+        report-template.md              # Report format (14 sections)
+        delta-report-template.md        # Delta review report format
+        sanitized-document-template.md  # Sanitized cross-agent message format
+        jira-template.md                # Jira ticket template (--fix)
+        triage-*.md                     # Triage mode templates
+      references/                       # Code-specific reference modules
+        security/                       # Security references (OWASP, ASVS, k8s)
+    strat/                              # Strategy document review profile
+      config.yml                        # Profile configuration (agents, templates, settings)
+      agents/                           # Strat-specific specialist prompts
+        feasibility-analyst.md          # FEAS specialist
+        architecture-reviewer.md        # ARCH specialist
+        security-analyst.md             # SEC specialist
+        user-impact-analyst.md          # USER specialist
+        scope-completeness-analyst.md   # SCOP specialist
+        devils-advocate.md              # Single-specialist challenge agent
+      templates/                        # Strat-specific output templates
+        finding-template.md             # Finding format (Document/Citation evidence)
+        challenge-response-template.md  # Challenge response format (with Verdict)
+        report-template.md              # Report format (10 sections, verdict-based)
+      references/                       # Strat-specific reference modules
+        all/                            # References for all strat specialists
   phases/
-    self-refinement.md                  # Phase 1 procedure
-    challenge-round.md                  # Phase 2 procedure
-    resolution.md                       # Phase 3 procedure
-    report.md                           # Phase 4 procedure
-    remediation.md                      # Phase 5 procedure (--fix)
+    self-refinement.md                  # Phase 1 procedure (profile-aware)
+    challenge-round.md                  # Phase 2 procedure (profile-aware)
+    resolution.md                       # Phase 3 procedure (verdict resolution for strat)
+    report.md                           # Phase 4 procedure (profile-aware)
+    remediation.md                      # Phase 5 procedure (code profile only, --fix)
   protocols/
     input-isolation.md                  # Delimiter-based code isolation
     mediated-communication.md           # Cross-agent message mediation
     convergence-detection.md            # Finding set stability detection
-    delta-mode.md                       # Re-review protocol
+    delta-mode.md                       # Re-review protocol (code profile only)
     token-budget.md                     # Budget tracking protocol
     injection-resistance.md             # Two-tier injection detection
     guardrails.md                       # Guardrail definitions, constants, enforcement
@@ -581,52 +655,20 @@ skills/adversarial-review/
     destructive-patterns.txt            # Regex patterns for destructive command detection
   scripts/
     generate-delimiters.sh              # Produces unique code delimiters
-    validate-output.sh                  # Validates agent output structure
+    validate-output.sh                  # Validates agent output (--profile aware)
     detect-convergence.sh               # Checks finding set stability
     deduplicate.sh                      # Removes duplicate findings
     track-budget.sh                     # Token budget tracking
     discover-references.sh              # Reference module discovery and filtering
     update-references.sh                # Reference module auto-update
-    manage-cache.sh                   # Cache lifecycle: init, populate, validate, cleanup
-  templates/
-    finding-template.md                 # Required output format for findings
-    challenge-response-template.md      # Challenge/defense exchange format
-    report-template.md                  # Final report format
-    delta-report-template.md            # Delta review report format
-    sanitized-document-template.md      # Sanitized cross-agent message format
-    jira-template.md                    # Jira ticket template (--fix)
+    manage-cache.sh                     # Cache lifecycle: init, populate, validate, cleanup
+    profile-config.sh                   # Profile configuration reader
+    fetch-architecture-context.sh       # Architecture context fetcher (strat profile)
   tests/
-    run-all-tests.sh                    # Test runner
-    test-validation-script.sh           # Validation script tests
-    test-single-agent.sh                # Single-agent pipeline integration tests
-    test-injection-resistance.sh        # Injection resistance tests
-    test-coverage-gaps.sh               # Coverage gap and edge case tests
-    test-discover-references.sh         # Reference discovery tests
-    test-update-references.sh           # Reference update tests
-    test-reference-injection.sh         # Reference injection resistance tests
-    test-guardrails.sh                  # Guardrail feature tests
-    fixtures/
-      sample-code.py                    # Sample code for testing
-      sample-code-with-injection.py     # Code with embedded injection attempts
-      valid-finding.txt                 # Valid finding for test input
-      valid-finding-2.txt               # Second valid finding (different specialist)
-      valid-finding-perf.txt            # Valid PERF finding
-      malformed-finding.txt             # Malformed finding for test input
-      injection-finding.txt             # Finding containing injection patterns
-      provenance-injection-finding.txt  # Finding with provenance marker injection
-      no-findings.txt                   # Zero-finding output (NO_FINDINGS_REPORTED)
-      changed-finding.txt              # Modified finding for convergence tests
-      two-findings-overlap.txt          # Overlapping findings for dedup tests
-      two-findings-nonoverlap.txt       # Non-overlapping findings for dedup tests
-      expected-findings.md              # Expected findings reference
-      sample-prior-report.md            # Prior report for delta mode tests
-      sample-reference-valid.md         # Valid reference module fixture
-      sample-reference-malformed.md     # Malformed frontmatter fixture
-      sample-reference-injection.md     # Reference with injection patterns
-      sample-reference-disabled.md      # Disabled reference module
-      sample-reference-stale.md         # Stale reference module
-      sample-reference-missing-field.md # Missing required field fixture
+    ...                                 # Test suite (unchanged)
 ```
+
+**Legacy paths:** The top-level `agents/`, `templates/`, and `references/` directories are preserved as symlinks to `profiles/code/` for backward compatibility. New code should always use profile-qualified paths.
 
 ---
 

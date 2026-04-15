@@ -13,7 +13,11 @@ Assemble and present the final review report. All findings are categorized by th
 
 ### Step 1: Assemble Report
 
-Build the report using `templates/report-template.md` with up to 14 sections (some conditional). The core sections are:
+Build the report using `profiles/<profile>/templates/report-template.md` with up to 14 sections for code profile, or 10 sections for strat profile (some conditional). The core sections are:
+
+**Profile-specific behavior:**
+- **Code profile:** Finding details include File, Lines. Sections 10-14 (remediation, change impact, metrics, guardrails, audit log) are present. Phase 5 is available.
+- **Strat profile:** Finding details include Document, Citation. Per-strategy verdict sections replace the flat finding sections. Sections 11-14 are omitted (no diff, no fix mode). The report uses verdict agreement level as the primary indicator (see `phases/resolution.md` Verdict Resolution).
 
 #### Section 1: Executive Summary
 
@@ -29,11 +33,13 @@ Build the report using `templates/report-template.md` with up to 14 sections (so
 
 Human-readable summary of review parameters (date, scope, specialists, mode flags, iterations, budget, reference modules). See `templates/report-template.md` Section 2.
 
-#### Section 3: Consensus Findings
+#### Section 3: Consensus Findings (code profile) / Per-Strategy Review (strat profile)
 
-Findings where all specialists unanimously agreed on validity and severity. Include:
+**Code profile:** Findings where all specialists unanimously agreed on validity and severity. Include:
 - Finding details (ID, severity, confidence, file, lines, title, evidence, fix)
 - Agreement count: Unanimous (N/N specialists)
+
+**Strat profile:** This section is replaced by per-strategy review sections (see `profiles/strat/templates/report-template.md` Section 3). Each strategy gets a dedicated section with verdict, per-agent verdict table, and categorized findings (consensus, majority, escalated).
 
 #### Section 4: Majority Findings
 
@@ -74,9 +80,12 @@ New findings raised during Phase 2. Include:
 
 #### Section 9: Co-located Findings
 
-Cross-specialist findings targeting overlapping file/line ranges. Present as grouped tables showing:
+Cross-specialist findings targeting overlapping regions. Present as grouped tables showing:
 - Finding IDs, specialists, severities, and titles for each co-location group
 - Interaction notes describing how the findings relate
+
+**Code profile:** Co-location is based on overlapping file/line ranges.
+**Strat profile:** Co-location is based on same document and overlapping section/citation references.
 
 #### Section 10: Remediation Summary
 
@@ -190,8 +199,8 @@ The final report reads consensus findings from `{CACHE_DIR}/findings/`. If `--ke
 
 ## References
 
-- `templates/report-template.md` — standard report template with up to 14 sections
-- `templates/delta-report-template.md` — delta mode report template (also includes Remediation Summary)
+- `profiles/<profile>/templates/report-template.md` — profile-specific report template (code: up to 14 sections, strat: up to 10 sections)
+- `templates/delta-report-template.md` — delta mode report template (code profile only)
 - `protocols/token-budget.md` — budget truncation behavior
 - `protocols/delta-mode.md` — delta mode execution and report rules
 - `scripts/manage-cache.sh` — cache management (findings read from `{CACHE_DIR}/findings/`)

@@ -1,8 +1,10 @@
 # Adversarial Review
 
-Multi-agent adversarial code review with isolated specialists, programmatic validation, and evidence-based resolution.
+Multi-agent adversarial review with isolated specialists, programmatic validation, and evidence-based resolution.
 
-This plugin orchestrates independent specialist agents who review code from different perspectives, debate their findings through structured challenge rounds with evidence-based rebuttals, and surface validated findings with transparent agreement labeling.
+This plugin orchestrates independent specialist agents who review code or strategy documents from different perspectives, debate their findings through structured challenge rounds with evidence-based rebuttals, and surface validated findings with transparent agreement labeling.
+
+Supports two review profiles: **code** (source code review) and **strat** (strategy document review with per-document verdicts).
 
 ## How It Works
 
@@ -150,7 +152,11 @@ flowchart LR
 
 Every step requires explicit user confirmation. The orchestrator never pushes, force-pushes, or targets main/master directly.
 
-## Specialists
+## Profiles
+
+### Code Profile (default)
+
+Source code review with file:line evidence.
 
 | Specialist | Flag | Focus Area |
 |-----------|------|------------|
@@ -160,7 +166,19 @@ Every step requires explicit user confirmation. The orchestrator never pushes, f
 | Correctness Verifier | `--correctness` | Logic errors, edge cases, race conditions, invariants |
 | Architecture Reviewer | `--architecture` | Coupling, cohesion, boundaries, extensibility |
 
-Default: all 5 specialists. Use flags to select specific ones.
+### Strategy Profile (`--profile strat`)
+
+Strategy document review with text citation evidence and per-document verdicts (Approve/Revise/Reject).
+
+| Specialist | Flag | Focus Area |
+|-----------|------|------------|
+| Feasibility Analyst | `--feasibility` | Technical approach, effort estimates, dependency availability |
+| Architecture Reviewer | `--architecture` | Integration patterns, component boundaries, API contracts |
+| Security Analyst | `--security` | Security risks, missing mitigations, auth patterns |
+| User Impact Analyst | `--user-impact` | Backward compatibility, migration burden, API usability |
+| Scope & Completeness | `--scope` | Right-sizing, acceptance criteria quality, completeness gaps |
+
+Default: all 5 specialists for the active profile. Use flags to select specific ones.
 
 ## Installation
 
@@ -263,7 +281,8 @@ Reference or inline `AGENTS.md` in your AI tool's context. Feature set depends o
 
 | Flag | Effect |
 |------|--------|
-| `--quick` | 2 specialists (SEC + CORR), 2 iterations, 150K budget |
+| `--profile strat` | Strategy document review (verdicts, text citations) |
+| `--quick` | 2 specialists (SEC + CORR for code, SEC + FEAS for strat), 2 iterations, 150K budget |
 | `--thorough` | All 5 specialists, 3 iterations, 800K budget |
 | `--delta` | Re-review only changes since last review |
 | `--save` | Write report to `docs/reviews/YYYY-MM-DD-<topic>-review.md` |
@@ -276,6 +295,7 @@ Reference or inline `AGENTS.md` in your AI tool's context. Feature set depends o
 | `--gap-analysis` | Include coverage gap analysis in triage report |
 | `--strict-scope` | Reject (not demote) out-of-scope findings and patches |
 | `--fix --dry-run` | Preview remediation without writing anything |
+| `--arch-context [url\|path]` | Fetch architecture context (strat profile only) |
 
 ### Reference Module Flags
 
@@ -311,6 +331,15 @@ Reference or inline `AGENTS.md` in your AI tool's context. Feature set depends o
 
 # Combined: triage PR comments with diff context
 /adversarial-review --triage pr:42 --diff --thorough
+
+# Strategy document review
+/adversarial-review artifacts/strat-tasks/ --profile strat
+
+# Strategy review with architecture context
+/adversarial-review artifacts/strat-tasks/ --profile strat --arch-context
+
+# Quick security-only strategy review
+/adversarial-review artifacts/strat-tasks/ --profile strat --security --quick
 ```
 
 ## Reference Modules
@@ -418,12 +447,12 @@ graph TD
     PLUGIN --> SKILL["skills/adversarial-review/"]
 
     SKILL --> SKILLMD["SKILL.md"]
-    SKILL --> AG["agents/ (6 specialists)"]
+    SKILL --> PROF["profiles/"]
+    PROF --> CODE_P["code/ (5 agents, templates, references)"]
+    PROF --> STRAT_P["strat/ (5 agents, templates, references)"]
     SKILL --> PH["phases/ (5 procedures)"]
     SKILL --> PR["protocols/ (6 definitions)"]
-    SKILL --> RF["references/ (built-in modules)"]
-    SKILL --> SC["scripts/ (10 validators)"]
-    SKILL --> TM["templates/ (9 formats)"]
+    SKILL --> SC["scripts/ (12 validators)"]
     SKILL --> TS["tests/ (8 scripts + 20 fixtures)"]
 
     style ROOT fill:#f0f4ff,stroke:#4a6fa5
@@ -448,6 +477,8 @@ All agent outputs are validated through bash scripts -- not just LLM judgment:
 | `_injection-check.sh` | Shared injection detection logic (sourced by both validators) |
 | `discover-references.sh` | Module discovery, frontmatter parsing, filtering, dedup, staleness, token counting |
 | `update-references.sh` | Fetch remote modules by `source_url`, compare versions, interactive update |
+| `profile-config.sh` | Profile configuration reader (agents, templates, settings from config.yml) |
+| `fetch-architecture-context.sh` | Architecture context fetcher (strat profile, clones/updates arch docs) |
 
 ## Testing
 

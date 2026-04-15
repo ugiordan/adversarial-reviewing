@@ -11,9 +11,15 @@ AR_HOME="${ADVERSARIAL_REVIEW_HOME:-$HOME/.adversarial-review/adversarial-review
 
 ## Overview
 
-Multi-agent adversarial code review with isolated specialists, programmatic
-validation, and evidence-based resolution. Reviews code from 5 specialist
-perspectives: Security, Performance, Code Quality, Correctness, Architecture.
+Multi-agent adversarial review with isolated specialists, programmatic
+validation, and evidence-based resolution. Supports two profiles:
+
+**Code profile** (default): Reviews code from 5 specialist perspectives:
+Security, Performance, Code Quality, Correctness, Architecture.
+
+**Strategy profile** (`--profile strat`): Reviews strategy documents from 5
+specialist perspectives: Feasibility, Architecture, Security, User Impact,
+Scope & Completeness. Produces per-document verdicts (Approve/Revise/Reject).
 
 ## Multi-Agent Mode
 
@@ -63,10 +69,12 @@ All scripts use the `$AR_HOME/` prefix:
 For tools without sub-agent support, the agent assumes each specialist persona
 sequentially:
 
-1. For each specialist (SEC, PERF, QUAL, CORR, ARCH):
-   - Read the specialist prompt from `$AR_HOME/agents/<name>.md`
-   - Analyze the target code from that perspective
-   - Produce findings using the template from `$AR_HOME/templates/finding-template.md`
+1. For each specialist in the active profile:
+   - **Code profile:** SEC, PERF, QUAL, CORR, ARCH
+   - **Strat profile:** FEAS, ARCH, SEC, USER, SCOP
+   - Read the specialist prompt from `$AR_HOME/profiles/<profile>/agents/<name>.md`
+   - Analyze the target from that perspective
+   - Produce findings using the template from `$AR_HOME/profiles/<profile>/templates/finding-template.md`
 
 2. Self-challenge findings using a simplified Phase 2 (devil's advocate approach).
 
@@ -80,21 +88,34 @@ sequentially:
 
 ## Specialist and Mode Flags
 
-Specialist flags (default: all 5):
+Profile flag:
 
+- `--profile strat` -- Strategy document review (default: code)
+
+Specialist flags (default: all 5 for active profile):
+
+Code profile:
 - `--security` -- Security specialist only
 - `--performance` -- Performance specialist only
 - `--quality` -- Code Quality specialist only
 - `--correctness` -- Correctness specialist only
 - `--architecture` -- Architecture specialist only
 
+Strat profile:
+- `--security` -- Security analyst only
+- `--feasibility` -- Feasibility analyst only
+- `--architecture` -- Architecture reviewer only
+- `--user-impact` -- User impact analyst only
+- `--scope` -- Scope & completeness analyst only
+
 Mode flags:
 
-- `--delta` -- Review only changed lines (diff mode)
+- `--delta` -- Review only changed lines (code profile only)
 - `--save` -- Save report to disk
-- `--fix` -- Generate and apply remediation patches
-- `--quick` -- 2 specialists (SEC + CORR), 2 iterations, 200K budget
+- `--fix` -- Generate and apply remediation patches (code profile only)
+- `--quick` -- 2 specialists, 2 iterations, 150K budget
 - `--thorough` -- All 5 specialists, 3 iterations, 800K budget
+- `--arch-context [url|path]` -- Fetch architecture context (strat profile only)
 - `--budget <tokens>` -- Set token budget cap
 - `--diff` -- Enable change-impact analysis (diff + caller/callee graph)
 - `--diff --range <range>` -- Specify git commit range for diff analysis
@@ -127,12 +148,13 @@ docs/reviews/YYYY-MM-DD-<topic>-review.md
 
 Companion files in `$AR_HOME/`:
 
-- Agent prompts: `$AR_HOME/agents/`
+- Profiles: `$AR_HOME/profiles/code/`, `$AR_HOME/profiles/strat/`
+- Agent prompts: `$AR_HOME/profiles/<profile>/agents/`
+- Templates: `$AR_HOME/profiles/<profile>/templates/`
+- Reference modules: `$AR_HOME/profiles/<profile>/references/` (built-in), `~/.adversarial-review/references/` (user), `.adversarial-review/references/` (project)
 - Phase procedures: `$AR_HOME/phases/`
 - Protocols: `$AR_HOME/protocols/`
-- Templates: `$AR_HOME/templates/`
 - Scripts: `$AR_HOME/scripts/`
-- Reference modules: `$AR_HOME/references/` (built-in), `~/.adversarial-review/references/` (user), `.adversarial-review/references/` (project)
 
 ## Dependencies
 
