@@ -47,6 +47,20 @@ When the agreement level is **Split Decision** or **No Agreement**, add a promin
 - **Budget:** [used]K / [total]K consumed ([N]%)
 - **Architecture context:** [loaded from <source> | not available]
 - **Reference modules:** [N] loaded ([list])
+- **Constraints:** [pack name] ([N] active) | none
+```
+
+When `--constraints` is active, add a subsection listing the loaded constraints:
+
+```
+### Active Constraints
+
+| ID | Title | Severity Floor |
+|----|-------|---------------|
+| RHOAI-FIPS | FIPS 140-3 compliance required | High |
+| ... | ... | ... |
+
+Constraint severity is a floor: findings matching constraint violations use the constraint severity or higher.
 ```
 
 ## Section 3: Per-Strategy Review

@@ -48,44 +48,18 @@ Phase 5 remediation could propose dangerous fixes (rm -rf, DROP TABLE, force-pus
 
 ## Security properties by installation path
 
-```mermaid
-block-beta
-    columns 4
-    space:1 CC["Claude Code"] CU["Cursor (.mdc)"] AG["AGENTS.md"]
-    ISO["Agent isolation"]:1 CC_ISO["Enforced"]:1 CU_ISO["Not available"]:1 AG_ISO["Depends on tool"]:1
-    MED["Mediated comms"]:1 CC_MED["Enforced"]:1 CU_MED["Advisory only"]:1 AG_MED["Advisory only"]:1
-    VAL["Output validation"]:1 CC_VAL["Programmatic"]:1 CU_VAL["Agent compliance"]:1 AG_VAL["Agent compliance"]:1
-    INP["Input isolation"]:1 CC_INP["Orchestrator"]:1 CU_INP["Advisory only"]:1 AG_INP["Advisory only"]:1
-    PRV["Provenance markers"]:1 CC_PRV["Verified"]:1 CU_PRV["Not enforced"]:1 AG_PRV["Not enforced"]:1
-    INJ["Injection detection"]:1 CC_INJ["Enforced"]:1 CU_INJ["Advisory only"]:1 AG_INJ["Advisory only"]:1
-    STR["Strategy profile"]:1 CC_STR["Full support"]:1 CU_STR["Not available"]:1 AG_STR["Advisory only"]:1
-    FIX["Fix verification"]:1 CC_FIX["Re-invokes specialist"]:1 CU_FIX["Advisory only"]:1 AG_FIX["Advisory only"]:1
+Not all installation paths provide the same security guarantees. Claude Code enforces isolation programmatically through the Agent tool. Cursor runs in degraded single-agent mode where the security model is advisory. AGENTS.md depends on the underlying tool's capabilities.
 
-    style CC_ISO fill:#d4edda,stroke:#28a745
-    style CC_MED fill:#d4edda,stroke:#28a745
-    style CC_VAL fill:#d4edda,stroke:#28a745
-    style CC_INP fill:#d4edda,stroke:#28a745
-    style CC_PRV fill:#d4edda,stroke:#28a745
-    style CC_INJ fill:#d4edda,stroke:#28a745
-    style CC_STR fill:#d4edda,stroke:#28a745
-    style CC_FIX fill:#d4edda,stroke:#28a745
-    style CU_ISO fill:#f8d7da,stroke:#dc3545
-    style CU_MED fill:#fff3cd,stroke:#ffc107
-    style CU_VAL fill:#fff3cd,stroke:#ffc107
-    style CU_INP fill:#fff3cd,stroke:#ffc107
-    style CU_PRV fill:#f8d7da,stroke:#dc3545
-    style CU_INJ fill:#fff3cd,stroke:#ffc107
-    style CU_STR fill:#f8d7da,stroke:#dc3545
-    style CU_FIX fill:#fff3cd,stroke:#ffc107
-    style AG_ISO fill:#cce5ff,stroke:#004085
-    style AG_MED fill:#fff3cd,stroke:#ffc107
-    style AG_VAL fill:#fff3cd,stroke:#ffc107
-    style AG_INP fill:#fff3cd,stroke:#ffc107
-    style AG_PRV fill:#f8d7da,stroke:#dc3545
-    style AG_INJ fill:#fff3cd,stroke:#ffc107
-    style AG_STR fill:#fff3cd,stroke:#ffc107
-    style AG_FIX fill:#fff3cd,stroke:#ffc107
-```
+| Property | Claude Code | Cursor (.mdc) | AGENTS.md |
+|----------|------------|---------------|-----------|
+| Agent isolation | **Enforced** | Not available | Depends on tool |
+| Mediated comms | **Enforced** | Advisory only | Advisory only |
+| Output validation | **Programmatic** | Agent compliance | Agent compliance |
+| Input isolation | **Orchestrator** | Advisory only | Advisory only |
+| Provenance markers | **Verified** | Not enforced | Not enforced |
+| Injection detection | **Enforced** | Advisory only | Advisory only |
+| Strategy profile | **Full support** | Not available | Advisory only |
+| Fix verification | **Re-invokes specialist** | Advisory only | Advisory only |
 
 The full security model is only enforced when running as a Claude Code plugin with the Agent tool available. Strategy profile and fix verification require multi-agent capabilities that Cursor cannot provide.
 

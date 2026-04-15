@@ -4,6 +4,8 @@ Adversarial Review is a multi-agent system where independent specialist agents a
 
 ## Architecture
 
+The system flows from user invocation through flag parsing, cache initialization, and context loading, then into the 5-phase review pipeline. Each phase has internal subcomponents shown in the expanded boxes below. The main pipeline is linear (phases run sequentially), but within each phase there are loops and conditional paths. Phase 5 (dashed) is optional.
+
 ```mermaid
 graph TD
     USER["User invocation"] --> SKILL["SKILL.md\n(orchestration procedure)"]

@@ -7,6 +7,7 @@ Subcommands:
   populate-templates                          - copy finding + challenge templates
   populate-references                         - copy enabled reference modules
   populate-context                            - copy labeled context files (env: CONTEXT_LABEL, CONTEXT_SOURCE)
+  populate-constraints                        - load constraint pack (env: CONSTRAINTS_SOURCE)
   populate-findings <agent> <role_prefix> <findings_file> [--scope <file>]
                                               - validate, sanitize, split findings
   build-summary                               - merge agent summaries into cross-agent-summary.md
@@ -29,6 +30,10 @@ import re
 import secrets
 import shutil
 import subprocess
+try:
+    import yaml
+except ImportError:
+    yaml = None
 import sys
 import tempfile
 import time
@@ -176,7 +181,7 @@ def cmd_init(args):
     )
     os.chmod(cache_dir, 0o700)
 
-    for sub in ("code", "templates", "references", "findings"):
+    for sub in ("code", "templates", "references", "findings", "constraints"):
         os.makedirs(os.path.join(cache_dir, sub), exist_ok=True)
 
     # Write lock file with parent PID (orchestrator)
@@ -465,6 +470,138 @@ def cmd_populate_context(args):
             copy_count += 1
 
     print(json.dumps({"context_label": context_label, "files_populated": copy_count}))
+
+
+def cmd_populate_constraints(args):
+    """Load a constraint pack into the cache.
+
+    Reads CONSTRAINTS_SOURCE env var (directory or YAML file).
+    If directory: loads constraints.yaml + copies .md reference files.
+    If file: loads directly as constraints YAML.
+    Filters constraints by REVIEW_PROFILE. Writes to {CACHE_DIR}/constraints/.
+    """
+    if yaml is None:
+        err_json("PyYAML is required for constraint loading. Install with: pip install pyyaml")
+        sys.exit(2)
+
+    cache_dir = _require_cache_dir()
+    constraints_source = os.environ.get("CONSTRAINTS_SOURCE", "")
+
+    if not constraints_source:
+        err_json("CONSTRAINTS_SOURCE not set")
+        sys.exit(2)
+
+    constraints_source = os.path.abspath(constraints_source)
+
+    # Resolve source: directory (with constraints.yaml) or direct YAML file
+    pack_dir = None
+    if os.path.isdir(constraints_source):
+        pack_dir = constraints_source
+        yaml_path = os.path.join(constraints_source, "constraints.yaml")
+        if not os.path.isfile(yaml_path):
+            err_json(f"No constraints.yaml found in {constraints_source}")
+            sys.exit(2)
+    elif os.path.isfile(constraints_source):
+        yaml_path = constraints_source
+        if constraints_source.endswith((".yaml", ".yml")):
+            pack_dir = os.path.dirname(constraints_source)
+        else:
+            err_json(f"CONSTRAINTS_SOURCE must be a .yaml/.yml file or directory: {constraints_source}")
+            sys.exit(2)
+    else:
+        err_json(f"CONSTRAINTS_SOURCE not found: {constraints_source}")
+        sys.exit(2)
+
+    # Parse YAML
+    with open(yaml_path) as f:
+        try:
+            pack = yaml.safe_load(f)
+        except yaml.YAMLError as e:
+            err_json(f"Invalid YAML in {yaml_path}: {e}")
+            sys.exit(2)
+
+    # Validate top-level schema
+    if not isinstance(pack, dict):
+        err_json("constraints.yaml must be a YAML mapping")
+        sys.exit(2)
+    for required in ("name", "version", "constraints"):
+        if required not in pack:
+            err_json(f"constraints.yaml missing required field: {required}")
+            sys.exit(2)
+    if not isinstance(pack["constraints"], list):
+        err_json("constraints.constraints must be a list")
+        sys.exit(2)
+
+    # Validate each constraint and filter by profile
+    required_fields = {"id", "title", "severity", "profile"}
+    valid_severities = {"critical", "high", "important", "minor"}
+    valid_profiles = {"code", "strat", "both"}
+    active_profile = REVIEW_PROFILE
+
+    filtered = []
+    for i, c in enumerate(pack["constraints"]):
+        if not isinstance(c, dict):
+            err_json(f"Constraint {i} is not a mapping")
+            sys.exit(2)
+        missing = required_fields - set(c.keys())
+        if missing:
+            err_json(f"Constraint {i} ({c.get('id', '?')}) missing fields: {', '.join(sorted(missing))}")
+            sys.exit(2)
+        sev = c["severity"].lower()
+        if sev not in valid_severities:
+            err_json(f"Constraint {c['id']}: invalid severity '{c['severity']}'. Must be: {', '.join(sorted(valid_severities))}")
+            sys.exit(2)
+        prof = c["profile"].lower()
+        if prof not in valid_profiles:
+            err_json(f"Constraint {c['id']}: invalid profile '{c['profile']}'. Must be: {', '.join(sorted(valid_profiles))}")
+            sys.exit(2)
+        # Filter: keep if constraint profile matches active profile or is "both"
+        if prof == "both" or prof == active_profile:
+            filtered.append(c)
+
+    # Write filtered constraints to cache
+    constraints_dir = os.path.join(cache_dir, "constraints")
+    os.makedirs(constraints_dir, exist_ok=True)
+
+    filtered_pack = {
+        "name": pack["name"],
+        "version": pack["version"],
+        "description": pack.get("description", ""),
+        "active_profile": active_profile,
+        "constraints": filtered,
+    }
+
+    out_yaml = os.path.join(constraints_dir, "constraints.yaml")
+    with open(out_yaml, "w") as f:
+        yaml.dump(filtered_pack, f, default_flow_style=False, sort_keys=False)
+    manifest_add_file(cache_dir, "constraints/constraints.yaml", out_yaml)
+
+    # Copy .md reference files from pack directory
+    ref_count = 0
+    if pack_dir:
+        for fname in sorted(os.listdir(pack_dir)):
+            if not fname.endswith(".md"):
+                continue
+            if fname == "README.md":
+                continue
+            src = os.path.join(pack_dir, fname)
+            if not os.path.isfile(src):
+                continue
+            # Skip symlinks
+            if os.path.islink(src):
+                continue
+            dst = os.path.join(constraints_dir, fname)
+            shutil.copy2(src, dst)
+            manifest_add_file(cache_dir, f"constraints/{fname}", dst)
+            ref_count += 1
+
+    print(json.dumps({
+        "pack_name": pack["name"],
+        "total_constraints": len(pack["constraints"]),
+        "filtered_constraints": len(filtered),
+        "active_profile": active_profile,
+        "reference_files": ref_count,
+    }))
 
 
 def cmd_populate_findings(args):
@@ -766,6 +903,47 @@ def cmd_generate_navigation(args):
                         lines.append(f"| {rel} | {tokens:,} |")
             lines.append("")
 
+    # Constraints
+    constraints_dir = os.path.join(cache_dir, "constraints")
+    constraints_yaml = os.path.join(constraints_dir, "constraints.yaml")
+    if os.path.isfile(constraints_yaml):
+        try:
+            if yaml is not None:
+                with open(constraints_yaml) as cyf:
+                    cdata = yaml.safe_load(cyf)
+                pack_name = cdata.get("name", "Unknown")
+                constraints_list = cdata.get("constraints", [])
+                lines.append(f"## Constraints: {pack_name}")
+                lines.append("")
+                lines.append("The following organizational constraints are loaded. Any finding that matches")
+                lines.append("a constraint violation MUST use the constraint's severity as a FLOOR (you can")
+                lines.append("escalate above but not below). Cite the constraint ID in your finding.")
+                lines.append("")
+                lines.append("| ID | Title | Severity | Category |")
+                lines.append("|----|-------|----------|----------|")
+                for cc in constraints_list:
+                    cid = cc.get("id", "?")
+                    ctitle = cc.get("title", "?")
+                    csev = cc.get("severity", "?").capitalize()
+                    ccat = cc.get("category", "?")
+                    lines.append(f"| {cid} | {ctitle} | {csev} | {ccat} |")
+                lines.append("")
+                # List constraint reference files
+                con_refs = [f for f in sorted(os.listdir(constraints_dir))
+                            if f.endswith(".md")]
+                if con_refs:
+                    lines.append("### Constraint Reference Modules")
+                    lines.append("| Module | Tokens (est.) |")
+                    lines.append("|--------|---------------|")
+                    for fname in con_refs:
+                        full = os.path.join(constraints_dir, fname)
+                        size = os.path.getsize(full)
+                        tokens = size // 4
+                        lines.append(f"| constraints/{fname} | {tokens:,} |")
+                    lines.append("")
+        except Exception:
+            pass  # Skip constraints section on parse error
+
     # Context cap enforcement (50K tokens)
     CONTEXT_CAP = 50000
     total_tokens = 0
@@ -939,6 +1117,10 @@ def main():
     # populate-context
     p_ctx = subparsers.add_parser("populate-context", help="Copy labeled context files")
     p_ctx.set_defaults(func=cmd_populate_context)
+
+    # populate-constraints
+    p_cons = subparsers.add_parser("populate-constraints", help="Load constraint pack")
+    p_cons.set_defaults(func=cmd_populate_constraints)
 
     # populate-findings
     p_find = subparsers.add_parser("populate-findings", help="Validate, sanitize, split findings")

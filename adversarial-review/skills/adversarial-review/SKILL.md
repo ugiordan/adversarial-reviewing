@@ -105,6 +105,7 @@ If no specialist flags are provided, activate **all specialists** for the active
 | `--strict-scope` | Reject (not demote) out-of-scope findings and patches |
 | `--fix --dry-run` | Preview remediation without writing anything |
 | `--context <label>=<source>` | Inject labeled supplementary context. `source` is a git repo URL, local directory, or file path. `label` tells agents how to use the context (e.g., `architecture`, `compliance`, `threat-model`). Repeatable: multiple `--context` flags allowed. Works with both profiles. |
+| `--constraints <path>` | Load enforceable constraint pack (YAML). Constraints set severity floors for findings: violations are automatically flagged at the constraint's specified severity or higher. The path can be a directory (loads `constraints.yaml` from it) or a direct YAML file. `.md` reference files in the same directory are loaded as constraint reference modules. Works with both profiles. |
 | `--persist` | Enable cross-run finding persistence. Fingerprints findings and stores history in `.adversarial-review/findings-history.jsonl`. On subsequent runs, classifies findings as new/recurring/resolved/regressed. Adds persistence section to report. |
 | `--normalize` | Normalize finding output for stability. Sorts findings canonically (specialist, file, line), standardizes formatting. Reduces noise when comparing runs. |
 
@@ -114,6 +115,7 @@ If no specialist flags are provided, activate **all specialists** for the active
 |------|-------------|---------------|
 | `--delta`, `--diff`, `--triage`, `--fix` | Yes | No (error) |
 | `--context` | Yes | Yes |
+| `--constraints` | Yes | Yes |
 | `--save`, `--budget`, `--quick`, `--thorough` | Yes | Yes |
 | `--keep-cache`, `--reuse-cache` | Yes | Yes |
 | `--strict-scope` | Yes | Yes |
@@ -383,20 +385,25 @@ After scope confirmation and pre-flight budget check, initialize the local conte
    CONTEXT_LABEL=<label> CONTEXT_SOURCE=<source> CACHE_DIR=$CACHE_DIR scripts/manage-cache.sh populate-context
    ```
    Context files appear in the navigation under `## Context: <label>` headings. Agents read them like any other cached file. The label tells agents what the context represents (e.g., `architecture` = component boundaries and APIs, `compliance` = regulatory requirements, `threat-model` = known attack surfaces).
-8. **Generate navigation:**
+8. **Populate constraints (if `--constraints` flag present):**
+   ```bash
+   CONSTRAINTS_SOURCE=<path> CACHE_DIR=$CACHE_DIR scripts/manage-cache.sh populate-constraints
+   ```
+   Constraints are loaded from a pack directory (containing `constraints.yaml` + `.md` reference files) or a direct YAML file. Constraints are filtered by the active `REVIEW_PROFILE`: constraints with a `profile` field that doesn't match the active profile are dropped. The navigation includes a `## Constraints` section listing all active constraints with their severity floors and a clear instruction that agents cannot downgrade below the constraint severity.
+9. **Generate navigation:**
    ```bash
    CACHE_DIR=$CACHE_DIR scripts/manage-cache.sh generate-navigation 1 1
    ```
-9. **Set cleanup trap** (via Bash tool):
-   ```bash
-   trap "CACHE_DIR='$CACHE_DIR' '$SCRIPT_DIR/manage-cache.sh' cleanup" EXIT HUP INT TERM
-   ```
-   **Skip this step if `--keep-cache` is specified.** Note: in agent-tool execution models (e.g., Claude Code Bash tool), the trap may not persist across invocations. The `cleanup_stale` function in `manage-cache.sh` provides a reliability backstop.
-10. **Export `CACHE_DIR`** — all subsequent steps use this path.
+10. **Set cleanup trap** (via Bash tool):
+    ```bash
+    trap "CACHE_DIR='$CACHE_DIR' '$SCRIPT_DIR/manage-cache.sh' cleanup" EXIT HUP INT TERM
+    ```
+    **Skip this step if `--keep-cache` is specified.** Note: in agent-tool execution models (e.g., Claude Code Bash tool), the trap may not persist across invocations. The `cleanup_stale` function in `manage-cache.sh` provides a reliability backstop.
+11. **Export `CACHE_DIR`** — all subsequent steps use this path.
 
 **Session-wide delimiters:** In cache mode, a single `REVIEW_TARGET` delimiter hex is shared across all agents (see `protocols/input-isolation.md` Session-Wide Delimiter Relaxation). `FIELD_DATA` markers in sanitized findings retain per-field unique hex values.
 
-**Failure:** If any step 2-8 fails, abort the review with error. See the Cache Errors table in Error Handling.
+**Failure:** If any step 2-9 fails, abort the review with error. See the Cache Errors table in Error Handling.
 
 ### `--reuse-cache <hex>` Override
 
@@ -867,6 +874,14 @@ skills/adversarial-review/
     nfr-scan.py                         # Layer 2: NFR checklist scanner with severity decision trees (strat profile)
     findings-to-json.py                 # Structured JSON output from findings (both profiles)
     generate-visuals.py                 # Review visualization dashboard generator
+  packs/                                  # Organizational constraint packs
+    README.md                             # How to create your own pack
+    rhoai/                                # Red Hat OpenShift AI constraint pack
+      constraints.yaml                    # 10 enforced constraints (FIPS, auth, RBAC, etc.)
+      rhoai-auth-patterns.md              # Approved auth pattern reference
+      rhoai-platform-constraints.md       # Platform constraints reference
+      productization-requirements.md      # Productization checklist reference
+      README.md                           # Pack documentation
   tests/
     ...                                 # Test suite (unchanged)
 ```

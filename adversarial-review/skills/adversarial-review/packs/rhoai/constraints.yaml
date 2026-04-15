@@ -1,0 +1,223 @@
+name: RHOAI Organizational Constraints
+version: "1.0"
+description: >
+  Red Hat OpenShift AI platform constraints. Violations are automatically
+  flagged at the specified severity or higher. These constraints reflect
+  RHOAI's deployment model (OpenShift, OLM, FIPS, multi-tenant) and
+  established security patterns.
+
+constraints:
+  - id: RHOAI-FIPS
+    title: "FIPS 140-3 compliance required"
+    category: cryptography
+    severity: high
+    profile: both
+    description: >
+      All cryptographic operations MUST use FIPS 140-3 validated modules
+      on RHEL 9. This applies to all crypto usage including random number
+      generation, hashing (SHA, HMAC), encryption/decryption, TLS/mTLS,
+      signed tokens, and digital signatures. Features without crypto
+      operations must explicitly state "No cryptographic operations
+      identified; FIPS compliance N/A."
+    detection_guidance: >
+      Check for: custom crypto libraries, non-FIPS TLS implementations,
+      manual key derivation, Go crypto without FIPS build tags, any
+      cryptographic primitive not backed by OpenSSL FIPS module.
+      In strat reviews: check if strategy addresses FIPS for any
+      feature touching crypto.
+    remediation: >
+      Use OpenSSL FIPS module or Go crypto with FIPS build tags.
+      Verify FIPS 140-3 certification status on RHEL 9 for every
+      cryptographic library used.
+
+  - id: RHOAI-PQC
+    title: "Post-quantum/FIPS transition awareness"
+    category: cryptography
+    severity: minor
+    profile: strat
+    description: >
+      NIST post-quantum algorithms (ML-KEM, ML-DSA) are not yet
+      FIPS-validated. Strategies introducing new cryptographic primitives
+      should acknowledge this tension and document the migration path
+      once FIPS-validated post-quantum implementations become available.
+    detection_guidance: >
+      Check if strategy proposes new crypto without mentioning post-quantum
+      readiness or the FIPS transition timeline.
+    remediation: >
+      Add a section acknowledging the FIPS/post-quantum tension and
+      documenting the planned migration when FIPS-validated PQC
+      implementations are available.
+
+  - id: RHOAI-TLS
+    title: "TLS profile compliance"
+    category: cryptography
+    severity: high
+    profile: both
+    description: >
+      Components MUST honor the cluster-wide TLS security profile
+      (Intermediate, Modern, Old, Custom). OCP 4.22 requires ML-KEM
+      support. OCP 5.0 makes TLS profile compliance a release blocker:
+      components that cannot honor the cluster TLS profile will block
+      the release.
+    detection_guidance: >
+      In code: check if TLS configuration is hardcoded vs reading from
+      cluster TLS profile. In strat: check if strategy addresses TLS
+      profile compliance and OCP version compatibility.
+    remediation: >
+      Read TLS configuration from the cluster's TLS security profile
+      API. Do not hardcode cipher suites or TLS versions. Test against
+      all supported TLS profiles.
+
+  - id: RHOAI-GATEWAY
+    title: "Use OpenShift Gateway API, not upstream K8s Gateway"
+    category: networking
+    severity: important
+    profile: strat
+    description: >
+      RHOAI runs on OpenShift, which uses OpenShift Route and its own
+      Gateway API implementation. Strategies must not reference or depend
+      on upstream Kubernetes Gateway API directly. Use OpenShift's
+      Route/Gateway API abstractions.
+    detection_guidance: >
+      Check for references to upstream Kubernetes Gateway API, Ingress
+      controllers other than HAProxy/OCP Router, or networking assumptions
+      that don't hold on OpenShift.
+    remediation: >
+      Replace upstream K8s Gateway API references with OpenShift
+      Route/Gateway API. Verify networking assumptions against
+      OpenShift's networking model.
+
+  - id: RHOAI-MESH
+    title: "Do not require Istio/Service Mesh unless necessary"
+    category: networking
+    severity: important
+    profile: strat
+    description: >
+      RHOAI has been reducing its Istio dependency. Strategies must not
+      introduce new hard Istio requirements without strong justification.
+      Inter-service mesh communication has mTLS for transport security.
+      Transport-layer TLS on top of mesh mTLS is redundant, but
+      application-layer encryption of sensitive payloads (credentials,
+      PII, keys) is still required for defense-in-depth and is NOT
+      redundant with mTLS.
+    detection_guidance: >
+      Check if strategy introduces a new hard Istio requirement. Check
+      if strategy proposes redundant transport-layer TLS (redundant) vs
+      application-layer payload encryption (valid defense-in-depth).
+    remediation: >
+      Remove hard Istio dependency if possible. If Istio is required,
+      document why namespace-scoped alternatives are insufficient.
+      Distinguish transport encryption (mesh handles) from payload
+      encryption (application responsibility).
+
+  - id: RHOAI-IMAGES
+    title: "Image provenance from trusted registries"
+    category: supply_chain
+    severity: high
+    profile: both
+    description: >
+      Container images must come from trusted Red Hat registries
+      (registry.redhat.io, quay.io). Images from untrusted registries
+      (Docker Hub, GitHub Container Registry, etc.) are not permitted
+      in production. All images must pass the Red Hat container
+      certification pipeline.
+    detection_guidance: >
+      In code: check Dockerfile/Containerfile base images, image
+      references in deployment manifests, operator bundle images.
+      In strat: check if strategy specifies image sources and whether
+      they use approved registries.
+    remediation: >
+      Use only registry.redhat.io or quay.io base images. Ensure all
+      new container images go through Red Hat container certification.
+      Document any third-party image dependencies and their
+      certification status.
+
+  - id: RHOAI-UPSTREAM
+    title: "Upstream-first contribution policy"
+    category: governance
+    severity: important
+    profile: strat
+    description: >
+      Code changes should land in opendatahub-io/ repos first, not in
+      red-hat-data-services/ (the downstream productization fork).
+      Strategies proposing changes directly to downstream repos without
+      corresponding upstream work violate the upstream-first principle.
+    detection_guidance: >
+      Check if strategy references red-hat-data-services repos as the
+      primary target for code changes. Check if upstream contribution
+      path is documented.
+    remediation: >
+      Document the upstream-first contribution path. Changes land in
+      opendatahub-io/ repos first, then are synced downstream to
+      red-hat-data-services/ via the established sync process.
+
+  - id: RHOAI-AUTH
+    title: "Use approved auth patterns"
+    category: authentication
+    severity: high
+    profile: both
+    description: >
+      New endpoints MUST use one of the approved auth mechanisms:
+      (1) kube-auth-proxy via Envoy ext_authz for platform ingress,
+      (2) kube-rbac-proxy sidecar for per-service RBAC,
+      (3) Kuadrant (Authorino + Limitador) for API-level auth + rate
+      limiting. Custom auth mechanisms require strong justification
+      and security review. When using Kuadrant API keys: keys must be
+      crypto-random (min 32 bytes), stored encrypted at rest, rotated
+      every 90 days max, support revocation without service restart,
+      and never logged in plaintext.
+    detection_guidance: >
+      In code: check for custom auth implementations, missing auth on
+      new endpoints, hardcoded credentials, long-lived API keys without
+      rotation. In strat: check if strategy specifies which auth pattern
+      applies to each new endpoint.
+    remediation: >
+      Specify which approved auth pattern (kube-auth-proxy, kube-rbac-proxy,
+      or Kuadrant) gates each new endpoint. For API keys, document the
+      key lifecycle (generation, storage, rotation, revocation).
+
+  - id: RHOAI-SECRETS
+    title: "Approved secrets management patterns"
+    category: secrets
+    severity: high
+    profile: both
+    description: >
+      Use OpenShift Secrets (with encryption-at-rest enabled) or
+      external secret stores (HashiCorp Vault, AWS Secrets Manager
+      via external-secrets-operator). Credentials MUST NOT be stored
+      in environment variables, ConfigMaps, container images, or
+      source code. Secret references in CRDs should use SecretKeyRef,
+      not inline values.
+    detection_guidance: >
+      In code: grep for env var credentials, plaintext secrets in
+      ConfigMaps, hardcoded passwords/tokens, secrets in container
+      images. In strat: check if strategy addresses secrets storage
+      and references approved patterns.
+    remediation: >
+      Store secrets in OpenShift Secrets or external secret stores.
+      Use SecretKeyRef in CRDs. Never log secret values. Implement
+      secret rotation where applicable.
+
+  - id: RHOAI-RBAC
+    title: "ServiceAccount RBAC must be namespace-scoped"
+    category: authorization
+    severity: high
+    profile: both
+    description: >
+      Default to namespace-scoped RoleBindings for ServiceAccounts.
+      ClusterRoleBindings require written justification specifying:
+      (1) why namespace-scoped RBAC is insufficient, (2) which
+      cluster-wide resources the SA needs access to, (3) mitigation
+      for privilege escalation risk (webhook validation, audit logging).
+      Strategies proposing ClusterRoleBindings without justification
+      are automatically flagged.
+    detection_guidance: >
+      In code: check for ClusterRole/ClusterRoleBinding definitions,
+      ServiceAccounts with cluster-admin or broad cluster-wide
+      permissions. In strat: check if strategy addresses RBAC scope
+      and justifies any cluster-wide permissions.
+    remediation: >
+      Use namespace-scoped Role/RoleBinding. If ClusterRole is
+      required, document the justification and add compensating
+      controls (webhook validation, audit logging, least-privilege
+      verbs).

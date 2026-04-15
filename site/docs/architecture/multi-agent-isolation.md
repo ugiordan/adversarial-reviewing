@@ -4,6 +4,8 @@ Agent isolation is the core security property of the system. It ensures each spe
 
 ## Isolation model
 
+Each specialist agent runs in its own context and receives only the delimited code under review plus its own prompt. Output goes through `validate-output.sh` for structural validation, then `detect-convergence.sh` checks if the finding set has stabilized. If not, the agent iterates. Budget tracking runs as a parallel monitor. The diagram shows the code profile agents (5 specialists); the strategy profile uses 6 specialists with the same isolation model.
+
 ```mermaid
 flowchart TB
     subgraph Isolation["Isolated Agent Contexts"]
@@ -34,8 +36,6 @@ flowchart TB
     style BUDGET stroke-dasharray: 5 5
     style REFS stroke-dasharray: 3 3
 ```
-
-The diagram shows the code profile agents. The strategy profile uses 6 specialists (FEAS, ARCH, SEC, USER, SCOP, TEST) with the same isolation model.
 
 ## How isolation works in Claude Code
 

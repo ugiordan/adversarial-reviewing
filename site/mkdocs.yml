@@ -24,6 +24,9 @@ theme:
     - navigation.sections
     - navigation.top
     - navigation.indexes
+    - navigation.instant
+    - navigation.tracking
+    - navigation.path
     - search.suggest
     - search.highlight
     - content.code.copy
@@ -64,13 +67,16 @@ nav:
     - Quick Start: getting-started/quickstart.md
     - First Review: getting-started/first-review.md
   - Guides:
-    - Code Reviews: guides/code-reviews.md
-    - Strategy Reviews: guides/strategy-reviews.md
-    - Triage Mode: guides/triage-mode.md
-    - Change-Impact Analysis: guides/change-impact.md
-    - Remediation: guides/remediation.md
+    - Code Reviews:
+      - guides/code-reviews/index.md
+      - Triage Mode: guides/code-reviews/triage-mode.md
+      - Change-Impact Analysis: guides/code-reviews/change-impact.md
+      - Remediation: guides/code-reviews/remediation.md
+    - Strategy Reviews:
+      - guides/strategy-reviews/index.md
     - Reference Modules: guides/reference-modules.md
     - Context Injection: guides/context-injection.md
+    - Constraint Packs: guides/constraint-packs.md
   - Reference:
     - CLI Flags: reference/cli-flags.md
     - Agents & Profiles: reference/agents.md

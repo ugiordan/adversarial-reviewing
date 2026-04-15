@@ -86,6 +86,6 @@ cat docs/reviews/$(date +%Y-%m-%d)-controllers-review.md
 
 ## Next steps
 
-- [Code review guide](../guides/code-reviews.md) for advanced usage
-- [Strategy review guide](../guides/strategy-reviews.md) for document review
+- [Code review guide](../guides/code-reviews/index.md) for advanced usage
+- [Strategy review guide](../guides/strategy-reviews/index.md) for document review
 - [CLI flags reference](../reference/cli-flags.md) for all available options

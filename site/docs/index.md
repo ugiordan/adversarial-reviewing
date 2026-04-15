@@ -25,6 +25,18 @@ Unlike single-pass review tools, findings must survive cross-agent scrutiny befo
 
 ## How It Works
 
+The review runs in 5 phases:
+
+1. **Self-Refinement.** Each specialist agent runs independently in its own isolated context. It reads the code or strategy, produces findings, then iterates 2-3 times, refining its analysis until the finding set stabilizes (convergence detection). Agents don't see each other's work at this stage. Reference modules (OWASP, ASVS, K8s patterns) are loaded on iteration 2+ for cross-checking.
+
+2. **Challenge Round.** Findings from all agents are sanitized (stripped of raw output, validated structurally) and routed to other specialists based on domain affinity. Each agent reviews findings in its domain and can challenge them with a counter-argument citing specific evidence, or concur. The original author then defends or retracts.
+
+3. **Resolution.** Duplicate findings are merged. Each finding is classified by agreement level: *unanimous* (all specialists agree), *majority* (most agree), *escalated* (significant disagreement), or *dismissed* (retracted by author). For strategy reviews, per-document verdicts (Approve/Revise/Reject) are resolved using conservative tiebreak.
+
+4. **Report.** The final report is assembled with an executive summary, findings grouped by agreement level, and a remediation roadmap. The report transparently labels which findings had full consensus vs. majority overrides vs. unresolved disputes. Optional: finding persistence tracks new/recurring/resolved across runs.
+
+5. **Remediation** (code profile only, `--fix`). Confirmed findings are classified (Jira-worthy, quick chore, blocked), Jira tickets are drafted, worktree branches created, and fixes implemented. Each fix is verified by re-invoking the original specialist. Every step requires explicit user confirmation.
+
 ```mermaid
 flowchart LR
     subgraph Phase1["Phase 1: Self-Refinement"]
@@ -93,7 +105,7 @@ flowchart LR
 
     Reviews source code with file:line evidence. 5 specialist agents: Security Auditor, Performance Analyst, Code Quality Reviewer, Correctness Verifier, Architecture Reviewer.
 
-    [:octicons-arrow-right-24: Code review guide](guides/code-reviews.md)
+    [:octicons-arrow-right-24: Code review guide](guides/code-reviews/index.md)
 
 - **Strategy Profile** (`--profile strat`)
 
@@ -101,7 +113,7 @@ flowchart LR
 
     Reviews strategy documents with text citation evidence and per-document verdicts (Approve/Revise/Reject). 6 specialist agents including Feasibility, User Impact, Scope, and Testability analysts.
 
-    [:octicons-arrow-right-24: Strategy review guide](guides/strategy-reviews.md)
+    [:octicons-arrow-right-24: Strategy review guide](guides/strategy-reviews/index.md)
 
 </div>
 
@@ -120,6 +132,8 @@ flowchart LR
 | **Remediation pipeline** | Jira ticket drafts, worktree branches, PRs with user confirmation gates |
 
 ## Use Cases by Profile
+
+The **code profile** (default) reviews source code with file:line evidence and supports the full feature set: triage of external comments, change-impact analysis via git diffs, delta re-reviews, and automated remediation. The **strategy profile** reviews design documents with text citation evidence and per-document verdicts, using context injection for architecture-aware analysis. Some features (persistence, normalization, custom budgets) work across both profiles.
 
 ```mermaid
 flowchart TB
