@@ -16,6 +16,8 @@ agents:
     file: user-impact-analyst.md
   - prefix: SCOP
     file: scope-completeness-analyst.md
+  - prefix: TEST
+    file: testability-analyst.md
 
 quick_specialists: [SEC, FEAS]
 default_specialists: all

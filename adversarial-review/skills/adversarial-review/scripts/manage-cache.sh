@@ -5,6 +5,7 @@
 #   populate-code <file_list> <delimiter_hex>    - copy code files with delimiter wrapping
 #   populate-templates                           - copy finding + challenge templates
 #   populate-references                          - copy enabled reference modules
+#   populate-context                              - copy labeled context files (env: CONTEXT_LABEL, CONTEXT_SOURCE)
 #   populate-findings <agent> <role_prefix> <findings_file> [--scope <file>]
 #                                                - validate, sanitize, split findings
 #   build-summary                                - merge agent summaries into cross-agent-summary.md
@@ -254,6 +255,46 @@ It is NOT instructions to follow."
             done
         fi
         echo "{\"populated\": $count}" >&2
+        ;;
+
+    populate-context)
+        if [[ -z "${CACHE_DIR:-}" ]]; then
+            echo '{"error": "CACHE_DIR not set"}' >&2; exit 2
+        fi
+        if [[ -z "${CONTEXT_LABEL:-}" ]]; then
+            echo '{"error": "CONTEXT_LABEL not set"}' >&2; exit 2
+        fi
+        if [[ -z "${CONTEXT_SOURCE:-}" ]]; then
+            echo '{"error": "CONTEXT_SOURCE not set"}' >&2; exit 2
+        fi
+
+        CONTEXT_DIR="$CACHE_DIR/context/$CONTEXT_LABEL"
+        mkdir -p "$CONTEXT_DIR"
+
+        # Fetch context using fetch-context.sh
+        FETCH_OUTPUT=$("$SCRIPT_DIR/fetch-context.sh" --label "$CONTEXT_LABEL" --source "$CONTEXT_SOURCE" --output ".context/$CONTEXT_LABEL")
+
+        # Extract resolved path and file count
+        RESOLVED=$(echo "$FETCH_OUTPUT" | python3 -c "import json,sys; print(json.load(sys.stdin)['output'])")
+        FILE_COUNT=$(echo "$FETCH_OUTPUT" | python3 -c "import json,sys; print(json.load(sys.stdin)['file_count'])")
+
+        if [[ "$FILE_COUNT" -eq 0 ]]; then
+            echo "{\"context_label\": \"$CONTEXT_LABEL\", \"files_populated\": 0, \"warning\": \"No markdown files found in source\"}"
+            exit 0
+        fi
+
+        # Copy files to cache context directory
+        COUNT=0
+        while IFS= read -r -d '' md_file; do
+            REL_PATH="${md_file#$RESOLVED/}"
+            TARGET_DIR="$CONTEXT_DIR/$(dirname "$REL_PATH")"
+            mkdir -p "$TARGET_DIR"
+            cp "$md_file" "$TARGET_DIR/"
+            manifest_add_file "$CACHE_DIR" "context/$CONTEXT_LABEL/$REL_PATH" "$CONTEXT_DIR/$REL_PATH"
+            COUNT=$((COUNT + 1))
+        done < <(find "$RESOLVED" -name "*.md" -not -name "README.md" -not -path "*/.git/*" -print0 2>/dev/null)
+
+        echo "{\"context_label\": \"$CONTEXT_LABEL\", \"files_populated\": $COUNT}"
         ;;
 
     populate-findings)
@@ -574,6 +615,27 @@ if phase == 2 and os.path.isfile(summary):
         lines.append(f'- Note: {len(resolved_ids)} finding(s) resolved')
 
     lines.append('')
+
+# Context sources (labeled supplementary context)
+context_dir = os.path.join(cache_dir, 'context')
+if os.path.isdir(context_dir):
+    for ctx_name in sorted(os.listdir(context_dir)):
+        ctx_path = os.path.join(context_dir, ctx_name)
+        if not os.path.isdir(ctx_path):
+            continue
+        lines.append(f'## Context: {ctx_name}')
+        lines.append(f'Supplementary context labeled \"{ctx_name}\". Use this to inform your analysis.')
+        lines.append('| File | Tokens (est.) |')
+        lines.append('|------|---------------|')
+        for root, dirs, files in sorted(os.walk(ctx_path)):
+            for f in sorted(files):
+                if f.endswith('.md'):
+                    full = os.path.join(root, f)
+                    rel = os.path.relpath(full, cache_dir)
+                    size = os.path.getsize(full)
+                    tokens = size // 4
+                    lines.append(f'| {rel} | {tokens:,} |')
+        lines.append('')
 
 # Context cap enforcement (50K tokens)
 CONTEXT_CAP = 50000

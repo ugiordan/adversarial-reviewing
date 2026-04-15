@@ -80,8 +80,9 @@ scripts/profile-config.sh profiles/<profile> <key>
 | `--architecture` | Architecture Reviewer | `profiles/strat/agents/architecture-reviewer.md` |
 | `--user-impact` | User Impact Analyst | `profiles/strat/agents/user-impact-analyst.md` |
 | `--scope` | Scope & Completeness Analyst | `profiles/strat/agents/scope-completeness-analyst.md` |
+| `--testability` | Testability Analyst | `profiles/strat/agents/testability-analyst.md` |
 
-If no specialist flags are provided, activate **all 5 specialists** for the active profile.
+If no specialist flags are provided, activate **all specialists** for the active profile.
 
 ### Mode Flags
 
@@ -103,14 +104,14 @@ If no specialist flags are provided, activate **all 5 specialists** for the acti
 | `--reuse-cache <hex>` | Reuse an existing cache by session hex. Validates manifest (SHA-256 per file + commit SHA). Skips code/template/reference population. Findings regenerated. |
 | `--strict-scope` | Reject (not demote) out-of-scope findings and patches |
 | `--fix --dry-run` | Preview remediation without writing anything |
-| `--arch-context [url\|path]` | Fetch architecture context for strat profile. Default repo: `opendatahub-io/architecture-context`. Strat profile only. |
+| `--context <label>=<source>` | Inject labeled supplementary context. `source` is a git repo URL, local directory, or file path. `label` tells agents how to use the context (e.g., `architecture`, `compliance`, `threat-model`). Repeatable: multiple `--context` flags allowed. Works with both profiles. |
 
 ### Flag Compatibility
 
 | Flag | Code profile | Strat profile |
 |------|-------------|---------------|
 | `--delta`, `--diff`, `--triage`, `--fix` | Yes | No (error) |
-| `--arch-context` | No (error) | Yes |
+| `--context` | Yes | Yes |
 | `--save`, `--budget`, `--quick`, `--thorough` | Yes | Yes |
 | `--keep-cache`, `--reuse-cache` | Yes | Yes |
 | `--strict-scope` | Yes | Yes |
@@ -265,20 +266,26 @@ After scope confirmation and pre-flight budget check, initialize the local conte
    ```
 
    `REVIEW_PROFILE` selects the profile directory for templates and references (`code` or `strat`). Defaults to `code` if not set.
-7. **Generate navigation:**
+7. **Populate context (if `--context` flags present):**
+   For each `--context label=source` flag:
+   ```bash
+   CONTEXT_LABEL=<label> CONTEXT_SOURCE=<source> CACHE_DIR=$CACHE_DIR scripts/manage-cache.sh populate-context
+   ```
+   Context files appear in the navigation under `## Context: <label>` headings. Agents read them like any other cached file. The label tells agents what the context represents (e.g., `architecture` = component boundaries and APIs, `compliance` = regulatory requirements, `threat-model` = known attack surfaces).
+8. **Generate navigation:**
    ```bash
    CACHE_DIR=$CACHE_DIR scripts/manage-cache.sh generate-navigation 1 1
    ```
-8. **Set cleanup trap** (via Bash tool):
+9. **Set cleanup trap** (via Bash tool):
    ```bash
    trap "CACHE_DIR='$CACHE_DIR' '$SCRIPT_DIR/manage-cache.sh' cleanup" EXIT HUP INT TERM
    ```
    **Skip this step if `--keep-cache` is specified.** Note: in agent-tool execution models (e.g., Claude Code Bash tool), the trap may not persist across invocations. The `cleanup_stale` function in `manage-cache.sh` provides a reliability backstop.
-9. **Export `CACHE_DIR`** — all subsequent steps use this path.
+10. **Export `CACHE_DIR`** — all subsequent steps use this path.
 
 **Session-wide delimiters:** In cache mode, a single `REVIEW_TARGET` delimiter hex is shared across all agents (see `protocols/input-isolation.md` Session-Wide Delimiter Relaxation). `FIELD_DATA` markers in sanitized findings retain per-field unique hex values.
 
-**Failure:** If any step 2-7 fails, abort the review with error. See the Cache Errors table in Error Handling.
+**Failure:** If any step 2-8 fails, abort the review with error. See the Cache Errors table in Error Handling.
 
 ### `--reuse-cache <hex>` Override
 
