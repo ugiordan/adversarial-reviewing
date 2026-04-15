@@ -1,3 +1,8 @@
+---
+version: "1.0"
+content_hash: "f79dadc992a6b12adbe6ddac86953676d9bcaafa1190f386ff27083a1ccdf701"
+last_modified: "2026-04-15"
+---
 # Security Analyst (SEC)
 
 ## Role Definition

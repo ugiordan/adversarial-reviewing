@@ -76,6 +76,35 @@ Send each agent a minimal prompt (~2,825 tokens) with Phase 2 cache navigation:
 - **Tier 1:** Agent reads `findings/cross-agent-summary.md` (~200 tokens) — ID, Severity, Category, File:Line, One-liner.
 - **Tier 2:** Agent reads individual finding files (`findings/<agent>/<ID>.md`) only for findings they challenge or that fall in their domain.
 
+**Domain affinity routing:**
+
+When building the per-agent challenge prompt, include the domain affinity hint below to help agents prioritize which findings to read in full. This reduces token waste from agents reading findings far outside their expertise.
+
+| Specialist | Primary domain (must read) | Adjacent domains (should read if relevant) |
+|------------|---------------------------|-------------------------------------------|
+| SEC | Injection, Auth, Crypto, Secrets, OWASP | Error handling, Input validation, Concurrency |
+| PERF | Complexity, Memory, I/O, Caching, Concurrency | Scalability, Resource management |
+| QUAL | SOLID, Duplication, Naming, Error handling, Tests | Documentation, API design |
+| CORR | Logic errors, Edge cases, Race conditions, Invariants | Error handling, State management |
+| ARCH | Coupling, Cohesion, Boundaries, Dependencies | API design, Extensibility |
+
+For strat profile:
+
+| Specialist | Primary domain (must read) | Adjacent domains (should read if relevant) |
+|------------|---------------------------|-------------------------------------------|
+| FEAS | Technical approach, Effort, Dependencies | Phasing, Risk |
+| ARCH | Integration, Components, API contracts | Boundaries, Failure modes |
+| SEC | Security risks, Auth, Data handling | Compliance, Threat mitigations |
+| USER | Backward compat, Migration, API usability | Documentation, Learning curve |
+| SCOP | Scope, Acceptance criteria, Completeness | NFR, Edge cases |
+| TEST | Test strategy, Verification, AC testability | Integration tests, Performance tests |
+
+The orchestrator appends to each agent's challenge prompt:
+
+> **Domain routing hint:** Your primary domain covers: {primary_domains}. Prioritize reading full findings in these categories. For findings outside your domain, read the summary only and Abstain unless you have specific counter-evidence.
+
+Agents are still free to challenge any finding (the hint is advisory, not enforced), but this guidance reduces unnecessary Tier 2 reads by ~40-60%.
+
 Each agent responds using `profiles/<profile>/templates/challenge-response-template.md`:
 
 ```

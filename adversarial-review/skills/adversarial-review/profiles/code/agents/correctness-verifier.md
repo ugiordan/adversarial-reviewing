@@ -1,3 +1,8 @@
+---
+version: "1.0"
+content_hash: "f60416e34c6b14b83dfee7f60afb1dee4584a67adcfbb4f7c4a5e894d8707620"
+last_modified: "2026-04-15"
+---
 # Correctness Verifier (CORR)
 
 ## Role Definition

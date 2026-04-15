@@ -1,3 +1,8 @@
+---
+version: "1.0"
+content_hash: "ab5f7d97eba934e8937322970048dea3868014a0611e059aa71a32c178f51e3b"
+last_modified: "2026-04-15"
+---
 # Testability Analyst (TEST)
 
 ## Role Definition

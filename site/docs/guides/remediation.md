@@ -64,6 +64,17 @@ For findings that will be fixed:
 
 Fixes are implemented in the worktree branches. Each fix is scoped to its finding. The destructive pattern check scans all recommended fixes for dangerous operations (rm -rf, DROP TABLE, force-push, etc.) before applying.
 
+## Step 5: Fix verification
+
+After each fix is committed, the original specialist agent is re-invoked on the modified files to verify the finding is resolved:
+
+1. The specialist role is extracted from the finding ID prefix (e.g., `SEC-003` uses the Security Auditor)
+2. The specialist reviews the fixed code with the original finding as context
+3. If the finding is no longer reproduced, the fix is verified
+4. If the finding persists, the fix is marked as "incomplete" and the user can: accept the partial fix, request one more attempt, or revert
+
+This prevents shipping fixes that don't actually address the issue. It adds one specialist invocation per fix but catches incomplete remediations before they reach PR review.
+
 ## Dry run mode
 
 Preview what the remediation would do without writing anything:

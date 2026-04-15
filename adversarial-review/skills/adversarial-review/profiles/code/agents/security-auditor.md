@@ -1,3 +1,8 @@
+---
+version: "1.0"
+content_hash: "746ae53482a1cef381b7366ed13f262b88836ee0b62a95271eae8aa4a04c3c6d"
+last_modified: "2026-04-15"
+---
 # Security Auditor (SEC)
 
 ## Role Definition

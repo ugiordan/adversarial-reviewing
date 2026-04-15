@@ -105,6 +105,8 @@ If no specialist flags are provided, activate **all specialists** for the active
 | `--strict-scope` | Reject (not demote) out-of-scope findings and patches |
 | `--fix --dry-run` | Preview remediation without writing anything |
 | `--context <label>=<source>` | Inject labeled supplementary context. `source` is a git repo URL, local directory, or file path. `label` tells agents how to use the context (e.g., `architecture`, `compliance`, `threat-model`). Repeatable: multiple `--context` flags allowed. Works with both profiles. |
+| `--persist` | Enable cross-run finding persistence. Fingerprints findings and stores history in `.adversarial-review/findings-history.jsonl`. On subsequent runs, classifies findings as new/recurring/resolved/regressed. Adds persistence section to report. |
+| `--normalize` | Normalize finding output for stability. Sorts findings canonically (specialist, file, line), standardizes formatting. Reduces noise when comparing runs. |
 
 ### Flag Compatibility
 
@@ -115,6 +117,7 @@ If no specialist flags are provided, activate **all specialists** for the active
 | `--save`, `--budget`, `--quick`, `--thorough` | Yes | Yes |
 | `--keep-cache`, `--reuse-cache` | Yes | Yes |
 | `--strict-scope` | Yes | Yes |
+| `--persist`, `--normalize` | Yes | Yes |
 
 > **Note:** `--strict-scope` is an orchestrator-level flag. `validate-output.sh` always emits scope violations as warnings; the orchestrator decides whether to demote or reject based on `--strict-scope`.
 
@@ -294,6 +297,45 @@ NFR scan results feed into:
 ### Layer 3: Specialist Analysis
 
 Phases 1-3 (self-refinement, challenge, resolution) form Layer 3. Specialists receive the Layer 1 and Layer 2 outputs as structured context alongside the strategy documents.
+
+### Structured Output
+
+### Finding Normalization (when `--normalize`)
+
+After Phase 4 (Report), normalize findings for stability:
+
+```bash
+python3 scripts/normalize_findings.py normalize <findings_file>
+```
+
+This sorts findings canonically (specialist prefix, file path, line number), standardizes formatting (severity/confidence casing, line range format, file path normalization), and collapses whitespace. The normalized output replaces the raw findings in the report.
+
+### Finding Persistence (when `--persist`)
+
+After Phase 4 (Report), run cross-run finding persistence:
+
+```bash
+# Fingerprint current findings
+python3 scripts/fingerprint_findings.py fingerprint <findings_json>
+
+# Compare against previous run (if history exists)
+python3 scripts/fingerprint_findings.py compare <current_json> <previous_json>
+
+# Append to history
+python3 scripts/fingerprint_findings.py history append <findings_json>
+```
+
+History is stored at `.adversarial-review/findings-history.jsonl`. Each entry records the fingerprint, finding ID, severity, title, timestamp, and commit SHA. The report's Section 15 (Finding Persistence) is populated from the comparison output.
+
+### Prompt Version Tracking
+
+Before Phase 1, compute prompt versions for all active specialists:
+
+```bash
+python3 scripts/prompt_version.py manifest <agents_dir>
+```
+
+The manifest is stored in the cache and included in the report metadata block (`prompt_versions` field). This enables tracking which prompt version produced which findings across runs.
 
 ### Structured Output
 

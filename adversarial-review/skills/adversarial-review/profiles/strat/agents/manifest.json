@@ -1,0 +1,47 @@
+{
+  "generated_at": "2026-04-15T09:10:48Z",
+  "prompts": [
+    {
+      "file": "architecture-reviewer.md",
+      "version": "1.0",
+      "content_hash": "ec1733ef7ccc85156b1326e423bea31b69f7dc0e7f7ea192e40db022faac9551",
+      "last_modified": "2026-04-15"
+    },
+    {
+      "file": "devils-advocate.md",
+      "version": "1.0",
+      "content_hash": "6d4dd0178e3eeee9d8f49da746c786a4aaef1a226e9e894a3044c29b4bd95a07",
+      "last_modified": "2026-04-15"
+    },
+    {
+      "file": "feasibility-analyst.md",
+      "version": "1.0",
+      "content_hash": "df4ce72afe620134560e72ce37d3800cf2533087677135f350a8d4d7a9551fce",
+      "last_modified": "2026-04-15"
+    },
+    {
+      "file": "scope-completeness-analyst.md",
+      "version": "1.0",
+      "content_hash": "c528c0ff0eb765015fd791a2810e90591ed1cc37dbeaff75a2bfd135a18f4a69",
+      "last_modified": "2026-04-15"
+    },
+    {
+      "file": "security-analyst.md",
+      "version": "1.0",
+      "content_hash": "f79dadc992a6b12adbe6ddac86953676d9bcaafa1190f386ff27083a1ccdf701",
+      "last_modified": "2026-04-15"
+    },
+    {
+      "file": "testability-analyst.md",
+      "version": "1.0",
+      "content_hash": "ab5f7d97eba934e8937322970048dea3868014a0611e059aa71a32c178f51e3b",
+      "last_modified": "2026-04-15"
+    },
+    {
+      "file": "user-impact-analyst.md",
+      "version": "1.0",
+      "content_hash": "53ff513a36deb387d95ecb8543ec08163d8d9203fb489cccf830958517cd7ef6",
+      "last_modified": "2026-04-15"
+    }
+  ]
+}

@@ -42,11 +42,21 @@ Each finding includes a verdict:
 | **Revise** | Finding requires clarification or mitigation before approval |
 | **Reject** | Finding represents unacceptable risk or gap |
 
-The overall document verdict is the most severe finding's verdict:
+The overall document verdict uses both severity escalation and accumulation:
 
-- Any **Reject** finding = overall Reject
-- Any **Revise** (no Reject) = overall Revise
-- All **Approve** = overall Approve
+- Any **Reject** finding = overall REJECT
+- 5+ **Revise** findings = overall REJECT (too many gaps, strategy needs rework)
+- 1-4 **Revise** (no Reject) = overall REVISE
+- All **Approve** (or no findings) = overall APPROVE
+
+The accumulation rule prevents strategies with many small issues from slipping through. A document with 6 "Revise" findings has systemic problems even if no single finding is critical enough for "Reject".
+
+The verdict is output in a standardized format:
+
+```
+OVERALL_VERDICT: [APPROVE | REVISE | REJECT]
+Justification: [1-2 sentence explanation based on findings]
+```
 
 ## Evidence requirements
 

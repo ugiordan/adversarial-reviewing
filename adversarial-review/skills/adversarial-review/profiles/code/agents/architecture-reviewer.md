@@ -1,3 +1,8 @@
+---
+version: "1.0"
+content_hash: "2305fdeae032c2a658f6b884c8f56e602996578694de355e3710646f60af4fb9"
+last_modified: "2026-04-15"
+---
 # Architecture Reviewer (ARCH)
 
 ## Role Definition

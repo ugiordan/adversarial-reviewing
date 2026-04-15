@@ -1,3 +1,8 @@
+---
+version: "1.0"
+content_hash: "7dc08cb3eeb354ffcd161c91f1632708e9958831fed41264ded3e32d4b15ff6d"
+last_modified: "2026-04-15"
+---
 # Performance Analyst (PERF)
 
 ## Role Definition

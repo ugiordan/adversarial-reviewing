@@ -76,6 +76,26 @@ LLM outputs are unpredictable. Bash scripts validate structure, detect injection
 
 Self-refinement without a stopping condition wastes tokens. Convergence detection compares finding sets between iterations and stops when the delta is below threshold. This typically saves 30-40% of the budget compared to fixed iteration counts.
 
+### Why domain-aware routing?
+
+During the challenge round, agents receive a domain affinity hint that maps finding categories to their primary and adjacent domains. This reduces unnecessary Tier 2 reads (full finding files) by guiding agents to focus on findings in their domain. Agents can still challenge any finding, but the routing hint saves 40-60% of cross-agent token consumption compared to agents reading every finding in full.
+
+### Why finding-aware reference selection?
+
+Reference modules are filtered by specialist, but when truncation is needed under budget constraints, modules relevant to actual findings are prioritized. The `--finding-categories` flag lets the orchestrator pass Phase 1 finding categories to `discover_references.py`, which then truncates non-matching modules first. This keeps the most relevant reference material available even under tight budgets.
+
+### Why finding persistence?
+
+Without cross-run tracking, each review is a fresh start. Finding persistence fingerprints each finding based on its content (file, line bucket, title, specialist) and stores history in `.adversarial-review/findings-history.jsonl`. On subsequent runs, findings are classified as new, recurring, resolved, or regressed. This lets teams track whether issues are actually getting fixed and detect regressions.
+
+### Why output normalization?
+
+LLM outputs are non-deterministic. Running the same review twice produces findings with slightly different wording, ordering, and formatting. Normalization canonicalizes the output (consistent ordering, standardized formatting) so meaningful differences stand out from noise. Stability metrics quantify how much variance exists between runs.
+
+### Why prompt versioning?
+
+Agent prompts evolve over time. Without version tracking, there's no way to know which prompt version produced which findings. Content-based hashing in prompt frontmatter enables reproducibility analysis: if findings changed between runs, was it the code or the prompt that changed?
+
 ## Component map
 
 | Component | Location | Purpose |

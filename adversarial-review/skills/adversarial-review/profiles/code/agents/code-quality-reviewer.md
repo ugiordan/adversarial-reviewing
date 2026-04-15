@@ -1,3 +1,8 @@
+---
+version: "1.0"
+content_hash: "8f155c9da5544a6f72dc3adefe31e1ddf2e398faa30f4360d5d519d0f675c04d"
+last_modified: "2026-04-15"
+---
 # Code Quality Reviewer (QUAL)
 
 ## Role Definition

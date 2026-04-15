@@ -154,5 +154,8 @@ Both profiles include a devil's advocate agent used in single-specialist mode or
 - Discards findings that do not survive scrutiny
 - Adjusts severity of partially valid findings
 - Uses architecture context (when provided) to sharpen challenges
+- Performs **weakest-link analysis**: for every finding, identifies the single weakest piece of evidence and attacks it directly
+- Flags findings that rely on assumptions rather than traced code paths or cited strategy text
+- Applies **survivorship framing**: retained findings are explicitly annotated with why they could not be refuted, strengthening the final report's credibility
 
-The devil's advocate is not a specialist. It does not produce findings. It only challenges existing ones.
+The devil's advocate is not a specialist. It does not produce findings independently. It only challenges and strengthens existing ones.

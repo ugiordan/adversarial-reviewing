@@ -185,6 +185,21 @@ The fix agent should:
 3. Run any relevant tests
 4. Commit with an appropriate message
 
+#### 5b-verify. Verify Fix (post-fix specialist re-check)
+
+After the fix agent commits, re-run the original specialist agent on the modified files to verify the finding is resolved:
+
+1. Extract the specialist role from the finding ID prefix (e.g., `SEC-003` → security-auditor)
+2. Re-invoke that specialist on the fixed file(s) only, with the original finding as context
+3. Check the specialist's output:
+   - **Finding not reproduced**: Fix is verified. Proceed to next work item.
+   - **Finding still present**: Mark fix as `incomplete`. Present the specialist's updated assessment to the user with the option to:
+     (a) Accept the partial fix as-is
+     (b) Request a second fix attempt (max 1 retry)
+     (c) Skip the fix and revert the commit
+
+This step prevents shipping fixes that don't actually resolve the issue. It adds one specialist invocation per fix but catches incomplete remediations before they reach PR review.
+
 **Scope Lock:** Before applying any patch, verify all files in the patch are in the review scope (same file list used for `validate-output.sh --scope`). If a patch touches out-of-scope files:
 - Default: warn user per-patch. User can approve or skip.
 - `--strict-scope`: auto-reject out-of-scope patches.
