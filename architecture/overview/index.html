@@ -1758,8 +1758,9 @@
     USER["User invocation"] --&gt; SKILL["SKILL.md\n(orchestration procedure)"]
 
     SKILL --&gt; PARSE["Parse flags\n&amp; resolve scope"]
-    PARSE --&gt; CACHE["Initialize cache\n(manage-cache.sh)"]
-    CACHE --&gt; CONTEXT["Fetch context\n(fetch-context.sh)"]
+    PARSE --&gt; CACHE["Initialize cache\n(manage_cache.py)"]
+    CACHE --&gt; REFS["Discover references\n(discover_references.py)"]
+    REFS --&gt; CONTEXT["Fetch context\n(fetch-context.sh)"]
 
     CONTEXT --&gt; P1["Phase 1: Self-Refinement"]
     P1 --&gt; P2["Phase 2: Challenge Round"]
@@ -1769,29 +1770,48 @@
 
     subgraph P1_detail["Phase 1 internals"]
         direction TB
-        SPAWN["Spawn isolated agents"] --&gt; ITER["Iterate (2-3x)"]
+        SPAWN["Spawn isolated agents\n+ reference modules"] --&gt; ITER["Iterate (2-3x)"]
         ITER --&gt; VALIDATE["validate-output.sh"]
         VALIDATE --&gt; CONVERGE["detect-convergence.sh"]
     end
 
     subgraph P2_detail["Phase 2 internals"]
         direction TB
-        SANITIZE["Sanitize findings"] --&gt; ROUTE["Route challenges"]
+        SANITIZE["Sanitize findings"] --&gt; AFFINITY["Domain-aware routing\n(affinity matrix)"]
+        AFFINITY --&gt; ROUTE["Route challenges"]
         ROUTE --&gt; DEFENSE["Collect defenses"]
         DEFENSE --&gt; EVIDENCE["Evidence-based rebuttal\n(iteration 3)"]
     end
 
     subgraph P3_detail["Phase 3 internals"]
         direction TB
-        DEDUP["deduplicate.sh"] --&gt; CLASSIFY["Classify agreement"]
+        DEDUP["deduplicate.py"] --&gt; CLASSIFY["Classify agreement"]
         CLASSIFY --&gt; RESOLVE["Resolve verdicts"]
+    end
+
+    subgraph P4_detail["Phase 4 internals"]
+        direction TB
+        REPORT["Assemble report"] --&gt; META["Metadata block\n+ prompt versions"]
+        META --&gt; PERSIST["Finding persistence\n(fingerprint_findings.py)"]
+        PERSIST --&gt; NORM["Output normalization\n(normalize_findings.py)"]
+    end
+
+    subgraph P5_detail["Phase 5 internals"]
+        direction TB
+        FIX_CLASSIFY["Classify findings"] --&gt; FIX_IMPL["Implement fixes"]
+        FIX_IMPL --&gt; FIX_VERIFY["Fix verification\n(re-invoke specialist)"]
+        FIX_VERIFY --&gt; |"incomplete"| FIX_IMPL
     end
 
     P1 -.-&gt; P1_detail
     P2 -.-&gt; P2_detail
     P3 -.-&gt; P3_detail
+    P4 -.-&gt; P4_detail
+    P5 -.-&gt; P5_detail
 
-    style P5 stroke-dasharray: 5 5</code></pre>
+    style P5 stroke-dasharray: 5 5
+    style PERSIST stroke-dasharray: 3 3
+    style NORM stroke-dasharray: 3 3</code></pre>
 <h2 id="key-design-decisions">Key design decisions<a class="headerlink" href="#key-design-decisions" title="Permanent link">&para;</a></h2>
 <h3 id="why-multi-agent">Why multi-agent?<a class="headerlink" href="#why-multi-agent" title="Permanent link">&para;</a></h3>
 <p>A single LLM pass produces findings that reflect one perspective. Multiple independent agents:</p>
@@ -1912,7 +1932,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="April 15, 2026 09:11:55 UTC">April 15, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="April 15, 2026 09:39:59 UTC">April 15, 2026</span>
   </span>
 
     

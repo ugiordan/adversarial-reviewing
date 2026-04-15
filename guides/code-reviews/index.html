@@ -827,6 +827,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#advanced-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Advanced modes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#finding-severity-levels" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1688,6 +1699,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#advanced-modes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Advanced modes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#finding-severity-levels" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1817,6 +1839,55 @@
 <p>By default, findings on files outside the review target are demoted to Minor. Use <code>--strict-scope</code> to reject them entirely:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>/adversarial-review<span class="w"> </span>src/auth/<span class="w"> </span>--strict-scope
 </code></pre></div>
+<h2 id="advanced-modes">Advanced modes<a class="headerlink" href="#advanced-modes" title="Permanent link">&para;</a></h2>
+<p>The code profile supports several additional modes. Each has its own guide:</p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Flag</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="../triage-mode/">Triage</a></td>
+<td><code>--triage pr:&lt;N&gt;</code></td>
+<td>Evaluate external review comments (CodeRabbit, human reviewers)</td>
+</tr>
+<tr>
+<td><a href="../change-impact/">Change-impact</a></td>
+<td><code>--diff</code></td>
+<td>Enrich review with git diff context and caller/callee graph</td>
+</tr>
+<tr>
+<td><a href="../remediation/">Remediation</a></td>
+<td><code>--fix</code></td>
+<td>Classify findings, draft Jira tickets, implement fixes in worktree branches</td>
+</tr>
+<tr>
+<td>Dry run</td>
+<td><code>--fix --dry-run</code></td>
+<td>Preview remediation without writing anything</td>
+</tr>
+<tr>
+<td><a href="../context-injection/">Context injection</a></td>
+<td><code>--context &lt;label&gt;=&lt;source&gt;</code></td>
+<td>Inject architecture docs or other reference material</td>
+</tr>
+<tr>
+<td>Finding persistence</td>
+<td><code>--persist</code></td>
+<td>Track findings across runs (new, recurring, resolved, regressed)</td>
+</tr>
+<tr>
+<td>Output normalization</td>
+<td><code>--normalize</code></td>
+<td>Canonical ordering for cross-run stability metrics</td>
+</tr>
+</tbody>
+</table>
+<p>These modes are composable. For example, <code>--triage pr:42 --diff --thorough</code> gives specialists both external comments and the full change-impact graph.</p>
 <h2 id="finding-severity-levels">Finding severity levels<a class="headerlink" href="#finding-severity-levels" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -1903,7 +1974,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="April 15, 2026 08:22:39 UTC">April 15, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="April 15, 2026 09:39:59 UTC">April 15, 2026</span>
   </span>
 
     

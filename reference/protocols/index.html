@@ -1167,6 +1167,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#domain-aware-challenge-routing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Domain-Aware Challenge Routing
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#audit-log" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1599,6 +1610,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#domain-aware-challenge-routing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Domain-Aware Challenge Routing
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#audit-log" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1730,6 +1752,88 @@
 </tr>
 </tbody>
 </table>
+<h2 id="domain-aware-challenge-routing">Domain-Aware Challenge Routing<a class="headerlink" href="#domain-aware-challenge-routing" title="Permanent link">&para;</a></h2>
+<p><strong>Behavior</strong>: During the challenge round (Phase 2), findings are routed to specialists based on domain affinity. Each specialist has primary and adjacent domains:</p>
+<p><strong>Code profile:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Specialist</th>
+<th>Primary</th>
+<th>Adjacent</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SEC</td>
+<td>injection, auth, crypto, secrets</td>
+<td>input-validation, error-handling</td>
+</tr>
+<tr>
+<td>PERF</td>
+<td>complexity, memory, io, caching</td>
+<td>concurrency, scalability</td>
+</tr>
+<tr>
+<td>QUAL</td>
+<td>naming, duplication, solid, error-handling</td>
+<td>readability, testing</td>
+</tr>
+<tr>
+<td>CORR</td>
+<td>logic, edge-cases, races, invariants</td>
+<td>error-propagation, null-safety</td>
+</tr>
+<tr>
+<td>ARCH</td>
+<td>coupling, cohesion, boundaries, extensibility</td>
+<td>patterns, dependencies</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Strategy profile:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Specialist</th>
+<th>Primary</th>
+<th>Adjacent</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>FEAS</td>
+<td>effort, dependencies, phasing, technical-risk</td>
+<td>timeline, resources</td>
+</tr>
+<tr>
+<td>ARCH</td>
+<td>integration, api-contracts, boundaries, failure-modes</td>
+<td>patterns, scalability</td>
+</tr>
+<tr>
+<td>SEC</td>
+<td>threat-model, auth, data-handling, compliance</td>
+<td>crypto, network</td>
+</tr>
+<tr>
+<td>USER</td>
+<td>backward-compat, migration, usability, documentation</td>
+<td>api-design, ux</td>
+</tr>
+<tr>
+<td>SCOP</td>
+<td>scope, acceptance-criteria, completeness, nfr</td>
+<td>edge-cases, priorities</td>
+</tr>
+<tr>
+<td>TEST</td>
+<td>testability, coverage, test-strategy, verification</td>
+<td>ci-cd, environments</td>
+</tr>
+</tbody>
+</table>
+<p>Routing is advisory: specialists can still challenge any finding, but the hint saves 40-60% of cross-agent token consumption by guiding attention to relevant findings first.</p>
 <h2 id="audit-log">Audit Log<a class="headerlink" href="#audit-log" title="Permanent link">&para;</a></h2>
 <p><strong>File</strong>: <code>protocols/audit-log.md</code></p>
 <p>Session logging for reproducibility:</p>
@@ -1762,7 +1866,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="April 15, 2026 08:22:39 UTC">April 15, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="April 15, 2026 09:39:59 UTC">April 15, 2026</span>
   </span>
 
     

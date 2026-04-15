@@ -504,10 +504,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#security-properties" class="md-nav__link">
+  <a href="#use-cases-by-profile" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Security Properties
+        Use Cases by Profile
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#platform-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Platform Support
       
     </span>
   </a>
@@ -1530,10 +1541,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#security-properties" class="md-nav__link">
+  <a href="#use-cases-by-profile" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Security Properties
+        Use Cases by Profile
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#platform-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Platform Support
       
     </span>
   </a>
@@ -1584,46 +1606,55 @@
         A1["Spawn isolated specialists"]
         A2["2-3 iterations per agent"]
         A3["Convergence detection"]
+        A4["Reference modules\n(finding-aware selection)"]
         A1 --&gt; A2 --&gt; A3
+        A4 -.-&gt; A1
     end
 
     subgraph Phase2["Phase 2: Challenge Round"]
         direction TB
-        B1["Cross-agent debate"]
-        B2["Mediated communication"]
-        B3["Challenge + Defense"]
+        B1["Domain-aware routing"]
+        B2["Cross-agent debate"]
+        B3["Evidence-based rebuttal"]
         B1 --&gt; B2 --&gt; B3
     end
 
     subgraph Phase3["Phase 3: Resolution"]
         direction TB
-        C1["Evidence-based resolution"]
-        C2["Deduplication"]
-        C3["Agreement classification"]
+        C1["Deduplication"]
+        C2["Agreement classification"]
+        C3["Verdict resolution"]
         C1 --&gt; C2 --&gt; C3
     end
 
     subgraph Phase4["Phase 4: Report"]
         direction TB
         D1["Executive summary"]
-        D2["Findings by severity"]
+        D2["Findings by agreement level"]
         D3["Remediation roadmap"]
+        D4["Finding persistence\n(--persist)"]
+        D5["Prompt version tracking"]
         D1 --&gt; D2 --&gt; D3
+        D4 -.-&gt; D1
+        D5 -.-&gt; D1
     end
 
     subgraph Phase5["Phase 5: Remediation"]
         direction TB
         E1["Classify findings"]
         E2["Draft Jira tickets"]
-        E3["Implement fixes + PRs"]
-        E1 --&gt; E2 --&gt; E3
+        E3["Implement fixes"]
+        E4["Fix verification\n(re-invoke specialist)"]
+        E1 --&gt; E2 --&gt; E3 --&gt; E4
     end
 
     Phase1 --&gt; Phase2 --&gt; Phase3 --&gt; Phase4 --&gt; Phase5
 
-    style Phase5 stroke-dasharray: 5 5</code></pre>
+    style Phase5 stroke-dasharray: 5 5
+    style D4 stroke-dasharray: 3 3
+    style D5 stroke-dasharray: 3 3</code></pre>
 <blockquote>
-<p>Phase 5 (dashed) only runs when <code>--fix</code> is specified.</p>
+<p>Phase 5 (dashed) only runs when <code>--fix</code> is specified (code profile only). Finding persistence and prompt version tracking (dotted) are optional (<code>--persist</code> flag).</p>
 </blockquote>
 <h2 id="two-review-profiles">Two Review Profiles<a class="headerlink" href="#two-review-profiles" title="Permanent link">&para;</a></h2>
 <div class="grid cards">
@@ -1689,11 +1720,47 @@
 </tr>
 </tbody>
 </table>
-<h2 id="security-properties">Security Properties<a class="headerlink" href="#security-properties" title="Permanent link">&para;</a></h2>
+<h2 id="use-cases-by-profile">Use Cases by Profile<a class="headerlink" href="#use-cases-by-profile" title="Permanent link">&para;</a></h2>
+<pre class="mermaid"><code>flowchart TB
+    subgraph code["Code Profile (default)"]
+        direction TB
+        CR["Code review\n/adversarial-review src/"]
+        TR["Triage external comments\n--triage pr:42"]
+        CI["Change-impact analysis\n--diff"]
+        DL["Delta re-review\n--delta"]
+        FX["Remediation\n--fix"]
+        DR["Dry run preview\n--fix --dry-run"]
+        CR --&gt; FX
+        CR --&gt; DL
+        TR --&gt; CI
+    end
+
+    subgraph strat["Strategy Profile (--profile strat)"]
+        direction TB
+        SR["Strategy review\n--profile strat"]
+        CX["Context injection\n--context arch=./docs"]
+    end
+
+    subgraph both["Both Profiles"]
+        direction TB
+        PS["Finding persistence\n--persist"]
+        NM["Output normalization\n--normalize"]
+        SV["Save report\n--save"]
+        BG["Custom budget\n--budget 500000"]
+        SS["Strict scope\n--strict-scope"]
+    end
+
+    code --&gt; both
+    strat --&gt; both
+
+    style strat fill:#e8f5e9
+    style code fill:#e3f2fd
+    style both fill:#fff3e0</code></pre>
+<h2 id="platform-support">Platform Support<a class="headerlink" href="#platform-support" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Property</th>
+<th>Feature</th>
 <th>Claude Code</th>
 <th>Cursor</th>
 <th>AGENTS.md</th>
@@ -1701,10 +1768,16 @@
 </thead>
 <tbody>
 <tr>
-<td>Agent isolation</td>
+<td>Multi-agent isolation</td>
 <td>Enforced</td>
 <td>Not available</td>
 <td>Depends on tool</td>
+</tr>
+<tr>
+<td>Strategy profile</td>
+<td>Full support</td>
+<td>Not available</td>
+<td>Advisory only</td>
 </tr>
 <tr>
 <td>Mediated communication</td>
@@ -1724,8 +1797,18 @@
 <td>Advisory only</td>
 <td>Advisory only</td>
 </tr>
+<tr>
+<td>Phase 5 remediation</td>
+<td>Full support</td>
+<td>Limited</td>
+<td>Limited</td>
+</tr>
 </tbody>
 </table>
+<div class="admonition warning">
+<p class="admonition-title">Cursor limitations</p>
+<p>Cursor cannot spawn isolated sub-agents, so it runs in <strong>degraded single-agent mode</strong>: the agent role-plays each specialist sequentially without enforcement boundaries. Only the code profile is supported. See <a href="getting-started/installation/">Installation</a> for details.</p>
+</div>
 
 
 
@@ -1748,7 +1831,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="April 15, 2026 08:22:39 UTC">April 15, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="April 15, 2026 09:39:59 UTC">April 15, 2026</span>
   </span>
 
     

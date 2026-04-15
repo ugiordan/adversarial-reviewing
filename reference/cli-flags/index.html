@@ -1055,6 +1055,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#cross-run-analysis-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cross-run analysis flags
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#reference-module-flags" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1112,6 +1123,17 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#flag-compatibility-matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Flag compatibility matrix
+      
+    </span>
+  </a>
   
 </li>
       
@@ -1649,6 +1671,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#cross-run-analysis-flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cross-run analysis flags
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#reference-module-flags" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1706,6 +1739,17 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#flag-compatibility-matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Flag compatibility matrix
+      
+    </span>
+  </a>
   
 </li>
       
@@ -1838,49 +1882,74 @@
 <thead>
 <tr>
 <th>Flag</th>
+<th>Profiles</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>--quick</code></td>
+<td>Both</td>
 <td>2 specialists, 2 iterations, 150K budget</td>
 </tr>
 <tr>
 <td><code>--thorough</code></td>
+<td>Both</td>
 <td>All specialists, 3 iterations, 800K budget</td>
 </tr>
 <tr>
 <td><code>--delta</code></td>
+<td>Code only</td>
 <td>Re-review only changes since last review</td>
 </tr>
 <tr>
 <td><code>--save</code></td>
+<td>Both</td>
 <td>Write report to <code>docs/reviews/YYYY-MM-DD-&lt;topic&gt;-review.md</code></td>
 </tr>
 <tr>
 <td><code>--fix</code></td>
+<td>Code only</td>
 <td>Enable Phase 5 remediation (Jira drafts, worktree branches, PRs)</td>
 </tr>
 <tr>
 <td><code>--fix --dry-run</code></td>
+<td>Code only</td>
 <td>Preview remediation without writing anything</td>
 </tr>
 <tr>
 <td><code>--budget &lt;N&gt;</code></td>
+<td>Both</td>
 <td>Override default 350K token budget</td>
 </tr>
 <tr>
 <td><code>--force</code></td>
+<td>Both</td>
 <td>Override 200-file hard ceiling</td>
 </tr>
 <tr>
 <td><code>--strict-scope</code></td>
+<td>Both</td>
 <td>Reject (not demote) out-of-scope findings and patches</td>
+</tr>
+<tr>
+<td><code>--persist</code></td>
+<td>Both</td>
+<td>Enable cross-run finding persistence via fingerprinting</td>
+</tr>
+<tr>
+<td><code>--normalize</code></td>
+<td>Both</td>
+<td>Enable output normalization for stability metrics</td>
 </tr>
 </tbody>
 </table>
+<div class="admonition warning">
+<p class="admonition-title">Code-only flags with strat profile</p>
+<p>Using <code>--delta</code>, <code>--diff</code>, <code>--triage</code>, or <code>--fix</code> with <code>--profile strat</code> produces an error. Strategy findings require manual revision of the strategy documents; automated remediation and diff-based analysis are not applicable.</p>
+</div>
 <h2 id="diff-and-triage-flags">Diff and triage flags<a class="headerlink" href="#diff-and-triage-flags" title="Permanent link">&para;</a></h2>
+<p>These flags are <strong>code profile only</strong>.</p>
 <table>
 <thead>
 <tr>
@@ -1924,17 +1993,41 @@
 <thead>
 <tr>
 <th>Flag</th>
+<th>Profiles</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>--context &lt;label&gt;=&lt;source&gt;</code></td>
+<td>Both</td>
 <td>Inject labeled context (repeatable)</td>
 </tr>
 </tbody>
 </table>
 <p>Sources: git URL, local directory, or local file. Labels must be alphanumeric with optional hyphens.</p>
+<h2 id="cross-run-analysis-flags">Cross-run analysis flags<a class="headerlink" href="#cross-run-analysis-flags" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Profiles</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--persist</code></td>
+<td>Both</td>
+<td>Track findings across runs via content-based fingerprinting. Classifies findings as new, recurring, resolved, or regressed. History stored in <code>.adversarial-review/findings-history.jsonl</code>.</td>
+</tr>
+<tr>
+<td><code>--normalize</code></td>
+<td>Both</td>
+<td>Canonicalize output ordering and formatting. When combined with <code>--persist</code>, computes cross-run stability metrics (Jaccard similarity).</td>
+</tr>
+</tbody>
+</table>
 <h2 id="reference-module-flags">Reference module flags<a class="headerlink" href="#reference-module-flags" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -2028,6 +2121,58 @@
 </tr>
 </tbody>
 </table>
+<h2 id="flag-compatibility-matrix">Flag compatibility matrix<a class="headerlink" href="#flag-compatibility-matrix" title="Permanent link">&para;</a></h2>
+<p>Use this table to understand which flag combinations are valid:</p>
+<table>
+<thead>
+<tr>
+<th>Combination</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--delta</code> + <code>--reuse-cache</code></td>
+<td><strong>Mutually exclusive</strong>. Use <code>--delta</code> for auto-discovery or <code>--reuse-cache</code> for explicit reuse, not both.</td>
+</tr>
+<tr>
+<td><code>--diff</code> + <code>--reuse-cache</code></td>
+<td><strong>Mutually exclusive</strong>. <code>--diff</code> creates a minimal cache from changed files; <code>--reuse-cache</code> expects a complete cache.</td>
+</tr>
+<tr>
+<td><code>--delta</code> + <code>--keep-cache</code></td>
+<td>Composable. Reuses previous cache if confirmed, preserves after completion.</td>
+</tr>
+<tr>
+<td><code>--reuse-cache</code> + <code>--keep-cache</code></td>
+<td>Composable. Reuses specified cache and preserves after completion.</td>
+</tr>
+<tr>
+<td><code>--diff</code> + <code>--delta</code></td>
+<td>Composable. Delta discovers previous cache; diff limits scope to changed files.</td>
+</tr>
+<tr>
+<td><code>--persist</code> + <code>--normalize</code></td>
+<td>Composable. Adds stability metrics to the finding persistence report.</td>
+</tr>
+<tr>
+<td><code>--fix</code> + <code>--profile strat</code></td>
+<td><strong>Error</strong>. Strategy findings require manual revision.</td>
+</tr>
+<tr>
+<td><code>--triage</code> + <code>--profile strat</code></td>
+<td><strong>Error</strong>. Triage evaluates code review comments.</td>
+</tr>
+<tr>
+<td><code>--diff</code> + <code>--profile strat</code></td>
+<td><strong>Error</strong>. Change-impact analysis requires source code.</td>
+</tr>
+<tr>
+<td><code>--delta</code> + <code>--profile strat</code></td>
+<td><strong>Error</strong>. Delta re-review requires previous code review cache.</td>
+</tr>
+</tbody>
+</table>
 
 
 
@@ -2050,7 +2195,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="April 15, 2026 08:22:39 UTC">April 15, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="April 15, 2026 09:39:59 UTC">April 15, 2026</span>
   </span>
 
     

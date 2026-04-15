@@ -1577,6 +1577,7 @@
     end
 
     CODE["Code Under Review"] --&gt; |"delimited input\n(generate-delimiters.sh)"| Isolation
+    REFS["Reference modules\n(discover_references.py)"] -.-&gt; |"specialist-filtered"| Isolation
 
     SEC --&gt; V1["validate-output.sh"]
     PERF --&gt; V2["validate-output.sh"]
@@ -1591,7 +1592,9 @@
     BUDGET["track-budget.sh"] -.-&gt; |"monitors"| Isolation
 
     style Isolation fill:#f0f4ff,stroke:#4a6fa5
-    style BUDGET stroke-dasharray: 5 5</code></pre>
+    style BUDGET stroke-dasharray: 5 5
+    style REFS stroke-dasharray: 3 3</code></pre>
+<p>The diagram shows the code profile agents. The strategy profile uses 6 specialists (FEAS, ARCH, SEC, USER, SCOP, TEST) with the same isolation model.</p>
 <h2 id="how-isolation-works-in-claude-code">How isolation works in Claude Code<a class="headerlink" href="#how-isolation-works-in-claude-code" title="Permanent link">&para;</a></h2>
 <p>Claude Code's Agent tool spawns sub-agents as independent processes. Each specialist agent:</p>
 <ul>
@@ -1613,17 +1616,20 @@
     subgraph Orchestrator["Orchestrator (mediates all communication)"]
         direction TB
         SANITIZE["Sanitize findings\n(strip raw output)"]
+        AFFINITY["Domain affinity routing\n(route by category)"]
         ROUTE["Route challenges\nto relevant specialists"]
         COLLECT["Collect defenses"]
+        SANITIZE --&gt; AFFINITY --&gt; ROUTE
     end
 
     SPEC_A["Specialist A\nfindings"] --&gt; SANITIZE
-    SANITIZE --&gt; ROUTE
     ROUTE --&gt; SPEC_B["Specialist B\nchallenges"]
     SPEC_B --&gt; COLLECT
     COLLECT --&gt; SPEC_A
 
-    style Orchestrator fill:#fff4e6,stroke:#d4a843</code></pre>
+    style Orchestrator fill:#fff4e6,stroke:#d4a843
+    style AFFINITY fill:#e8f5e9,stroke:#28a745</code></pre>
+<p>Domain affinity routing (green) uses a specialist-to-category mapping to guide challenges to the most relevant reviewer. This is advisory: specialists can still challenge any finding, but the routing hint reduces unnecessary cross-agent token consumption by 40-60%.</p>
 <p>Agents never see each other's raw output. They see sanitized finding summaries. This prevents:</p>
 <ul>
 <li>Prompt injection via crafted findings</li>
@@ -1704,7 +1710,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="April 15, 2026 08:22:39 UTC">April 15, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="April 15, 2026 09:39:59 UTC">April 15, 2026</span>
   </span>
 
     

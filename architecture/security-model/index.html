@@ -1666,6 +1666,8 @@
     INP["Input isolation"]:1 CC_INP["Orchestrator"]:1 CU_INP["Advisory only"]:1 AG_INP["Advisory only"]:1
     PRV["Provenance markers"]:1 CC_PRV["Verified"]:1 CU_PRV["Not enforced"]:1 AG_PRV["Not enforced"]:1
     INJ["Injection detection"]:1 CC_INJ["Enforced"]:1 CU_INJ["Advisory only"]:1 AG_INJ["Advisory only"]:1
+    STR["Strategy profile"]:1 CC_STR["Full support"]:1 CU_STR["Not available"]:1 AG_STR["Advisory only"]:1
+    FIX["Fix verification"]:1 CC_FIX["Re-invokes specialist"]:1 CU_FIX["Advisory only"]:1 AG_FIX["Advisory only"]:1
 
     style CC_ISO fill:#d4edda,stroke:#28a745
     style CC_MED fill:#d4edda,stroke:#28a745
@@ -1673,19 +1675,25 @@
     style CC_INP fill:#d4edda,stroke:#28a745
     style CC_PRV fill:#d4edda,stroke:#28a745
     style CC_INJ fill:#d4edda,stroke:#28a745
+    style CC_STR fill:#d4edda,stroke:#28a745
+    style CC_FIX fill:#d4edda,stroke:#28a745
     style CU_ISO fill:#f8d7da,stroke:#dc3545
     style CU_MED fill:#fff3cd,stroke:#ffc107
     style CU_VAL fill:#fff3cd,stroke:#ffc107
     style CU_INP fill:#fff3cd,stroke:#ffc107
     style CU_PRV fill:#f8d7da,stroke:#dc3545
     style CU_INJ fill:#fff3cd,stroke:#ffc107
+    style CU_STR fill:#f8d7da,stroke:#dc3545
+    style CU_FIX fill:#fff3cd,stroke:#ffc107
     style AG_ISO fill:#cce5ff,stroke:#004085
     style AG_MED fill:#fff3cd,stroke:#ffc107
     style AG_VAL fill:#fff3cd,stroke:#ffc107
     style AG_INP fill:#fff3cd,stroke:#ffc107
     style AG_PRV fill:#f8d7da,stroke:#dc3545
-    style AG_INJ fill:#fff3cd,stroke:#ffc107</code></pre>
-<p>The full security model is only enforced when running as a Claude Code plugin with the Agent tool available.</p>
+    style AG_INJ fill:#fff3cd,stroke:#ffc107
+    style AG_STR fill:#fff3cd,stroke:#ffc107
+    style AG_FIX fill:#fff3cd,stroke:#ffc107</code></pre>
+<p>The full security model is only enforced when running as a Claude Code plugin with the Agent tool available. Strategy profile and fix verification require multi-agent capabilities that Cursor cannot provide.</p>
 <h2 id="guardrails-as-defense-in-depth">Guardrails as defense-in-depth<a class="headerlink" href="#guardrails-as-defense-in-depth" title="Permanent link">&para;</a></h2>
 <p>Even with all mitigations, agent behavior is not deterministic. Guardrails provide a final safety net:</p>
 <table>
@@ -1744,7 +1752,7 @@
     <span class="md-icon" title="Last update">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M21 13.1c-.1 0-.3.1-.4.2l-1 1 2.1 2.1 1-1c.2-.2.2-.6 0-.8l-1.3-1.3c-.1-.1-.2-.2-.4-.2m-1.9 1.8-6.1 6V23h2.1l6.1-6.1zM12.5 7v5.2l4 2.4-1 1L11 13V7zM11 21.9c-5.1-.5-9-4.8-9-9.9C2 6.5 6.5 2 12 2c5.3 0 9.6 4.1 10 9.3-.3-.1-.6-.2-1-.2s-.7.1-1 .2C19.6 7.2 16.2 4 12 4c-4.4 0-8 3.6-8 8 0 4.1 3.1 7.5 7.1 7.9l-.1.2z"/></svg>
     </span>
-    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="April 15, 2026 08:22:39 UTC">April 15, 2026</span>
+    <span class="git-revision-date-localized-plugin git-revision-date-localized-plugin-date" title="April 15, 2026 09:39:59 UTC">April 15, 2026</span>
   </span>
 
     
