@@ -156,8 +156,9 @@ If the `--save` flag is specified:
    - Default: derive from the shallowest common ancestor directory of all reviewed files, converted to kebab-case
    - Override: use `--topic <name>` if provided
 2. **Construct path:** `docs/reviews/YYYY-MM-DD-<topic>-review.md`
-3. **Create directories** if they do not exist: `mkdir -p docs/reviews/`
-4. **Write the file** — the metadata block MUST be the last element in the file
+3. **Idempotency check:** Before writing, follow the Report File check in `protocols/idempotency.md`. If the file already exists, present options to the user before proceeding.
+4. **Create directories** if they do not exist: `mkdir -p docs/reviews/`
+5. **Write the file** — the metadata block MUST be the last element in the file
 
 ### Step 4b: Generate Requirements Output (Strat Profile, when `--save`)
 

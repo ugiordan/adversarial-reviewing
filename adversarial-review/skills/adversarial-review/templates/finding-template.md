@@ -25,24 +25,24 @@ Recommended fix: [concrete suggestion, max 1000 chars]
 | Specialist       | Must match the assigned specialist name exactly               |
 | Severity         | One of: `Critical`, `Important`, `Minor`                      |
 | Confidence       | One of: `High`, `Medium`, `Low` — qualitative label for reporting only, does not affect resolution |
-| Source Trust      | One of: `External`, `Authenticated`, `Privileged`, `Internal`, `N/A`. Required for SEC findings involving data flow (injection, SSRF, path traversal, impersonation). Use `N/A` for non-flow findings. See severity constraints below. |
+| Source Trust      | One of: `External`, `Authenticated`, `Privileged`, `Internal`, `N/A`. Required for SEC findings involving injection, SSRF, path traversal, impersonation, or any data flow from source to sink. Use `N/A` for findings not involving data flow (e.g., hardcoded secrets, missing encryption, config issues). See severity constraints below. |
 | File             | Repo-relative path (e.g., `src/auth/login.ts`)               |
 | Lines            | Numeric range `start-end` (e.g., `42-58`) or single line `N` (e.g., `42`) |
 | Title            | Max 200 characters                                            |
 | Evidence         | Max 2000 characters — must include code reference and explanation |
 | Recommended fix  | Max 1000 characters — must be a concrete, actionable suggestion |
 
-## Source Trust Severity Ceiling
+## Source Trust Definitions
 
-| Source Trust    | Max Severity |
-|----------------|--------------|
-| External       | Critical     |
-| Authenticated  | Critical     |
-| Privileged     | Important    |
-| Internal       | Minor        |
-| N/A            | Critical     |
+| Value          | Meaning                                                        | Severity ceiling |
+|----------------|----------------------------------------------------------------|------------------|
+| External       | Attacker-controlled: HTTP params, request body, fork PR content, untrusted headers | Critical |
+| Authenticated  | Requires valid login but any authenticated user can supply it   | Critical |
+| Privileged     | Requires write/admin/triage access (e.g., labels, repo settings) | Important |
+| Internal       | Hardcoded, infrastructure-set, or system-generated values       | Minor |
+| N/A            | Finding does not involve a source-to-sink data flow             | Critical |
 
-A finding's severity CANNOT exceed its Source Trust ceiling.
+**Severity ceiling rule:** A finding's severity CANNOT exceed its Source Trust ceiling. A sink-only finding (dangerous operation identified but source not traced) is structurally invalid and must be rejected. The agent must trace the source before assigning severity.
 
 ## Role Prefixes
 

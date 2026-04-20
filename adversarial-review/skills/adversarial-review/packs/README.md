@@ -6,13 +6,13 @@ Constraint packs are organizational bundles containing enforced rules and refere
 
 ```bash
 # Load a constraint pack
-adversarial-review --constraints packs/rhoai/ src/
+adversarial-review --constraints packs/<your-org>/ src/
 
 # Constraints work with both profiles
-adversarial-review --profile strat --constraints packs/rhoai/ strategy.md
+adversarial-review --profile strat --constraints packs/<your-org>/ strategy.md
 
 # Combine with context for maximum coverage
-adversarial-review --constraints packs/rhoai/ --context architecture=./docs src/
+adversarial-review --constraints packs/<your-org>/ --context architecture=./docs src/
 ```
 
 ## Pack Structure
@@ -67,4 +67,4 @@ Packs are user-provided reference material. The tool does not cryptographically 
 
 ## Included Packs
 
-- `rhoai/`: Red Hat OpenShift AI platform constraints (10 constraints covering FIPS, auth, RBAC, secrets, image provenance, and more)
+- `rhoai/`: Example pack for Red Hat OpenShift AI (10 constraints covering FIPS, auth, RBAC, secrets, image provenance). Use as a reference when creating your own org-specific pack.

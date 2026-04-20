@@ -1,6 +1,5 @@
 ---
 version: "1.0"
-content_hash: "ba657200ba1ade5f31d25ad54cbd86cdb68d8ae13670069c56ddaf4aa69c90b3"
 last_modified: "2026-04-15"
 ---
 # Devil's Advocate
@@ -36,6 +35,7 @@ Finding ID: [ROLE_PREFIX-NNN]
 Specialist: [originating specialist name]
 Severity: [Critical | Important | Minor]
 Confidence: [High | Medium | Low]
+Source Trust: [External | Authenticated | Privileged | Internal | N/A]
 File: [repo-relative path]
 Lines: [start-end]
 Title: [max 200 chars]

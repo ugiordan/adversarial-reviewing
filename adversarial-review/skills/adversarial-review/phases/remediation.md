@@ -139,7 +139,9 @@ Do NOT create any Jira tickets until the user explicitly approves.
 
 ### Step 4: Create Jira Tickets
 
-After user approval, create Jira tickets using the MCP Atlassian tools (if available) or present the final descriptions for manual creation.
+After user approval, create Jira tickets using the `acli` CLI (`acli jira workitem create --project <PROJECT> --type Bug --summary "<title>" --description "<wiki-markup>"`). If `acli` is not available, present the final descriptions for manual creation.
+
+**Idempotency:** Before creating each ticket, follow the Jira Tickets check in `protocols/idempotency.md`. Search for existing tickets with matching summary to avoid duplicates.
 
 Record the Jira ticket IDs for use in branch names and PR descriptions.
 
@@ -157,6 +159,8 @@ For each work item (Jira group or chore batch):
 
 #### 5a. Create Worktree
 
+**Idempotency:** Before creating each branch, follow the Branches check in `protocols/idempotency.md`. Check for existing branches to avoid conflicts.
+
 Use `isolation: "worktree"` when spawning fix agents, OR create worktrees manually:
 
 ```bash
@@ -173,17 +177,12 @@ Base branch should be `upstream/main` or the project's default branch.
 
 #### 5b. Implement Fix
 
-Spawn a fix agent in the worktree with:
-- The finding details (evidence, file, lines, recommended fix)
-- The Jira ticket ID (for commit message reference)
-- Instructions to make minimal, focused changes
-- Instructions to run existing tests if available
+Load the fix agent role from `profiles/code/agents/fix-agent.md` and spawn it in the worktree with:
+- The fix agent role definition
+- A populated Fix Context block containing: finding ID, severity, file, lines, title, evidence, recommended fix, work item type, Jira ID (if applicable), and commit message format
+- For chore batches: all findings in the batch, processed sequentially
 
-The fix agent should:
-1. Read the target files
-2. Implement the fix as described in the finding
-3. Run any relevant tests
-4. Commit with an appropriate message
+The fix agent reads target files, implements the minimal fix, runs tests if detectable, and commits with the appropriate message format. It emits a structured `FIX_RESULT` block that the orchestrator parses to determine next steps. See `fix-agent.md` for the complete agent protocol.
 
 #### 5b-verify. Verify Fix (post-fix specialist re-check)
 
@@ -259,6 +258,8 @@ After all fixes are committed, present the PR plan to the user:
 ```
 
 **Wait for user confirmation** before creating any PRs. This is **Gate 4** of the remediation confirmation gates.
+
+**Idempotency:** Before creating each PR, follow the PRs check in `protocols/idempotency.md`. Check for existing open PRs on each branch.
 
 For each approved PR, create it using `gh pr create` with:
 - Title from the plan

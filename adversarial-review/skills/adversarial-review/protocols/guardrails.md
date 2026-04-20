@@ -6,16 +6,16 @@ Defines enforceable guardrails that the orchestrator checks programmatically dur
 
 ## Constants
 
-| Constant | Default | `--quick` | `--thorough` |
-|----------|---------|-----------|--------------|
-| `MAX_ITERATIONS` | 4 | 2 | 4 |
-| `MAX_FINDINGS_PER_AGENT` | 50 | 50 | 50 |
-| `MIN_EVIDENCE_CHARS` | 100 | 100 | 100 |
-| `SEVERITY_INFLATION_CRITICAL_THRESHOLD` | 50% | 50% | 50% |
-| `SEVERITY_INFLATION_COMBINED_THRESHOLD` | 80% | 80% | 80% |
-| `AGENT_BUDGET_MULTIPLIER` | 1.5 | 1.5 | 1.5 |
-| `PRE_FLIGHT_WARN_THRESHOLD` | 90% | 90% | 90% |
-| `PRE_FLIGHT_RECOMMEND_THRESHOLD` | 150% | 150% | 150% |
+| Constant | Default | `--quick` | `--thorough` | `--delta` |
+|----------|---------|-----------|--------------|-----------|
+| `MAX_ITERATIONS` | 4 | 2 | 4 | 2 |
+| `MAX_FINDINGS_PER_AGENT` | 50 | 50 | 50 | 50 |
+| `MIN_EVIDENCE_CHARS` | 100 | 100 | 100 | 100 |
+| `SEVERITY_INFLATION_CRITICAL_THRESHOLD` | 50% | 50% | 50% | 50% |
+| `SEVERITY_INFLATION_COMBINED_THRESHOLD` | 80% | 80% | 80% | 80% |
+| `AGENT_BUDGET_MULTIPLIER` | 1.5 | 1.5 | 1.5 | 1.5 |
+| `PRE_FLIGHT_WARN_THRESHOLD` | 90% | 90% | 90% | 90% |
+| `PRE_FLIGHT_RECOMMEND_THRESHOLD` | 150% | 150% | 150% | 150% |
 
 ## Guardrail Definitions
 

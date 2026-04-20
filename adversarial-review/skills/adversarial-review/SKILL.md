@@ -1,6 +1,11 @@
 ---
 name: adversarial-review
 description: Multi-agent adversarial review with isolated specialists, programmatic validation, and evidence-based resolution. Use for reviewing code, designs, or documentation from multiple perspectives.
+license: Apache-2.0
+compatibility: Requires Claude Code (or compatible agent platform with shell execution), git, python3, openssl
+metadata:
+  author: ugiordan
+  version: "1.0.0"
 ---
 
 # Adversarial Review
@@ -35,7 +40,7 @@ The orchestrator creates tasks dynamically based on the configuration:
 
 - [ ] **Step 1:** Parse invocation flags and resolve scope
 - [ ] **Step 2:** Confirm scope with user (MANDATORY — never skip)
-- [ ] **Step 3:** Initialize cache (delegate to cache initialization procedure)
+- [ ] **Step 3:** Initialize cache (delegate to `protocols/cache-initialization.md`)
 - [ ] **Step 4:** Phase 1 — Self-refinement (delegate to `phases/self-refinement.md`)
 - [ ] **Step 5:** Phase 2 — Challenge round (delegate to `phases/challenge-round.md`; devil's advocate mode if single-specialist)
 - [ ] **Step 6:** Phase 3 — Resolution (delegate to `phases/resolution.md`; simplified if single-specialist)
@@ -91,7 +96,7 @@ If no specialist flags are provided, activate **all specialists** for the active
 | `--delta` | Delta mode — re-review only changes since last review. Also overrides max iterations to 2 (matching minimum, so exactly 2 iterations always run). See `protocols/delta-mode.md`. When `.adversarial-review/last-cache.json` exists, prompts user to reuse previous cache. |
 | `--save` | Write report to file. Does NOT commit to git. |
 | `--topic <name>` | Override the auto-derived topic name for the review. |
-| `--budget <tokens>` | Override the default 500K token budget. |
+| `--budget <tokens>` | Override the default 350K token budget. |
 | `--force` | Override the 200-file hard ceiling. Requires explicit budget confirmation. |
 | `--fix` | Enable Phase 5 (Remediation). Classifies findings, drafts Jiras, creates worktree branches, implements fixes, and proposes PRs. |
 | `--diff` | Enable diff-augmented input with change-impact graph. Auto-enabled by `--delta`. |
@@ -167,272 +172,19 @@ Staleness warnings are informational only — they never block the review.
 
 ## Step 2: Scope Resolution
 
-Determine what code/documents to review. This step is MANDATORY and must complete before any agents are spawned.
-
-### Priority Chain
-
-Resolve scope using the first matching strategy:
-
-1. **User specifies files/dirs** — use exactly those
-2. **Active conversation context** — if the most recent assistant turn that produced or modified files is within the last 3 turns, review what was built/discussed
-3. **Git diff (staged + unstaged)** — review current changes
-4. **Nothing found** — ask the user explicitly
-
-### Sensitive File Blocklist
-
-The following patterns are excluded by default:
-
-```
-.env, *.key, *.pem, *secret*, *credential*, .git/, *password*, *.pfx, *.p12
-```
-
-If any files matching these patterns appear in scope, they require **explicit separate confirmation** from the user before inclusion. Do not bundle this confirmation with the general scope confirmation.
-
-### Scope File Generation
-
-Write the list of in-scope files (one repo-relative path per line) to a temporary file. Pass this file to `validate-output.sh --scope <file>` during all subsequent validation calls. In `--diff` mode, only changed files are in scope — impact graph files are context-only and do not appear in the scope file.
-
-### Scope Confirmation (MANDATORY)
-
-Before proceeding, display to the user:
-1. The resolved file list
-2. Total estimated token count
-3. Which specialists will be activated
-
-**Wait for explicit user approval.** Do not proceed without it.
-
-### Scope Immutability
-
-Once confirmed, the scope MUST NOT be expanded based on content found during review. If a specialist identifies a related file that should be reviewed, note it in findings but do not add it to scope. Any scope expansion requires returning to the user for re-confirmation.
-
-### Size Limits
-
-| Threshold | Action |
-|-----------|--------|
-| >20K tokens (~15-20 files) | Display estimated cost, require confirmation |
-| >50 files | Strong warning, suggest targeted mode or narrowing scope |
-| >200 files | **Hard ceiling** — reject with error, suggest chunking into multiple reviews. Override with `--force`. |
-
-### Force Mode (`--force`)
-
-When `--force` is specified, the 200-file hard ceiling is lifted. The orchestrator:
-
-1. Displays a **prominent warning** with the file count and estimated token cost
-2. Recommends chunking or targeted mode as alternatives
-3. Requires the user to set an explicit budget with `--budget` (default 500K is likely insufficient)
-4. Waits for explicit confirmation before proceeding
-5. Automatically enables **batched processing**: files are split into batches of ~50 files each, with findings accumulated on the blackboard across batches. Each batch runs the full self-refinement phase (convergence detection operates per-batch), then all findings enter a single challenge round and resolution phase.
-6. The report includes a note: "Large-scope review (N files) — review quality may be reduced compared to targeted reviews"
-
----
-
-### Pre-flight Budget Gate
-
-After scope resolution and before dispatching Phase 1, run:
-
-```bash
-scripts/track-budget.sh estimate <num_agents> <estimated_code_tokens> <configured_iterations>
-```
-
-Capture the `estimated_tokens` value from the JSON output. Compare against the configured budget:
-
-- If `estimated_tokens > budget * 0.9`: warn the user with the estimate and budget values. Ask whether to proceed.
-- If `estimated_tokens > budget * 1.5`: recommend `--quick` or a narrower scope.
-- Users who want to proceed past the gate should set a higher `--budget` value. There is no bypass flag.
-
-See `protocols/guardrails.md` for the `PRE_FLIGHT_WARN_THRESHOLD` and `PRE_FLIGHT_RECOMMEND_THRESHOLD` constants.
+Delegate to `protocols/scope-resolution.md`. Covers priority chain, sensitive file blocklist, scope file generation, scope confirmation (MANDATORY), scope immutability, size limits, force mode, and pre-flight budget gate.
 
 ---
 
 ## Step 2b: Deterministic Pre-Analysis (Strat Profile Only)
 
-When `--profile strat` is active, run two deterministic analysis layers before dispatching specialist agents. These layers provide structured context that improves specialist precision and enables confidence scoring.
-
-### Layer 1: Threat Surface Extraction
-
-Extract a keyword-based threat surface inventory from each strategy document. No LLM required.
-
-```bash
-python3 scripts/extract-threat-surface.py <strat-file>
-```
-
-**Output (stdout):** JSON with:
-- `tier`: review depth classification (`skip` / `light` / `standard` / `deep`)
-- `keyword_categories`: matched keywords by category (auth, crypto, network, data, multi_tenant, supply_chain, compliance, agentic)
-- `surface_hints`: extracted surface items (endpoints, data_stores, credentials, external_deps, trust_boundaries, crd_changes, agent_surfaces)
-- `sections`: markdown section headers for citation mapping
-- `acceptance_criteria`: extracted numbered ACs
-
-**Tier classification logic:**
-- `deep`: auth, crypto, multi_tenant, or agentic keywords present
-- `standard`: network, data, supply_chain, or compliance keywords present
-- `light`: keywords present but only in non-deep categories
-- `skip`: no security-relevant keywords found
-
-Save the output to `{CACHE_DIR}/threat-surface-<strat-id>.json`. Pass the tier to specialist agents for review depth calibration.
-
-### Layer 2: NFR Checklist Scan
-
-Run the recurring NFR checklist against each strategy document using a lightweight LLM call (haiku-tier).
-
-```bash
-# Generate scan prompt
-python3 scripts/nfr-scan.py --prompt <strat-file> [--surface <threat-surface.json>]
-
-# Parse scan output into structured JSON
-python3 scripts/nfr-scan.py --parse <scan-output-file>
-```
-
-The NFR checklist contains 23 items across 6 categories (Authentication & Authorization, Testability, Security, Feasibility, Compliance & Governance, Cross-Cutting). Each item has a deterministic severity decision tree: the answer (YES/NO/PARTIAL/N/A) combined with context conditions produces a severity level without LLM judgment.
-
-**Procedure:**
-1. Generate the scan prompt with `--prompt`, optionally passing the Layer 1 threat surface for N/A decisions
-2. Dispatch a single lightweight agent with the generated prompt
-3. Parse the agent output with `--parse` to get structured JSON with severity assignments
-4. Save to `{CACHE_DIR}/nfr-scan-<strat-id>.json`
-
-NFR scan results feed into:
-- **Specialist context:** agents see which NFR items scored NO/PARTIAL to focus their analysis
-- **Confidence scoring:** findings aligned with NFR gaps receive a confidence boost (see `phases/resolution.md` Confidence Scoring)
-- **Requirements output:** NFR gaps are listed separately in the requirements template
-
-### Layer 3: Specialist Analysis
-
-Phases 1-3 (self-refinement, challenge, resolution) form Layer 3. Specialists receive the Layer 1 and Layer 2 outputs as structured context alongside the strategy documents.
-
-### Structured Output
-
-### Finding Normalization (when `--normalize`)
-
-After Phase 4 (Report), normalize findings for stability:
-
-```bash
-python3 scripts/normalize_findings.py normalize <findings_file>
-```
-
-This sorts findings canonically (specialist prefix, file path, line number), standardizes formatting (severity/confidence casing, line range format, file path normalization), and collapses whitespace. The normalized output replaces the raw findings in the report.
-
-### Finding Persistence (when `--persist`)
-
-After Phase 4 (Report), run cross-run finding persistence:
-
-```bash
-# Fingerprint current findings
-python3 scripts/fingerprint_findings.py fingerprint <findings_json>
-
-# Compare against previous run (if history exists)
-python3 scripts/fingerprint_findings.py compare <current_json> <previous_json>
-
-# Append to history
-python3 scripts/fingerprint_findings.py history append <findings_json>
-```
-
-History is stored at `.adversarial-review/findings-history.jsonl`. Each entry records the fingerprint, finding ID, severity, title, timestamp, and commit SHA. The report's Section 15 (Finding Persistence) is populated from the comparison output.
-
-### Prompt Version Tracking
-
-Before Phase 1, compute prompt versions for all active specialists:
-
-```bash
-python3 scripts/prompt_version.py manifest <agents_dir>
-```
-
-The manifest is stored in the cache and included in the report metadata block (`prompt_versions` field). This enables tracking which prompt version produced which findings across runs.
-
-### Structured Output
-
-After Phase 4 (Report), generate machine-readable JSON output:
-
-```bash
-python3 scripts/findings-to-json.py <findings-file> --profile strat [--metadata '{"strat_id": "..."}']
-```
-
-This produces enriched JSON with severity/confidence numeric mappings, specialist prefix extraction, evidence quality signals, and summary statistics. The JSON output is written alongside the report when `--save` is active.
+Delegate to `protocols/pre-analysis.md`. Covers Layer 1 (threat surface extraction), Layer 2 (NFR checklist scan), finding normalization (`--normalize`), finding persistence (`--persist`), prompt version tracking, and structured JSON output.
 
 ---
 
 ## Step 3: Initialize Cache
 
-After scope confirmation and pre-flight budget check, initialize the local context cache before dispatching any agents.
-
-### Cache Initialization Procedure
-
-1. **Generate session hex:** Run `openssl rand -hex 16`. This identifies the cache session (separate from delimiter hex).
-2. **Initialize cache directory:**
-   ```bash
-   SOURCE_ROOT=<absolute_path_to_source> scripts/manage-cache.sh init <session_hex>
-   ```
-   `SOURCE_ROOT` is the absolute path to the directory containing the code under review. This is stored in the manifest and included in agent prompts so agents know where to search when verifying findings. If omitted, defaults to `$(pwd)`.
-   Capture `CACHE_DIR` from the JSON output (`{"cache_dir": "<path>", "session_hex": "<hex>"}`).
-3. **Generate delimiter hex:** Run `scripts/generate-delimiters.sh` to produce a session-wide `REVIEW_TARGET` delimiter hex. Collision-check against all scope files.
-4. **Populate code:**
-   ```bash
-   CACHE_DIR=$CACHE_DIR scripts/manage-cache.sh populate-code <scope_file> <delimiter_hex>
-   ```
-5. **Populate templates:**
-   ```bash
-   REVIEW_PROFILE=<profile> CACHE_DIR=$CACHE_DIR scripts/manage-cache.sh populate-templates
-   ```
-6. **Populate references:**
-   ```bash
-   REVIEW_PROFILE=<profile> CACHE_DIR=$CACHE_DIR scripts/manage-cache.sh populate-references
-   ```
-
-   `REVIEW_PROFILE` selects the profile directory for templates and references (`code` or `strat`). Defaults to `code` if not set.
-7. **Populate context (if `--context` flags present):**
-   For each `--context label=source` flag:
-   ```bash
-   CONTEXT_LABEL=<label> CONTEXT_SOURCE=<source> CACHE_DIR=$CACHE_DIR scripts/manage-cache.sh populate-context
-   ```
-   Context files appear in the navigation under `## Context: <label>` headings. Agents read them like any other cached file. The label tells agents what the context represents (e.g., `architecture` = component boundaries and APIs, `compliance` = regulatory requirements, `threat-model` = known attack surfaces).
-8. **Populate constraints (if `--constraints` flag present):**
-   ```bash
-   CONSTRAINTS_SOURCE=<path> CACHE_DIR=$CACHE_DIR scripts/manage-cache.sh populate-constraints
-   ```
-   Constraints are loaded from a pack directory (containing `constraints.yaml` + `.md` reference files) or a direct YAML file. Constraints are filtered by the active `REVIEW_PROFILE`: constraints with a `profile` field that doesn't match the active profile are dropped. The navigation includes a `## Constraints` section listing all active constraints with their severity floors and a clear instruction that agents cannot downgrade below the constraint severity.
-9. **Generate navigation:**
-   ```bash
-   CACHE_DIR=$CACHE_DIR scripts/manage-cache.sh generate-navigation 1 1
-   ```
-10. **Set cleanup trap** (via Bash tool):
-    ```bash
-    trap "CACHE_DIR='$CACHE_DIR' '$SCRIPT_DIR/manage-cache.sh' cleanup" EXIT HUP INT TERM
-    ```
-    **Skip this step if `--keep-cache` is specified.** Note: in agent-tool execution models (e.g., Claude Code Bash tool), the trap may not persist across invocations. The `cleanup_stale` function in `manage-cache.sh` provides a reliability backstop.
-11. **Export `CACHE_DIR`** — all subsequent steps use this path.
-
-**Session-wide delimiters:** In cache mode, a single `REVIEW_TARGET` delimiter hex is shared across all agents (see `protocols/input-isolation.md` Session-Wide Delimiter Relaxation). `FIELD_DATA` markers in sanitized findings retain per-field unique hex values.
-
-**Failure:** If any step 2-9 fails, abort the review with error. See the Cache Errors table in Error Handling.
-
-### `--reuse-cache <hex>` Override
-
-When `--reuse-cache` is specified, replace steps 2-7 above with:
-
-1. Validate hex: must match `^[a-f0-9]{32}$`.
-2. Scan `$TMPDIR` for directories matching `adversarial-review-cache-<hex>-*`.
-3. Run `scripts/manage-cache.sh validate-cache <path>`. If invalid, abort with mismatch details.
-4. Set `CACHE_DIR` to the resolved path. Skip all populate steps.
-5. Clear findings: `rm -rf "$CACHE_DIR/findings/"*` then `mkdir -p "$CACHE_DIR/findings"`.
-6. Regenerate navigation: `scripts/manage-cache.sh generate-navigation 1 1`.
-
-### `--delta` Auto-Discovery
-
-When `--delta` is specified, check for `.adversarial-review/last-cache.json` in the repo root before cache initialization:
-
-- **If found:** Display the session hex and commit SHA. Ask user to confirm reuse.
-- **If confirmed:** Follow the `--reuse-cache` flow above with the discovered hex.
-- **If declined or not found:** Proceed with normal cache initialization.
-
-### `--keep-cache` Post-Review
-
-After Phase 4 (Report) completes:
-
-1. Write `.adversarial-review/last-cache.json`:
-   ```json
-   {"session_hex": "<hex>", "commit_sha": "<HEAD>"}
-   ```
-2. Print: "Cache preserved. Reuse with `--reuse-cache <hex>`"
+Delegate to `protocols/cache-initialization.md`. Covers the full cache lifecycle: init, populate (code, templates, references, context, constraints), navigation generation, cleanup traps, `--reuse-cache` override, `--delta` auto-discovery, and `--keep-cache` post-review.
 
 ---
 
@@ -633,112 +385,13 @@ The orchestrator NEVER proceeds past a gate without explicit user approval.
 
 ---
 
-## Task Tracking
+## Operational Protocols
 
-Create tasks dynamically based on specialist count and phase progression. Example for a 5-specialist, 2-iteration review:
+### Progress Display & Task Tracking
 
-```
-Task: Parse invocation and resolve scope          [Step 1-2]
-Task: Initialize cache                             [Step 3]
-Task: SEC self-refinement (iteration 1)            [Step 4]
-Task: PERF self-refinement (iteration 1)           [Step 4]
-Task: QUAL self-refinement (iteration 1)           [Step 4]
-Task: CORR self-refinement (iteration 1)           [Step 4]
-Task: ARCH self-refinement (iteration 1)           [Step 4]
-Task: SEC self-refinement (iteration 2)            [Step 4]
-Task: PERF self-refinement (iteration 2)           [Step 4]
-Task: QUAL self-refinement (iteration 2)           [Step 4]
-Task: CORR self-refinement (iteration 2)           [Step 4]
-Task: ARCH self-refinement (iteration 2)           [Step 4]
-Task: Challenge round                              [Step 5]
-Task: Resolution                                   [Step 6]
-Task: Final report                                 [Step 7]
-Task: Classify findings (jira/chore/blocked)       [Step 8, --fix only]
-Task: Draft Jira tickets                           [Step 8, --fix only]
-Task: Implement fixes (per work item)              [Step 8, --fix only]
-Task: Propose PRs                                  [Step 8, --fix only]
-```
+See `protocols/progress-display.md` for status block format, agent status values, when to output, and budget bar construction.
 
-Update task status as each completes. For single-specialist mode, Phase 2 runs in devil's advocate mode (not skipped). Phase 5 tasks are only created when `--fix` is specified.
-
----
-
-## Progress Display
-
-The orchestrator outputs a status block at each phase transition and after each self-refinement iteration. This gives the user visibility into review progress without requiring them to parse agent tool calls.
-
-### Status Block Format
-
-```
-┌─────────────────────────────────────────────────┐
-│  ADVERSARIAL REVIEW: <topic>                    │
-│  <phase_name>  [<progress_detail>]              │
-├──────────┬──────────┬───────────────────────────┤
-│ Agent    │ Status   │ Findings                  │
-├──────────┼──────────┼───────────────────────────┤
-│ SEC      │ DONE     │ 5 → 3 (converged)         │
-│ PERF     │ RUNNING  │ 4                         │
-│ QUAL     │ DONE     │ 7 → 6                     │
-│ CORR     │ PENDING  │ -                         │
-│ ARCH     │ DONE     │ 3 → 3 (converged)         │
-├──────────┴──────────┴───────────────────────────┤
-│ Budget: ████████░░░░░░  127K / 500K (25%)       │
-└─────────────────────────────────────────────────┘
-```
-
-### Field Definitions
-
-| Field | Source | Description |
-|-------|--------|-------------|
-| `<topic>` | Step 1 invocation parsing | Review topic name |
-| `<phase_name>` | Current phase | "Phase 1: Self-Refinement", "Phase 2: Challenge Round", "Phase 3: Resolution" |
-| `<progress_detail>` | Phase-specific | Iteration N/M for Phase 1, "Iteration N" for Phase 2, empty for Phase 3 |
-| Agent Status | Agent dispatch state | `DONE`, `RUNNING`, `PENDING`, `CONVERGED`, `FAILED` |
-| Findings | Per-agent finding count | Current count, or `prev → curr` on iteration 2+. Append `(converged)` when stable. |
-| Budget bar | `track-budget.sh status` | Visual bar + consumed/limit tokens + percentage |
-
-### Agent Status Values
-
-| Status | Meaning |
-|--------|---------|
-| `PENDING` | Not yet dispatched this iteration |
-| `RUNNING` | Agent dispatched, awaiting response |
-| `DONE` | Agent completed this iteration |
-| `CONVERGED` | Agent's findings stabilized (no further iterations) |
-| `FAILED` | Agent failed validation (max retries exhausted) |
-
-### When to Output
-
-Output a status block at these points:
-
-1. **Phase 1 start:** After cache initialization, before dispatching iteration 1 agents. All agents show `PENDING`.
-2. **Phase 1 iteration complete:** After each iteration's agents finish and findings are validated. Show finding counts and convergence status.
-3. **Phase 2 start:** Before dispatching challenge round. Show total findings entering challenge.
-4. **Phase 2 iteration complete:** After each challenge iteration. Show positions collected.
-5. **Phase 3 complete:** After resolution. Show final validated/dismissed/escalated counts.
-
-Do NOT output a status block for every individual agent completion within a parallel dispatch. One block per iteration boundary is sufficient.
-
-### Budget Bar Construction
-
-Build the budget bar from `track-budget.sh status` output:
-
-```
-consumed_pct = (consumed / limit) * 100
-filled_blocks = round(consumed_pct / 100 * 14)
-empty_blocks = 14 - filled_blocks
-bar = "█" * filled_blocks + "░" * empty_blocks
-```
-
-Display as: `Budget: <bar>  <consumed_K>K / <limit_K>K (<pct>%)`
-
-### Minimal Mode
-
-For `--quick` reviews (2 specialists, 2 iterations), the status blocks are still output but the table is naturally smaller. No special handling needed.
-
----
-
-## Guardrail Trip Log
+### Guardrail Trip Log
 
 The orchestrator maintains an in-memory list of guardrail events throughout the review. Each entry contains:
 
@@ -752,141 +405,21 @@ The trip log is rendered in the final report as a `## Guardrails Triggered` sect
 
 See `protocols/guardrails.md` for the full list of guardrail definitions, constants, thresholds, and enforcement behavior.
 
----
+### Token Budget
 
-## Token Budget Protocol
+Budget management uses `scripts/track-budget.sh`. See `protocols/token-budget.md` for full specification. If `status` returns `"exceeded": true`, do not start the next iteration. Proceed to resolution with findings collected so far.
 
-Budget management uses `scripts/track-budget.sh`. See `protocols/token-budget.md` for full specification.
+### Convergence Detection
 
-```bash
-# Initialize budget at start
-scripts/track-budget.sh init <budget_limit>
+Between self-refinement iterations, check if agents have converged (finding set unchanged). See `protocols/convergence-detection.md`. If all agents have converged, proceed directly to Phase 2.
 
-# Add token consumption after each agent operation (file path or char count)
-scripts/track-budget.sh add <file_or_char_count>
+### Delta Mode
 
-# Check remaining budget before starting new iteration
-scripts/track-budget.sh status
+When `--delta` is specified, follow `protocols/delta-mode.md`.
 
-# Estimate total cost before starting a review
-scripts/track-budget.sh estimate <num_agents> <code_tokens> <iterations> [num_work_items]
-```
+### Change-Impact Analysis & Triage
 
-If `status` returns `"exceeded": true`, do not start the next iteration. Proceed to resolution with findings collected so far.
-
----
-
-## Convergence Detection
-
-Between self-refinement iterations, check if agents have converged (finding set unchanged). See `protocols/convergence-detection.md`.
-
-```bash
-scripts/detect-convergence.sh <iteration_N_output> <iteration_N_minus_1_output>
-```
-
-If an agent has converged, skip further iterations for that agent. If all agents have converged, proceed directly to Phase 2 (devil's advocate mode for single-specialist).
-
----
-
-## Delta Mode
-
-When `--delta` is specified, follow `protocols/delta-mode.md`:
-
-1. Locate the previous review report (by topic name)
-2. Diff the current code against the state at last review
-3. Review only changed code, referencing previous findings for context
-4. Use `templates/delta-report-template.md` for the output
-
----
-
-## File Structure Reference
-
-```
-skills/adversarial-review/
-  SKILL.md                              # This file — main orchestrator
-  config/
-    model-config.yml.example            # Future multi-model routing (v2)
-  profiles/
-    code/                               # Code review profile
-      config.yml                        # Profile configuration (agents, templates, settings)
-      agents/                           # Code-specific specialist prompts
-        security-auditor.md             # SEC specialist
-        performance-analyst.md          # PERF specialist
-        code-quality-reviewer.md        # QUAL specialist
-        correctness-verifier.md         # CORR specialist
-        architecture-reviewer.md        # ARCH specialist
-        devils-advocate.md              # Single-specialist challenge agent
-      templates/                        # Code-specific output templates
-        finding-template.md             # Finding format (File/Lines evidence)
-        challenge-response-template.md  # Challenge response format
-        report-template.md              # Report format (14 sections)
-        delta-report-template.md        # Delta review report format
-        sanitized-document-template.md  # Sanitized cross-agent message format
-        jira-template.md                # Jira ticket template (--fix)
-        triage-*.md                     # Triage mode templates
-      references/                       # Code-specific reference modules
-        security/                       # Security references (OWASP, ASVS, k8s)
-    strat/                              # Strategy document review profile
-      config.yml                        # Profile configuration (agents, templates, settings)
-      agents/                           # Strat-specific specialist prompts
-        feasibility-analyst.md          # FEAS specialist
-        architecture-reviewer.md        # ARCH specialist
-        security-analyst.md             # SEC specialist
-        user-impact-analyst.md          # USER specialist
-        scope-completeness-analyst.md   # SCOP specialist
-        devils-advocate.md              # Single-specialist challenge agent
-      templates/                        # Strat-specific output templates
-        finding-template.md             # Finding format (Document/Citation evidence)
-        challenge-response-template.md  # Challenge response format (with Verdict)
-        report-template.md              # Report format (10 sections, verdict-based)
-        requirements-template.md        # Requirements output for STRAT authors (confidence-tiered)
-      references/                       # Strat-specific reference modules
-        all/                            # References for all strat specialists
-  phases/
-    self-refinement.md                  # Phase 1 procedure (profile-aware)
-    challenge-round.md                  # Phase 2 procedure (profile-aware)
-    resolution.md                       # Phase 3 procedure (verdict resolution for strat)
-    report.md                           # Phase 4 procedure (profile-aware)
-    remediation.md                      # Phase 5 procedure (code profile only, --fix)
-  protocols/
-    input-isolation.md                  # Delimiter-based code isolation
-    mediated-communication.md           # Cross-agent message mediation
-    convergence-detection.md            # Finding set stability detection
-    delta-mode.md                       # Re-review protocol (code profile only)
-    token-budget.md                     # Budget tracking protocol
-    injection-resistance.md             # Two-tier injection detection
-    guardrails.md                       # Guardrail definitions, constants, enforcement
-    audit-log.md                        # External action audit log format
-    destructive-patterns.txt            # Regex patterns for destructive command detection
-  scripts/
-    generate-delimiters.sh              # Produces unique code delimiters
-    validate-output.sh                  # Validates agent output (--profile aware)
-    detect-convergence.sh               # Checks finding set stability
-    deduplicate.sh                      # Removes duplicate findings
-    track-budget.sh                     # Token budget tracking
-    discover-references.sh              # Reference module discovery and filtering
-    update-references.sh                # Reference module auto-update
-    manage-cache.sh                     # Cache lifecycle: init, populate, validate, cleanup
-    profile-config.sh                   # Profile configuration reader
-    fetch-architecture-context.sh       # Architecture context fetcher (strat profile)
-    fetch-context.sh                    # Generic labeled context fetcher
-    extract-threat-surface.py           # Layer 1: deterministic keyword scan + tier classification (strat profile)
-    nfr-scan.py                         # Layer 2: NFR checklist scanner with severity decision trees (strat profile)
-    findings-to-json.py                 # Structured JSON output from findings (both profiles)
-    generate-visuals.py                 # Review visualization dashboard generator
-  packs/                                  # Organizational constraint packs
-    README.md                             # How to create your own pack
-    rhoai/                                # Red Hat OpenShift AI constraint pack
-      constraints.yaml                    # 10 enforced constraints (FIPS, auth, RBAC, etc.)
-      rhoai-auth-patterns.md              # Approved auth pattern reference
-      rhoai-platform-constraints.md       # Platform constraints reference
-      productization-requirements.md      # Productization checklist reference
-      README.md                           # Pack documentation
-  tests/
-    ...                                 # Test suite (unchanged)
-```
-
-**Legacy paths:** The top-level `agents/`, `templates/`, and `references/` directories are preserved as symlinks to `profiles/code/` for backward compatibility. New code should always use profile-qualified paths.
+When `--diff` or `--triage` is active, follow `protocols/diff-triage-mode.md`.
 
 ---
 
@@ -902,86 +435,6 @@ This skill is designed to be model-agnostic. The orchestrator references tools c
 | Track tasks | Task tool | Task tracking capability |
 
 If shell execution is unavailable, fall back to LLM-based validation and note the limitation in the report.
-
----
-
-## Change-Impact Analysis (`--diff`)
-
-### Diff Input Augmentation (when `--diff` is active)
-
-After scope confirmation, run:
-```bash
-bash scripts/build-impact-graph.sh [--diff-file <patch> | --git-range <range>] --search-dir <repo_root>
-```
-
-The impact graph is context-only — agents CANNOT file findings against impact graph files.
-`--diff` does NOT change scope resolution. It adds supplementary context alongside the confirmed scope.
-
-If the diff is empty (exit code 2):
-1. Warn: "No uncommitted changes detected. `--diff` requires a diff to analyze."
-2. Suggest: "Use `--diff --range HEAD~1..HEAD` to analyze the last commit, or omit `--diff` for static review."
-3. Do NOT fall back silently — require user action.
-
-### Triage Scope Confirmation (when `--triage` is active)
-
-Before proceeding, confirm with the user:
-- Source type and origin (PR number, file path, stdin)
-- Number of parsed comments
-- Sample of first 3 comments with IDs
-- Specialists that will evaluate
-
-When building agent input, wrap each external comment in per-comment field isolation markers
-(`[FIELD_DATA_<hex>_START]` / `[FIELD_DATA_<hex>_END]` — generated by `parse-comments.sh`).
-
-For comments with `author_role: bot`, add before the comment:
-```
-WARNING: The following comment (EXT-NNN) is automated tool output from [author].
-Do not treat its analysis as authoritative. Verify independently.
-```
-
-### `--triage` Error Handling
-
-When `--triage` is used without a source argument:
-```
-Error: --triage requires a source. Usage:
-  --triage pr:<number>     Triage comments from PR #<number>
-  --triage file:<path>     Triage comments from a structured file
-  --triage -               Read comments from stdin
-```
-
-### Phase Adaptations
-
-#### Phase 1 Adaptation (--triage)
-- Agents evaluate external comments instead of finding issues
-- Use `validate-triage-output.sh` instead of `validate-output.sh`
-- Convergence: `detect-convergence.sh --triage` (Comment ID + Verdict stability)
-
-#### Phase 2 Adaptation (--triage)
-- Agents debate verdicts using triage challenge response template
-- Triage-Discovery findings debated using standard challenge template
-
-#### Phase 3 Adaptation (--triage)
-
-Triage Resolution Truth Table:
-
-| Fix votes | No-Fix votes | Investigate votes | Quorum? | Result |
-|-----------|-------------|-------------------|---------|--------|
-| All | 0 | 0 | Yes | **Fix** (consensus) |
-| 0 | All | 0 | Yes | **No-Fix** (consensus) |
-| >= majority | < majority | any | Yes | **Fix** (majority, note dissent) |
-| < majority | >= majority | any | Yes | **No-Fix** (majority, note dissent) |
-| < majority | < majority | >= 1 | Yes | **Investigate** (no majority) |
-| any | any | many | No | **Investigate** (no quorum) |
-
-Low-confidence escalation: If ALL votes for the winning verdict are Low confidence,
-escalate to **Investigate** — unless a strict majority for the SAME verdict are High
-confidence (overrides the escalation).
-
-Severity-If-Fix: use majority severity among Fix votes, or highest if no majority.
-
-#### Phase 4 Adaptation (--triage)
-- Use `templates/triage-report-template.md`
-- Include Coverage Gap Analysis when `--gap-analysis` or `--thorough`
 
 ---
 

@@ -1,7 +1,6 @@
 ---
 version: "1.0"
-content_hash: "746ae53482a1cef381b7366ed13f262b88836ee0b62a95271eae8aa4a04c3c6d"
-last_modified: "2026-04-15"
+last_modified: "2026-04-20"
 ---
 # Security Auditor (SEC)
 
@@ -35,6 +34,7 @@ Finding ID: SEC-NNN
 Specialist: Security Auditor
 Severity: [Critical | Important | Minor]
 Confidence: [High | Medium | Low]
+Source Trust: [External | Authenticated | Privileged | Internal | N/A]
 File: [repo-relative path]
 Lines: [start-end]
 Title: [max 200 chars]
@@ -80,6 +80,29 @@ finding as **Confidence: Low** and add to Evidence:
 A finding that identifies a dangerous sink without tracing the source
 is incomplete. Sink-only findings are a common false positive pattern:
 the sink looks dangerous, but the source is trusted.
+
+## Source Trust Classification
+
+After tracing the source, classify it using the `Source Trust` field:
+
+| Value          | When to use                                                    | Severity ceiling |
+|----------------|----------------------------------------------------------------|------------------|
+| **External**       | Attacker-controlled with no authentication: HTTP params, request body, fork PR content, untrusted webhook payloads | Critical |
+| **Authenticated**  | Requires valid login but any authenticated user can supply it: form inputs behind login, API calls with valid token | Critical |
+| **Privileged**     | Requires write/admin/triage access: repo labels, CI config, org settings, ServiceAccount tokens | **Important** |
+| **Internal**       | Hardcoded values, infrastructure-set headers, system-generated IDs, config from trusted operators | **Minor** |
+| **N/A**            | Finding does not involve a source-to-sink data flow: hardcoded secrets, missing TLS, insecure defaults | Critical |
+
+**Severity ceiling enforcement:** Your finding's severity CANNOT exceed the
+ceiling for its Source Trust level. If you identify a dangerous sink but the
+source is Privileged (e.g., GitHub labels set by collaborators with triage
+access), the maximum severity is Important, regardless of how dangerous the
+sink is. This prevents the common false positive where a pattern-match on
+the sink inflates severity without considering who controls the source.
+
+**If you cannot determine the Source Trust level**, set `Source Trust: External`
+and `Confidence: Low`. Do not guess downward: assume worst case and flag
+uncertainty.
 
 ## Infrastructure Trust Boundaries
 

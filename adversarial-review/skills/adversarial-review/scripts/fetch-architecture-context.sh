@@ -18,7 +18,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-REPO="${REPO:-https://github.com/opendatahub-io/architecture-context.git}"
+REPO="${REPO:?ERROR: --repo is required (no default architecture-context repo configured)}"
 OUTPUT="${OUTPUT:-.context/architecture-context}"
 
 exec "$SCRIPT_DIR/fetch-context.sh" --label architecture --source "$REPO" --output "$OUTPUT"

@@ -67,7 +67,7 @@ When `--constraints` is active, add a subsection listing the loaded constraints:
 
 | ID | Title | Severity Floor |
 |----|-------|---------------|
-| RHOAI-FIPS | FIPS 140-3 compliance required | High |
+| ORG-001 | Example constraint title | High |
 | ... | ... | ... |
 
 Constraint severity is a floor: findings matching constraint violations use the constraint severity or higher.

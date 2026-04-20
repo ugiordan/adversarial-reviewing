@@ -105,6 +105,8 @@ The orchestrator appends to each agent's challenge prompt:
 
 Agents are still free to challenge any finding (the hint is advisory, not enforced), but this guidance reduces unnecessary Tier 2 reads by ~40-60%.
 
+**Interaction with domain-scoped voting pools:** The domain affinity table above is used for **routing** (advisory) during Phase 2 and for **report metadata** in Phase 3. It does NOT determine voting pool membership. Pool membership is behavioral: any specialist who takes an active position (Agree or Challenge) is in the pool, regardless of domain affinity. See `phases/resolution.md` Step 2 for the voting pool rules.
+
 Each agent responds using `profiles/<profile>/templates/challenge-response-template.md`:
 
 ```

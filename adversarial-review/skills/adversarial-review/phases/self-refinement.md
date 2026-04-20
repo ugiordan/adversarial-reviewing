@@ -19,8 +19,7 @@ For each active specialist, compose a minimal prompt (~2,825 tokens) containing:
 
 | Content | Source | ~Tokens |
 |---------|--------|---------|
-| Role definition | `profiles/<profile>/agents/<specialist>.md` (includes inoculation) | ~1,500 |
-| Inoculation paragraphs (3) | Already in role files | ~500 |
+| Role definition (includes inoculation) | `profiles/<profile>/agents/<specialist>.md` | ~2,000 |
 | Delimiter values | Session-wide hex from cache initialization (Step 3) | ~125 |
 | Finding template | `profiles/<profile>/templates/finding-template.md` inline | ~500 |
 | Cache navigation block | See below | ~200 |
@@ -123,6 +122,27 @@ Finding withdrawals due to the verification gate will trigger non-convergence
 in `scripts/detect-convergence.sh` (the finding set changed between iterations).
 This is expected and desirable — the next iteration re-checks the refined set.
 
+#### Cross-Artifact Consistency Pass (Iteration 2+, CORR only)
+
+For the Correctness Verifier (CORR) agent only, append to the iteration 2+ re-prompt after the verification gate:
+
+> **Cross-artifact consistency pass:** You have now read all in-scope files
+> at least once. Before submitting refined findings, scan for contradictions
+> BETWEEN files:
+>
+> 1. Are there constants, configs, URLs, or magic numbers that appear in
+>    multiple files with different values?
+> 2. Did any function signature or struct definition change in one file
+>    while callers/users in other files still reference the old version?
+> 3. Are there enum values, status codes, or feature flags that are
+>    inconsistent across files?
+> 4. Was a behavior change (new parameter, new error path, new required
+>    field) introduced in one file but not propagated to all dependents
+>    within scope?
+>
+> For each contradiction found, cite both file:line locations in the
+> Evidence field. Use the authoritative definition as the primary File.
+
 #### Reference Cross-Check (Iteration 2+)
 
 When reference modules are available (see `scripts/discover-references.sh`), append to the iteration 2+ re-prompt after the verification gate:
@@ -157,8 +177,8 @@ Repeat Steps 3-5 for up to **3 total iterations** per agent. On iteration 2+, ea
 | Rule | Detail |
 |------|--------|
 | Minimum iterations | **2** — always run, unless the zero-findings early exit applies (see below) |
-| Maximum iterations | **3** (default) — hard cap, proceed to Phase 2 regardless of convergence |
-| Safety hard cap | `MAX_ITERATIONS` (default 4, quick 2, thorough 4) — absolute ceiling. If convergence detection fails to stabilize within this many iterations, force-stop and emit `FORCED_CONVERGENCE` guardrail. See `protocols/guardrails.md`. |
+| Maximum iterations | **3** (default) — target cap, proceed to Phase 2 regardless of convergence |
+| Safety hard cap | `MAX_ITERATIONS` (default 4, quick 2, thorough 4) — defense-in-depth ceiling for orchestrator bugs. If the maximum iterations check is bypassed due to a logic error, this absolute ceiling prevents unbounded iteration. Emits `FORCED_CONVERGENCE` guardrail. See `protocols/guardrails.md`. |
 | Profile overrides | `--quick`: max 2, `--delta`: max 2, `--thorough`: max 3 |
 | Convergence detection | Run `scripts/detect-convergence.sh` after each iteration (starting from iteration 2) |
 | Convergence criteria | Finding ID + Severity identity between consecutive iterations |

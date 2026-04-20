@@ -1,41 +1,48 @@
 {
-  "generated_at": "2026-04-15T09:10:48Z",
+  "generated_at": "2026-04-20T12:00:00Z",
+  "note": "content_hash is the SHA-256 of the full file including front matter. This is the single integrity mechanism; front matter no longer contains content_hash to avoid circular dependency.",
   "prompts": [
     {
       "file": "architecture-reviewer.md",
       "version": "1.0",
-      "content_hash": "2305fdeae032c2a658f6b884c8f56e602996578694de355e3710646f60af4fb9",
-      "last_modified": "2026-04-15"
+      "content_hash": "11e73507ea816af46fba08149c0fa3c6197254f298665ac9f24bf15e43d23c48",
+      "last_modified": "2026-04-20"
     },
     {
       "file": "code-quality-reviewer.md",
       "version": "1.0",
-      "content_hash": "8f155c9da5544a6f72dc3adefe31e1ddf2e398faa30f4360d5d519d0f675c04d",
-      "last_modified": "2026-04-15"
+      "content_hash": "a3977691e8fa9a2f6f1319b0f5928afc5686e995873674b33eb5b9c8faa78bd0",
+      "last_modified": "2026-04-20"
     },
     {
       "file": "correctness-verifier.md",
       "version": "1.0",
-      "content_hash": "f60416e34c6b14b83dfee7f60afb1dee4584a67adcfbb4f7c4a5e894d8707620",
-      "last_modified": "2026-04-15"
+      "content_hash": "02fb17c46d7007b37ec61001771ae933dd2a5af9257621bab28919b1fb13c2d6",
+      "last_modified": "2026-04-20"
     },
     {
       "file": "devils-advocate.md",
       "version": "1.0",
-      "content_hash": "ba657200ba1ade5f31d25ad54cbd86cdb68d8ae13670069c56ddaf4aa69c90b3",
-      "last_modified": "2026-04-15"
+      "content_hash": "48152d07efc1ca1161380eaad8f6bdc5ea1e352757e3d956474b186af6b15856",
+      "last_modified": "2026-04-20"
     },
     {
       "file": "performance-analyst.md",
       "version": "1.0",
-      "content_hash": "7dc08cb3eeb354ffcd161c91f1632708e9958831fed41264ded3e32d4b15ff6d",
-      "last_modified": "2026-04-15"
+      "content_hash": "0794aff56a527a07b18798cfb36963d7bfc42af742ef3db6b98235c4d08f92ea",
+      "last_modified": "2026-04-20"
     },
     {
       "file": "security-auditor.md",
       "version": "1.0",
-      "content_hash": "746ae53482a1cef381b7366ed13f262b88836ee0b62a95271eae8aa4a04c3c6d",
-      "last_modified": "2026-04-15"
+      "content_hash": "c36b024fb56b1b5d56ed7fa284cc65ad87e531b4862620508b0e649a2d00cbd5",
+      "last_modified": "2026-04-20"
+    },
+    {
+      "file": "fix-agent.md",
+      "version": "1.0",
+      "content_hash": "a48e6e1f1f627d4f2e560ca3aed71712c8892d1eade973dd3fe5e60cc33c7479",
+      "last_modified": "2026-04-20"
     }
   ]
 }

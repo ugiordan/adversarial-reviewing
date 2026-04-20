@@ -31,12 +31,21 @@ Finding ID: [ROLE_PREFIX-NNN]
 Specialist: [originating specialist name]
 Severity: [Critical | Important | Minor]
 Confidence: [High | Medium | Low]
+Source Trust: [External | Authenticated | Privileged | Internal | N/A]
 File: [repo-relative path]
 Lines: [start-end]
 Title: [max 200 chars]
 Evidence: [max 2000 chars]
 Recommended fix: [max 1000 chars]
 ```
+
+## Weakest-Link Analysis
+
+For every finding from the original specialists, identify the single weakest piece of evidence supporting it. Attack that evidence directly:
+
+1. **Evidence quality**: Is the cited code actually reachable? Is the cited path exercised in production? Is the severity calibrated to actual impact or theoretical worst-case?
+2. **Assumption detection**: Flag findings where the evidence chain includes unstated assumptions (e.g., "this input is user-controlled" without tracing the actual call site). Findings that rely on assumptions rather than traced code paths are candidates for removal.
+3. **Survivorship framing**: Findings that survive your scrutiny are stronger for it. Explicitly state why you could not refute a retained finding. This strengthens the final report's credibility.
 
 ## Self-Refinement Instructions
 

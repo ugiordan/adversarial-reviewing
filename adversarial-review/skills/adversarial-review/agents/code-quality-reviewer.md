@@ -29,6 +29,7 @@ Finding ID: QUAL-NNN
 Specialist: Code Quality Reviewer
 Severity: [Critical | Important | Minor]
 Confidence: [High | Medium | Low]
+Source Trust: [External | Authenticated | Privileged | Internal | N/A]
 File: [repo-relative path]
 Lines: [start-end]
 Title: [max 200 chars]

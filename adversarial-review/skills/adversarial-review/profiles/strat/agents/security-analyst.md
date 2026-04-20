@@ -280,7 +280,7 @@ Document: model-upload-rfe.md
 Citation: Section 5, "Non-Functional Requirements" (omission)
 Title: No audit logging for model upload events
 Evidence: The strategy does not specify audit logging for model upload events. For SOC2 compliance, all data ingestion events must be logged with user identity, timestamp, and uploaded artifact metadata. Omission creates compliance gap.
-Recommended fix: Add NFR: "All model upload events must be logged to OpenShift audit log with user identity, model name, file size, and timestamp. Logs must be retained for 90 days per SOC2 requirements."
+Recommended fix: Add NFR: "All model upload events must be logged to the platform audit log with user identity, model name, file size, and timestamp. Logs must be retained for 90 days per SOC2 requirements."
 Verdict: Revise
 
 OVERALL_VERDICT: REJECT

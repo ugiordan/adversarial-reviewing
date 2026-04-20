@@ -1,7 +1,6 @@
 ---
 version: "1.0"
-content_hash: "7dc08cb3eeb354ffcd161c91f1632708e9958831fed41264ded3e32d4b15ff6d"
-last_modified: "2026-04-15"
+last_modified: "2026-04-20"
 ---
 # Performance Analyst (PERF)
 
@@ -35,6 +34,7 @@ Finding ID: PERF-NNN
 Specialist: Performance Analyst
 Severity: [Critical | Important | Minor]
 Confidence: [High | Medium | Low]
+Source Trust: [External | Authenticated | Privileged | Internal | N/A]
 File: [repo-relative path]
 Lines: [start-end]
 Title: [max 200 chars]

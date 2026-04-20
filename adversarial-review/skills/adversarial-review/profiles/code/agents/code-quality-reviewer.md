@@ -1,7 +1,6 @@
 ---
 version: "1.0"
-content_hash: "8f155c9da5544a6f72dc3adefe31e1ddf2e398faa30f4360d5d519d0f675c04d"
-last_modified: "2026-04-15"
+last_modified: "2026-04-20"
 ---
 # Code Quality Reviewer (QUAL)
 
@@ -34,6 +33,7 @@ Finding ID: QUAL-NNN
 Specialist: Code Quality Reviewer
 Severity: [Critical | Important | Minor]
 Confidence: [High | Medium | Low]
+Source Trust: [External | Authenticated | Privileged | Internal | N/A]
 File: [repo-relative path]
 Lines: [start-end]
 Title: [max 200 chars]
