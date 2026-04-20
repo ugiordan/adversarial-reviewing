@@ -54,7 +54,7 @@ After scope confirmation and pre-flight budget check, initialize the local conte
 
 ## `--reuse-cache <hex>` Override
 
-When `--reuse-cache` is specified, replace steps 2-7 above with:
+When `--reuse-cache` is specified, replace steps 2-8 above with:
 
 1. Validate hex: must match `^[a-f0-9]{32}$`.
 2. Scan `$TMPDIR` for directories matching `adversarial-review-cache-<hex>-*`.

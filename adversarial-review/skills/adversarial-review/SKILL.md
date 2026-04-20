@@ -2,7 +2,7 @@
 name: adversarial-review
 description: Multi-agent adversarial review with isolated specialists, programmatic validation, and evidence-based resolution. Use for reviewing code, designs, or documentation from multiple perspectives.
 license: Apache-2.0
-compatibility: Requires Claude Code (or compatible agent platform with shell execution), git, python3, openssl
+compatibility: Requires agent platform with shell execution and subagent spawning capabilities, git, python3, openssl
 metadata:
   author: ugiordan
   version: "1.0.0"
@@ -145,13 +145,13 @@ Presets are decoupled from profiles. Which specialists are selected for `--quick
 | Flag | Code Profile | Strat Profile | Iterations | Budget |
 |------|-------------|---------------|------------|--------|
 | `--quick` | SEC + CORR (2) | SEC + FEAS (2) | 2 | 150K |
-| `--thorough` | All 5 | All 5 | 3 | 800K |
-| *(default)* | All 5 | All 5 | 3 | 350K |
+| `--thorough` | All 5 | All 6 | 3 | 800K |
+| *(default)* | All 5 | All 6 | 3 | 350K |
 
 ### Defaults
 
 - **Profile:** `code` (if `--profile` not specified)
-- **Specialists:** All 5 for the active profile (if none specified)
+- **Specialists:** All for the active profile (5 for code, 6 for strat) if none specified
 - **Iterations:** 3 self-refinement rounds (with convergence-based early exit, minimum 2)
 - **Budget:** 350K tokens
 - **Topic:** Auto-derived from scope (primary directory or file name)

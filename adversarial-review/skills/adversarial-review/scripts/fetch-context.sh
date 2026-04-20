@@ -50,7 +50,11 @@ fi
 
 # Determine source type and handle accordingly
 if [[ "$source" == *"://"* ]] || [[ "$source" == *".git" ]]; then
-  # Git repository
+  # Git repository - whitelist safe URL schemes (block ext::, fd::, etc.)
+  if [[ ! "$source" =~ ^(https?|git|ssh|file):// ]] && [[ ! "$source" =~ ^git@ ]]; then
+    echo "{\"error\": \"Unsupported git URL scheme. Only https, http, git, ssh, and file are allowed.\"}" >&2
+    exit 1
+  fi
   if [[ -d "$output" ]]; then
     # Pull if exists
     git -C "$output" pull --quiet

@@ -32,22 +32,48 @@ Update task status as each completes. For single-specialist mode, Phase 2 runs i
 
 The orchestrator outputs a status block at each phase transition and after each self-refinement iteration. This gives the user visibility into review progress without requiring them to parse agent tool calls.
 
+### Dynamic Width Algorithm
+
+The status block width adapts to its content. **Never hardcode padding.** Follow this procedure:
+
+1. **Compute column widths:**
+   - Col 1 (Agent): `max(7, longest_agent_prefix + 2)` (minimum fits "Agent" + padding)
+   - Col 2 (Status): `max(9, longest_status + 2)` (minimum fits "CONVERGED" + padding)
+   - Col 3 (Findings): `max(10, longest_findings_text + 2)` (must fit "5 → 3 (converged)" etc.)
+
+2. **Compute header/footer widths:**
+   - Title line: `len("  ADVERSARIAL REVIEW: " + topic + " ")` 
+   - Phase line: `len("  " + phase_name + "  [" + progress + "]" + " ")`
+   - Budget line: `len(" Budget: " + bar + "  " + consumed + "K / " + limit + "K (" + pct + "%)  ~$" + cost + " ")`
+
+3. **Inner width** = `max(col1 + 1 + col2 + 1 + col3, title_width, phase_width, budget_width)`
+
+4. **Pad each line** to inner_width with trailing spaces before the closing `│`
+
+5. **Column separator lines** use `─` to fill: col1 dashes + `┬`/`┼`/`┴` + col2 dashes + `┬`/`┼`/`┴` + remaining dashes to fill inner_width
+
+### Example Output
+
 ```
-┌─────────────────────────────────────────────────┐
-│  ADVERSARIAL REVIEW: <topic>                    │
-│  <phase_name>  [<progress_detail>]              │
-├──────────┬──────────┬───────────────────────────┤
-│ Agent    │ Status   │ Findings                  │
-├──────────┼──────────┼───────────────────────────┤
-│ SEC      │ DONE     │ 5 → 3 (converged)         │
-│ PERF     │ RUNNING  │ 4                         │
-│ QUAL     │ DONE     │ 7 → 6                     │
-│ CORR     │ PENDING  │ -                         │
-│ ARCH     │ DONE     │ 3 → 3 (converged)         │
-├──────────┴──────────┴───────────────────────────┤
-│ Budget: ████████░░░░░░  127K / 350K (36%)       │
-└─────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────┐
+│  ADVERSARIAL REVIEW: adversarial-review-hardening  │
+│  Phase 1: Self-Refinement  [Iteration 2/2]         │
+├──────────┬───────────┬─────────────────────────────┤
+│ Agent    │ Status    │ Findings                    │
+├──────────┼───────────┼─────────────────────────────┤
+│ SEC      │ CONVERGED │ 7 → 3                       │
+│ CORR     │ DONE      │ 1 → 2                       │
+├──────────┴───────────┴─────────────────────────────┤
+│ Budget: ████████████░░  105K / 150K (70%)  ~$0.76  │
+└────────────────────────────────────────────────────┘
 ```
+
+### Key Rules
+
+- Every content line between `│...│` must have exactly `inner_width` characters between the border characters
+- The top `┌─...─┐` and bottom `└─...─┘` lines have exactly `inner_width` dashes
+- Column separator lines (`├─┬─┤`, `├─┼─┤`, `├─┴─┤`) must sum to exactly `inner_width` between borders
+- Cell content is left-aligned with 1 leading space, padded with trailing spaces to fill the cell width
 
 ## Field Definitions
 
@@ -58,7 +84,7 @@ The orchestrator outputs a status block at each phase transition and after each 
 | `<progress_detail>` | Phase-specific | Iteration N/M for Phase 1, "Iteration N" for Phase 2, empty for Phase 3 |
 | Agent Status | Agent dispatch state | `DONE`, `RUNNING`, `PENDING`, `CONVERGED`, `FAILED` |
 | Findings | Per-agent finding count | Current count, or `prev → curr` on iteration 2+. Append `(converged)` when stable. |
-| Budget bar | `track-budget.sh status` | Visual bar + consumed/limit tokens + percentage |
+| Budget | `track-budget.sh status` | Visual bar + consumed/limit tokens + percentage + estimated dollar cost |
 
 ## Agent Status Values
 
@@ -82,7 +108,7 @@ Output a status block at these points:
 
 Do NOT output a status block for every individual agent completion within a parallel dispatch. One block per iteration boundary is sufficient.
 
-## Budget Bar Construction
+## Budget Bar and Cost
 
 Build the budget bar from `track-budget.sh status` output:
 
@@ -93,7 +119,9 @@ empty_blocks = 14 - filled_blocks
 bar = "█" * filled_blocks + "░" * empty_blocks
 ```
 
-Display as: `Budget: <bar>  <consumed_K>K / <limit_K>K (<pct>%)`
+**Cost estimation:** Estimate dollar cost from total tokens consumed. Use approximate per-token rates for the model in use (e.g., Sonnet input $3/M + output $15/M, Opus input $15/M + output $75/M). Since exact input/output split is unavailable, estimate using a blended rate (e.g., ~$7/M for Sonnet agents, ~$40/M for Opus agents). Display as `~$X.XX` to indicate it's approximate.
+
+Display as: `Budget: <bar>  <consumed_K>K / <limit_K>K (<pct>%)  ~$<cost>`
 
 ## Minimal Mode
 
