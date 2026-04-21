@@ -1,47 +1,71 @@
 {
-  "generated_at": "2026-04-15T09:10:48Z",
+  "generated_at": "2026-04-21T11:12:04.591709Z",
   "prompts": [
     {
       "file": "architecture-reviewer.md",
       "version": "1.0",
-      "content_hash": "ec1733ef7ccc85156b1326e423bea31b69f7dc0e7f7ea192e40db022faac9551",
-      "last_modified": "2026-04-15"
+      "content_hash": "326eb027aed4e489f86af80f2f7260fb0b74b36c35fb1db9ecd2093afcdee660",
+      "last_modified": "2026-04-21"
     },
     {
       "file": "devils-advocate.md",
       "version": "1.0",
-      "content_hash": "6d4dd0178e3eeee9d8f49da746c786a4aaef1a226e9e894a3044c29b4bd95a07",
-      "last_modified": "2026-04-15"
+      "content_hash": "eea51feada27b205ba14047a631a6b00fce3761fef47dc259a6dc1ae5ab32ea3",
+      "last_modified": "2026-04-21"
     },
     {
       "file": "feasibility-analyst.md",
       "version": "1.0",
-      "content_hash": "df4ce72afe620134560e72ce37d3800cf2533087677135f350a8d4d7a9551fce",
-      "last_modified": "2026-04-15"
+      "content_hash": "6bb46d4b991cf5419bc50d585944bf306f9595d59d730908a916a7112e038698",
+      "last_modified": "2026-04-21"
+    },
+    {
+      "file": "refine-mediator.md",
+      "version": "1.0",
+      "content_hash": "56a940f54f4608f3deed6b22e796279bf0e50c0506bf123ff9e77e5a12d55f1f",
+      "last_modified": "2026-04-21"
+    },
+    {
+      "file": "refine-product-architect.md",
+      "version": "1.0",
+      "content_hash": "37d2af5e535a2a2f5fb6f9e2b141f0b17478dd3f3278e66ae4f16501da13747d",
+      "last_modified": "2026-04-21"
+    },
+    {
+      "file": "refine-security-engineer.md",
+      "version": "1.0",
+      "content_hash": "a1d525df466af36b21af37df07df04365a9d4d25bdb6c49eaea2580249535f7b",
+      "last_modified": "2026-04-21"
+    },
+    {
+      "file": "refine-staff-engineer.md",
+      "version": "1.0",
+      "content_hash": "e6c890523c5201fd8afca47412271036efb796128f3e1def6db6fc61aa80af0e",
+      "last_modified": "2026-04-21"
     },
     {
       "file": "scope-completeness-analyst.md",
       "version": "1.0",
-      "content_hash": "c528c0ff0eb765015fd791a2810e90591ed1cc37dbeaff75a2bfd135a18f4a69",
-      "last_modified": "2026-04-15"
+      "content_hash": "bf3d2d0b2bd2320f065b60c205cb48dba8cf84e3a2e0330348ad502238266985",
+      "last_modified": "2026-04-21"
     },
     {
       "file": "security-analyst.md",
       "version": "1.0",
-      "content_hash": "f79dadc992a6b12adbe6ddac86953676d9bcaafa1190f386ff27083a1ccdf701",
-      "last_modified": "2026-04-15"
+      "content_hash": "a7b2449a80a5330b4615d5687b5804f544ea95fe308ba075e899667e7476e345",
+      "last_modified": "2026-04-21"
     },
     {
       "file": "testability-analyst.md",
       "version": "1.0",
-      "content_hash": "ab5f7d97eba934e8937322970048dea3868014a0611e059aa71a32c178f51e3b",
-      "last_modified": "2026-04-15"
+      "content_hash": "d5c2119e44a62fce2a99018f72ad11c84de0a2f13a7839b96be3c12c8ac14962",
+      "last_modified": "2026-04-21"
     },
     {
       "file": "user-impact-analyst.md",
       "version": "1.0",
-      "content_hash": "53ff513a36deb387d95ecb8543ec08163d8d9203fb489cccf830958517cd7ef6",
-      "last_modified": "2026-04-15"
+      "content_hash": "9d599a9d96bd71e2cd7ea263f9b34250d36bdb6c4b0b0d50cf29fca2919ed3c3",
+      "last_modified": "2026-04-21"
     }
   ]
 }
