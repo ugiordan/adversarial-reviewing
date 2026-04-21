@@ -39,7 +39,8 @@ This skill spawns multiple specialist sub-agents in fully isolated environments 
 The orchestrator creates tasks dynamically based on the configuration:
 
 - [ ] **Step 1:** Parse invocation flags and resolve scope
-- [ ] **Step 2:** Confirm scope with user (MANDATORY — never skip)
+- [ ] **Step 1b:** Strat pipeline: Create + Quick Review + Adversarial Refine (delegate to `phases/strat-pipeline.md`; only when `--profile strat` without `--review-only`)
+- [ ] **Step 2:** Confirm scope with user (MANDATORY — never skip; skipped in pipeline mode, scope is the refined strategy)
 - [ ] **Step 3:** Initialize cache (delegate to `protocols/cache-initialization.md`)
 - [ ] **Step 4:** Phase 1 — Self-refinement (delegate to `phases/self-refinement.md`)
 - [ ] **Step 5:** Phase 2 — Challenge round (delegate to `phases/challenge-round.md`; devil's advocate mode if single-specialist)
@@ -113,6 +114,8 @@ If no specialist flags are provided, activate **all specialists** for the active
 | `--constraints <path>` | Load enforceable constraint pack (YAML). Constraints set severity floors for findings: violations are automatically flagged at the constraint's specified severity or higher. The path can be a directory (loads `constraints.yaml` from it) or a direct YAML file. `.md` reference files in the same directory are loaded as constraint reference modules. Works with both profiles. |
 | `--persist` | Enable cross-run finding persistence. Fingerprints findings and stores history in `.adversarial-review/findings-history.jsonl`. On subsequent runs, classifies findings as new/recurring/resolved/regressed. Adds persistence section to report. |
 | `--normalize` | Normalize finding output for stability. Sorts findings canonically (specialist, file, line), standardizes formatting. Reduces noise when comparing runs. |
+| `--review-only` | Skip pipeline create/refine steps. Review the input document directly. Strat profile only. Default behavior when `--profile strat` was invoked before pipeline was added. |
+| `--confirm` | Show refined strategy for user approval before full review. Strat pipeline only. |
 
 ### Flag Compatibility
 
@@ -125,6 +128,7 @@ If no specialist flags are provided, activate **all specialists** for the active
 | `--keep-cache`, `--reuse-cache` | Yes | Yes |
 | `--strict-scope` | Yes | Yes |
 | `--persist`, `--normalize` | Yes | Yes |
+| `--review-only` | No (error) | Yes |
 
 > **Note:** `--strict-scope` is an orchestrator-level flag. `validate-output.sh` always emits scope violations as warnings; the orchestrator decides whether to demote or reject based on `--strict-scope`.
 
@@ -138,15 +142,23 @@ If no specialist flags are provided, activate **all specialists** for the active
 | `--reuse-cache` + `--keep-cache` | Composable. Reuses specified cache and preserves after completion. |
 | `--diff` + `--delta` | Composable. Delta discovers previous cache; diff limits scope to changed files. |
 
+### Flag Interaction: Pipeline Flags
+
+| Combination | Behavior |
+|------------|----------|
+| `--review-only` + `--confirm` | Error: "confirm gate only applies to pipeline mode" |
+| `--review-only` + Jira key input | Error: "review-only requires a file path, not a Jira key" |
+| `--review-only` + `--quick` | Quick review-only (2 specialists, 2 iterations). No pipeline. |
+
 ### Preset Profiles
 
 Presets are decoupled from profiles. Which specialists are selected for `--quick` depends on the profile's `quick_specialists` config.
 
-| Flag | Code Profile | Strat Profile | Iterations | Budget |
-|------|-------------|---------------|------------|--------|
-| `--quick` | SEC + CORR (2) | SEC + FEAS (2) | 2 | 150K |
-| `--thorough` | All 5 | All 6 | 3 | 800K |
-| *(default)* | All 5 | All 6 | 3 | 350K |
+| Flag | Code Profile | Strat Profile (pipeline) | Strat Profile (`--review-only`) | Iterations | Budget |
+|------|-------------|--------------------------|--------------------------------|------------|--------|
+| `--quick` | SEC + CORR (2) | 1 refine + SEC+FEAS review | SEC + FEAS (2) | 2 | 200K / 150K |
+| `--thorough` | All 5 | 3 refine + all 6 review | All 6 | 3 | 1M / 800K |
+| *(default)* | All 5 | 2 refine + all 6 review | All 6 | 3 | 500K / 350K |
 
 ### Defaults
 
@@ -167,6 +179,24 @@ scripts/discover-references.sh <specialist> --check-staleness
 ```
 
 Staleness warnings are informational only — they never block the review.
+
+---
+
+## Step 1b: Strat Pipeline (Strat Profile Only)
+
+When `--profile strat` is active and `--review-only` is NOT specified, delegate to `phases/strat-pipeline.md`. This runs the full create, refine, review pipeline:
+
+1. **Create:** Extract input from Jira key or normalize from file into strategy template
+2. **Quick Review:** Lightweight 2-specialist review to surface gaps (skipped in `--quick` mode)
+3. **Adversarial Refine:** 2-3 role-based agents each produce a complete refined strategy
+4. **Mediator:** Section-by-section best-of merge (skipped when only 1 refine agent)
+5. **Confirm Gate:** Optional (`--confirm`), shows refined strategy for user approval
+
+After Step 1b completes, the pipeline sets the review scope to the refined strategy document and proceeds to Step 3 (cache initialization), skipping Step 2 (scope confirmation, since the pipeline already determined scope).
+
+**Input detection:** If the positional argument matches regex `^[A-Z][A-Z0-9_]+-\d+$`, it's a Jira key. Otherwise, it's a file path.
+
+**`--review-only`:** Skips this entire step. Proceeds directly to Step 2 (scope resolution) with the input file as the review target. This preserves the original strat profile behavior.
 
 ---
 
