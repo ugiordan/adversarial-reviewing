@@ -11,6 +11,13 @@ After scope confirmation and pre-flight budget check, initialize the local conte
    ```
    `SOURCE_ROOT` is the absolute path to the directory containing the code under review. This is stored in the manifest and included in agent prompts so agents know where to search when verifying findings. If omitted, defaults to `$(pwd)`.
    Capture `CACHE_DIR` from the JSON output (`{"cache_dir": "<path>", "session_hex": "<hex>"}`).
+
+**Pipeline mode (strat profile without `--review-only`):** After cache init, create the strategy artifacts directory:
+```bash
+mkdir -p "$CACHE_DIR/strategy"
+```
+This directory stores all pipeline intermediates: `strategy-draft.md`, `quick-review-findings.json`, `refine-*.md`, `mediator-log.md`, `strategy-refined.md`.
+
 3. **Generate delimiter hex:** Run `scripts/generate-delimiters.sh` to produce a session-wide `REVIEW_TARGET` delimiter hex. Collision-check against all scope files.
 4. **Populate code:**
    ```bash
