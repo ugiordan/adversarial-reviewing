@@ -117,6 +117,8 @@ If no specialist flags are provided, activate **all specialists** for the active
 | `--normalize` | Normalize finding output for stability. Sorts findings canonically (specialist, file, line), standardizes formatting. Reduces noise when comparing runs. |
 | `--review-only` | Skip pipeline create/refine steps. Review the input document directly. Strat profile only. Default behavior when `--profile strat` was invoked before pipeline was added. |
 | `--confirm` | Show refined strategy for user approval before full review. Strat pipeline only. |
+| `--principles <path>` | Load project-level design principles from a YAML file. Principles are injected into all refine agents and review specialists as hard constraints. Violations are flagged as Critical findings. Works with strat profile only. See `protocols/principles.md` for YAML format. |
+| `--arch-context <repo@ref>` | Fetch architecture context from a specific git ref (tag, branch, or commit SHA). Syntax: `org/repo@ref`. The `@ref` suffix is optional; without it, uses default branch. Strat profile only. |
 
 ### Flag Compatibility
 
@@ -129,6 +131,8 @@ If no specialist flags are provided, activate **all specialists** for the active
 | `--keep-cache`, `--reuse-cache` | Yes | Yes |
 | `--strict-scope` | Yes | Yes |
 | `--persist`, `--normalize` | Yes | Yes |
+| `--principles` | No (error) | Yes |
+| `--arch-context` | No (error) | Yes |
 | `--review-only` | No (error) | Yes |
 
 > **Note:** `--strict-scope` is an orchestrator-level flag. `validate-output.sh` always emits scope violations as warnings; the orchestrator decides whether to demote or reject based on `--strict-scope`.
@@ -153,6 +157,17 @@ If no specialist flags are provided, activate **all specialists** for the active
 | `--converge` + `--keep-cache` | Keep final cycle's cache. |
 | `--converge` + `--strict-scope` | Two distinct scopes: (1) convergence loop review scope is always "files modified by fixes" (the delta set), (2) `--strict-scope` controls whether fix patches that touch files outside the original review scope are rejected (vs. warned). These are independent: convergence reviews the delta, strict-scope gates what the fix agent can touch. |
 | `--converge` + `--profile strat` | Error: "--converge requires --fix, which is code profile only" |
+
+### Flag Interaction: Principles & Arch-Context Flags
+
+| Combination | Behavior |
+|------------|----------|
+| `--principles` + `--profile code` | Error: "--principles is only available for the strat profile" |
+| `--principles` + `--review-only` | Composable. Principles are injected into review specialists as hard constraints. |
+| `--principles` + pipeline mode | Composable. Principles are injected into both refine agents and review specialists. |
+| `--arch-context` + `--profile code` | Error: "--arch-context is only available for the strat profile" |
+| `--arch-context` + `--context architecture=<source>` | Error: "Use --arch-context OR --context architecture=<source>, not both" |
+| `--arch-context` + `--review-only` | Composable. Architecture context loaded for review specialists. |
 
 ### Flag Interaction: Pipeline Flags
 

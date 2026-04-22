@@ -10,10 +10,12 @@ Orchestrates the full strategy pipeline when `--profile strat` is invoked withou
 - Input identified: Jira key (regex `^[A-Z][A-Z0-9_]+-\d+$`) or file path
 - `--review-only` NOT specified
 - Budget initialized
+- If `--principles <path>` specified: validated per `protocols/principles.md`
+- If `--arch-context <repo@ref>` specified: parsed into repo and ref components
 
 ## Procedure
 
-### Step 0: Input Detection
+### Step 0: Input Detection and Context Fetch
 
 Determine input type:
 
@@ -25,6 +27,34 @@ else if file exists at input path:
 else:
     error: "Input is neither a valid Jira key nor an existing file: <input>"
 ```
+
+**Architecture context fetch (`--arch-context`):**
+
+When `--arch-context <repo@ref>` is specified, fetch architecture context before proceeding:
+
+```bash
+SCRIPT_DIR="<skill_base>/scripts"
+"$SCRIPT_DIR/fetch-context.sh" --label architecture --source "<repo@ref>" --output "$CACHE_DIR/context/architecture"
+```
+
+The `fetch-context.sh` script parses `@ref` automatically: it splits the source into repo and ref, expands `org/repo` shorthand to `https://github.com/org/repo.git`, clones, and checks out the specified ref (tag, branch, or SHA).
+
+Examples:
+```bash
+# Tag
+--arch-context opendatahub-io/architecture-context@v2.15.0
+
+# Branch
+--arch-context jctanner/platform-architecture-context-pipeline@main
+
+# Commit SHA
+--arch-context opendatahub-io/architecture-context@abc123f
+
+# Default branch (no @ref)
+--arch-context opendatahub-io/architecture-context
+```
+
+The fetched context files are then available at `$CACHE_DIR/context/architecture/` and injected into refine agents and review specialists via the standard context injection mechanism.
 
 ### Step 1: Create
 
@@ -40,14 +70,27 @@ If `extract-jira.sh` fails, abort with the error message.
 
 **File input:**
 
-Read the input file. If it already follows the strategy template structure (has at least 4 of the 7 section headings: Summary, Problem Statement, Goals, Acceptance Criteria, Dependencies, Constraints, Open Questions), copy it as-is to `$CACHE_DIR/strategy/strategy-draft.md`.
+Read the input file. If it already follows the strategy template structure (has at least 4 of the 8 section headings: TL;DR, Summary, Problem Statement, Goals, Acceptance Criteria, Dependencies, Constraints, Open Questions), copy it as-is to `$CACHE_DIR/strategy/strategy-draft.md`.
 
-If the file does not follow the template structure, the orchestrator normalizes it: read the content and map it into the template sections. Use the file content as the Problem Statement, extract any bullet lists as potential ACs/Goals, and leave other sections as "(To be defined during refinement.)"
+If the file does not follow the template structure, the orchestrator normalizes it: read the content and map it into the template sections. Use the file content as the Problem Statement, extract any bullet lists as potential ACs/Goals, set TL;DR to "(To be generated during refinement.)", and leave other sections as "(To be defined during refinement.)"
 
 Save to `$CACHE_DIR/strategy/strategy-draft.md`.
 
+**Multi-component detection:** After creating the strategy draft, check for multiple components:
+
+- **Jira input:** Extract from the `components` field in the Jira response. If 2+ components are present:
+  1. List the detected components to the user
+  2. If `--arch-context` is specified, fetch architecture context for each component separately (using the same repo but searching for component-specific context files)
+  3. The **orchestrator** (not `extract-jira.sh`) appends a `### Component Boundaries` subsection to the Constraints section of the draft after the script generates it. The subsection names each component and flags cross-component interaction points. `extract-jira.sh` only adds a flat `Components: comp1, comp2` line to constraints.
+  4. Refine agents receive per-component context sections labeled: `### Architecture Context: {component_name}`
+
+- **File input:** If the file mentions multiple components (detected by heading patterns like `## Component: X` or explicit component lists), apply the same component boundary flagging.
+
 **Display:** Show the user the strategy draft and confirm:
 > "Strategy draft created from {jira key / file}. Proceeding with quick review and adversarial refinement."
+
+If multiple components were detected:
+> "Detected N components: {list}. Per-component architecture context will be loaded where available."
 
 This is informational, not a gate (unless `--confirm` is active, in which case gates are at Step 3b).
 
@@ -107,7 +150,8 @@ Run a lightweight adversarial review on the strategy draft using the existing st
    - Role definition from `profiles/strat/agents/refine-<persona>.md`
    - Append the strategy draft content (read from `$CACHE_DIR/strategy/strategy-draft.md`)
    - Append quick-review findings (read from `$CACHE_DIR/strategy/quick-review-findings.json`, formatted as a readable list)
-   - Append architecture context if `--context` was provided (read from cache context files)
+   - Append architecture context if `--context` or `--arch-context` was provided (read from cache context files)
+   - If `--principles` specified: append principles section per `protocols/principles.md` Injection into Agents > Refine Agents. Append `upstream_mapping` to Product Architect and Security Engineer agents only.
    - Append the strategy template (read from `profiles/strat/templates/strategy-template.md`) as the required output structure
 
 2. Spawn all refine agents in parallel.
@@ -127,6 +171,7 @@ Skip if only 1 refine agent was active (use that agent's output directly as the 
    - Role definition from `profiles/strat/agents/refine-mediator.md`
    - Append the original strategy draft
    - Append quick-review findings
+   - If `--principles` specified: append principles section (same format as refine agents). The mediator uses principles as a tie-breaking criterion when selecting between sections.
    - Append each refine agent's output, labeled: "## Staff Engineer Version\n{content}\n\n## Product Architect Version\n{content}"
 
 2. Spawn mediator agent.
@@ -148,15 +193,32 @@ Only when `--confirm` is specified:
 
 1. Display the refined strategy to the user.
 2. Display the selection log (if mediator ran).
-3. Ask:
+3. On the **first** `--confirm` gate in the session, display staff input guidance:
+
+   ```
+   ## Staff Input Guide
+   Write feedback as declarative policy statements (what the strategy SHOULD do),
+   not as corrections to the current draft. Think of it like a K8s resource spec:
+   declare the desired end state, not the delta.
+
+   DO:  "The strategy should not suggest a Go utility disconnected from current code"
+   DON'T: "The strategy currently suggests a Go utility, but it doesn't consider..."
+
+   DO:  "The strategy should consider principle Z, for example Y"
+   DON'T: "The strategy is missing principle Z and should do Y"
+   ```
+
+   This guidance is displayed **once** at the first confirm gate. Suppress on subsequent gates in the same session (the orchestrator tracks whether the guidance has been shown).
+
+4. Ask:
    > "Refined strategy ready. Options:
    > - **Approve**: proceed to full adversarial review
-   > - **Edit**: modify the strategy before review (provide edits)
+   > - **Edit**: modify the strategy before review (provide edits inline)
    > - **Abort**: stop pipeline, artifacts preserved in cache"
 
-4. If **Edit**: apply user's changes to `$CACHE_DIR/strategy/strategy-refined.md`, then proceed.
-5. If **Abort**: skip full review, print cache location, exit.
-6. If **Approve**: proceed.
+5. If **Edit**: apply user's changes to `$CACHE_DIR/strategy/strategy-refined.md`, then proceed.
+6. If **Abort**: skip full review, print cache location, exit.
+7. If **Approve**: proceed.
 
 Without `--confirm`: proceed directly to Step 4.
 

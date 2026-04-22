@@ -20,6 +20,8 @@ The final report contains up to 10 sections followed by a metadata block. The re
 | Strategy | Verdict | Agreement | Critical | Important | Minor |
 |----------|---------|-----------|----------|-----------|-------|
 | STRAT-NNN | [Approve/Revise/Reject] | [Unanimous/Majority/Tiebreak] (N/N) | N | N | N |
+
+> **Strategy TL;DR:** [Quote the TL;DR section from the reviewed strategy document. If the strategy has no TL;DR section, omit this block.]
 ```
 
 **Agreement Level values:**

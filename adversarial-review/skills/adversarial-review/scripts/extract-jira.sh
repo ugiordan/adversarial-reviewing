@@ -249,8 +249,19 @@ def main():
     # Replace title
     template = template.replace('{TITLE}', summary)
 
+    # Replace TL;DR section
+    tldr_text = "(To be generated during refinement.)"
+    template = re.sub(
+        r'\{3-5 sentences\. What is being built.*?alone\.\}',
+        tldr_text,
+        template,
+        flags=re.DOTALL
+    )
+
     # Replace summary section
     summary_text = f"This strategy addresses {key}: {summary}. Priority: {priority_name}."
+    if component_names:
+        summary_text += f" Components: {', '.join(component_names)}."
     template = re.sub(
         r'\{One paragraph describing what this strategy proposes and why\.\}',
         summary_text,

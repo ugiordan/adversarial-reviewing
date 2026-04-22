@@ -23,8 +23,16 @@ For each active specialist, compose a minimal prompt (~2,825 tokens) containing:
 | Delimiter values | Session-wide hex from cache initialization (Step 3) | ~125 |
 | Finding template | `profiles/<profile>/templates/finding-template.md` inline | ~500 |
 | Cache navigation block | See below | ~200 |
+| Project principles (conditional) | `--principles` flag, formatted per `protocols/principles.md` | ~100-500 |
+| Constraints (conditional) | `--constraints` flag | variable |
 
 Agent and template paths are resolved from the active profile directory (`profiles/code/` or `profiles/strat/`).
+
+**Conditional prompt components:**
+
+- **Principles (`--principles`):** When active, append the principles section to each specialist's prompt per `protocols/principles.md` "Injection into Agents > Review Specialists". This adds a "Project Principles (Hard Constraints)" block. The token estimate increases by ~100-500 tokens per agent depending on principle count.
+
+- **Constraints (`--constraints`):** When active, append the constraint pack content. See `protocols/constraints.md` for injection format.
 
 **Cache navigation block (included in prompt):**
 

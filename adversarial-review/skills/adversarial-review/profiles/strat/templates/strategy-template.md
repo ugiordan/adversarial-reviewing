@@ -1,5 +1,9 @@
 # Strategy: {TITLE}
 
+## TL;DR
+
+{3-5 sentences. What is being built, why it matters, what the key technical bet is, and what success looks like. A reader should be able to assess whether this strategy is valid from this section alone.}
+
 ## Summary
 
 {One paragraph describing what this strategy proposes and why.}

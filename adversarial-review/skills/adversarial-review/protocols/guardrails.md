@@ -65,6 +65,12 @@ Defines enforceable guardrails that the orchestrator checks programmatically dur
 - **Check:** Orchestrator calculates after self-refinement completes.
 - **Action:** Informational warning. Included in challenge round context.
 
+### PRINCIPLE_SEVERITY_ESCALATION
+
+- **Trigger:** A specialist flags a principle violation (`--principles` active) at severity below Critical.
+- **Check:** Orchestrator scans validated findings for titles matching `Principle violation: [*]` with severity != Critical.
+- **Action:** Auto-escalate to Critical. Log the escalation with original severity and specialist.
+
 ### DESTRUCTIVE_PATTERN
 
 - **Trigger:** Recommended fix or generated patch matches a destructive command pattern.

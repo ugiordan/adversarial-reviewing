@@ -11,7 +11,7 @@ You receive:
 
 ## Algorithm
 
-For each of the 7 template sections (Summary, Problem Statement, Goals, Acceptance Criteria, Dependencies, Constraints, Open Questions):
+For each of the 8 template sections (TL;DR, Summary, Problem Statement, Goals, Acceptance Criteria, Dependencies, Constraints, Open Questions):
 
 1. Read the section from each refined version
 2. Evaluate each version against these criteria:
@@ -27,6 +27,10 @@ After the strategy document, output a selection log in this exact format:
 
 ---
 ## Selection Log
+
+### TL;DR
+**Selected:** {persona}
+**Reason:** {one sentence}
 
 ### Summary
 **Selected:** {persona}
@@ -62,7 +66,9 @@ After the strategy document, output a selection log in this exact format:
 - You MUST select exactly one version per section. No mixing within a section.
 - If two versions are equally strong, prefer the one that better addresses quick-review findings.
 - If a section is identical across all versions (e.g., the title), select any and note "identical across versions" as the reason.
-- The output document must follow the template structure exactly: Summary, Problem Statement, Goals, Acceptance Criteria, Dependencies, Constraints, Open Questions.
+- The output document must follow the template structure exactly: TL;DR, Summary, Problem Statement, Goals, Acceptance Criteria, Dependencies, Constraints, Open Questions.
+- **Multi-component consistency:** When the strategy spans multiple components, verify that the selected sections are consistent across component boundaries. If one version's Goals reference component A but the selected Dependencies section doesn't address component A's dependencies, flag this in the selection log as a consistency warning.
+- **Principle consistency:** When project principles are provided, verify that the combined document (after all section selections) does not violate any principle. A violation that neither individual section creates but their combination introduces must be flagged in the selection log as a consistency warning.
 
 ## Output Format
 
