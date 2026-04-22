@@ -31,7 +31,7 @@ The review runs in 5 phases:
 
 2. **Challenge Round.** Findings from all agents are sanitized (stripped of raw output, validated structurally) and routed to other specialists based on domain affinity. Each agent reviews findings in its domain and can challenge them with a counter-argument citing specific evidence, or concur. The original author then defends or retracts.
 
-3. **Resolution.** Duplicate findings are merged. Each finding is classified by agreement level: *unanimous* (all specialists agree), *majority* (most agree), *escalated* (significant disagreement), or *dismissed* (retracted by author). For strategy reviews, per-document verdicts (Approve/Revise/Reject) are resolved using conservative tiebreak.
+3. **Resolution.** Duplicate findings are merged. Each finding is classified by agreement level: *unanimous* (all specialists agree), *majority* (most agree), *escalated* (significant disagreement), or *dismissed* (majority challenged). For strategy reviews, per-document verdicts (Approve/Revise/Reject) are resolved using conservative tiebreak.
 
 4. **Report.** The final report is assembled with an executive summary, findings grouped by agreement level, and a remediation roadmap. The report transparently labels which findings had full consensus vs. majority overrides vs. unresolved disputes. Optional: finding persistence tracks new/recurring/resolved across runs.
 

@@ -110,6 +110,7 @@ If no specialist flags are provided, activate **all specialists** for the active
 | `--reuse-cache <hex>` | Reuse an existing cache by session hex. Validates manifest (SHA-256 per file + commit SHA). Skips code/template/reference population. Findings regenerated. |
 | `--strict-scope` | Reject (not demote) out-of-scope findings and patches |
 | `--fix --dry-run` | Preview remediation without writing anything |
+| `--fix --converge` | After all fixes are applied (with fresh-context validation), run `--delta --quick` to catch cross-fix interactions. User confirmation gate between each cycle. Max 3 cycles. Only auto-fixes Critical/Important findings from convergence cycles. See Convergence Loop below. |
 | `--context <label>=<source>` | Inject labeled supplementary context. `source` is a git repo URL, local directory, or file path. `label` tells agents how to use the context (e.g., `architecture`, `compliance`, `threat-model`). Repeatable: multiple `--context` flags allowed. Works with both profiles. |
 | `--constraints <path>` | Load enforceable constraint pack (YAML). Constraints set severity floors for findings: violations are automatically flagged at the constraint's specified severity or higher. The path can be a directory (loads `constraints.yaml` from it) or a direct YAML file. `.md` reference files in the same directory are loaded as constraint reference modules. Works with both profiles. |
 | `--persist` | Enable cross-run finding persistence. Fingerprints findings and stores history in `.adversarial-review/findings-history.jsonl`. On subsequent runs, classifies findings as new/recurring/resolved/regressed. Adds persistence section to report. |
@@ -141,6 +142,17 @@ If no specialist flags are provided, activate **all specialists** for the active
 | `--delta` + `--keep-cache` | Composable. Reuses previous cache if confirmed, preserves after completion. |
 | `--reuse-cache` + `--keep-cache` | Composable. Reuses specified cache and preserves after completion. |
 | `--diff` + `--delta` | Composable. Delta discovers previous cache; diff limits scope to changed files. |
+
+### Flag Interaction: Converge Flags
+
+| Combination | Behavior |
+|------------|----------|
+| `--converge` without `--fix` | Error: "--converge requires --fix" |
+| `--converge` + `--dry-run` | `--dry-run` already prevents all writes (no fixes applied, no PRs created). Adding `--converge` has no additional effect since there are no fixes to delta-review. An informational message is emitted: "Converge flag ignored in dry-run mode (no fixes to iterate on)." |
+| `--converge` + `--delta` | Composable. Initial review is delta, each convergence cycle uses previous cycle's commit as delta base. |
+| `--converge` + `--keep-cache` | Keep final cycle's cache. |
+| `--converge` + `--strict-scope` | Two distinct scopes: (1) convergence loop review scope is always "files modified by fixes" (the delta set), (2) `--strict-scope` controls whether fix patches that touch files outside the original review scope are rejected (vs. warned). These are independent: convergence reviews the delta, strict-scope gates what the fix agent can touch. |
+| `--converge` + `--profile strat` | Error: "--converge requires --fix, which is code profile only" |
 
 ### Flag Interaction: Pipeline Flags
 
@@ -375,6 +387,35 @@ The remediation phase has **four mandatory confirmation gates**:
 4. PR proposals
 
 The orchestrator NEVER proceeds past a gate without explicit user approval.
+
+### Convergence Loop (`--converge`)
+
+When `--fix --converge` is specified, after Phase 5 completes (all fixes applied with fresh-context validation, PRs proposed):
+
+1. **Run `--delta --quick`** on the fixed code (2 specialists, 2 iterations, scoped to files modified by fixes)
+2. **Present results to user** with:
+   - New findings discovered in the delta review
+   - Cumulative diff from original code to current state
+   - Estimated cost for the next fix cycle
+3. **User confirmation gate**: continue, stop, or revert to a previous cycle's state
+4. If user approves and new Critical/Important findings exist:
+   - Apply fixes (with fresh-context validation) for Critical/Important only. Minor findings are reported but not auto-fixed.
+   - Go to step 1 (next cycle)
+5. If clean (zero new findings) or converged (findings unchanged from previous cycle) → stop
+
+**Hard cap:** Max 3 fix-review cycles.
+
+**Oscillation detection:** After each cycle, compute finding fingerprints (hash of finding ID + file + line range + severity) and compare against ALL previous cycles' fingerprint sets. If the current cycle's fingerprint set intersects with any previous cycle's set (not just N-2), halt with an oscillation warning: "Fixes are interacting in ways the tool cannot resolve autonomously. Cycle N re-introduced findings from cycle M." This catches both direct (A→B→A) and indirect (A→B→C→A) oscillation patterns.
+
+**Non-convergence exit:** If cycle 3 still has findings:
+- Present a convergence failure report: all cycles, what was found, what was fixed, what remains
+- User chooses: keep current state, revert to the cleanest cycle (fewest findings), or manually intervene
+
+**Budget:** Two budget checks per cycle:
+1. **Pre-cycle gate:** Before starting each cycle, check remaining budget. If remaining budget < estimated cycle cost (~150K for delta-quick + fixes), stop and report "budget insufficient for another convergence cycle." Add `CONVERGE_BUDGET_EXCEEDED` to the guardrail trip log.
+2. **Per-cycle ceiling:** Each convergence cycle is hard-capped at 200K tokens. If a cycle exceeds this mid-execution (checked after each agent completes via `track-budget.sh status`), halt the cycle, present partial results, and ask the user whether to continue with a fresh budget allocation or stop. Add `CONVERGE_CYCLE_CAP_EXCEEDED` to the guardrail trip log.
+
+Pre-flight estimate for `--converge`: multiply base estimate by 2 (assumes 1 convergence cycle on average).
 
 **Cache interaction:** Unless `--keep-cache` is specified, the cleanup trap (set during cache initialization in Step 3) removes the cache directory. If `--keep-cache` is active, the trap is skipped and the cache is preserved for future `--reuse-cache` use.
 

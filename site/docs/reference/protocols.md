@@ -117,6 +117,19 @@ Guardrails enforce behavioral constraints:
 
 Routing is advisory: specialists can still challenge any finding, but the hint saves 40-60% of cross-agent token consumption by guiding attention to relevant findings first.
 
+## Domain-Scoped Voting Pools
+
+**Behavior**: During resolution (Phase 3), each finding's voting pool is computed from actual Phase 2 behavior rather than the global specialist count. This prevents legitimate domain abstentions from breaking quorum.
+
+**Pool membership:**
+- The finding's originator is always in the pool (implicit Agree)
+- Any specialist who chose Agree or Challenge is in the pool
+- Specialists who Abstained are excluded from the pool
+
+**N_effective** (pool size) replaces the global N for computing quorum and strict majority thresholds per-finding. When N_effective < N, findings are labeled with the pool size (e.g., "Consensus (3/5)"). If N_effective = 1, single-specialist resolution rules apply.
+
+This design is symmetric: both Agree and Challenge count as opt-in. No asymmetric vote manipulation is possible.
+
 ## Audit Log
 
 **File**: `protocols/audit-log.md`

@@ -8,7 +8,7 @@ Classify validated findings into actionable work items, draft Jira tickets where
 
 - Phase 4 complete — final report generated with all validated findings
 - Git repository is clean (no uncommitted changes)
-- User has confirmed they want to proceed with remediation
+- User has confirmed they want to proceed with remediation. This is **Gate 1** of the remediation confirmation gates.
 
 ## Dry-Run Mode (`--fix --dry-run`)
 
@@ -92,6 +92,8 @@ Present the classification table to the user:
 
 **Wait for user confirmation** of the classification before proceeding. This is **Gate 2** of the remediation confirmation gates.
 
+**Edge case: no actionable findings.** If all findings are classified as blocked or already-fixed (zero jira + zero chore findings), skip Steps 2-5. If any already-fixed findings have status "Needs PR", proceed directly to Step 6 (Propose PRs) with those branches only. Otherwise, proceed to Step 7 (Cleanup) or exit if no worktrees exist.
+
 ### Step 2: Group Related Findings
 
 Group findings into logical work units. **Only `jira` and `chore` findings are grouped.** Blocked findings are not grouped — they remain individually listed. Already-fixed findings skip grouping entirely.
@@ -145,6 +147,8 @@ After user approval, create Jira tickets using the `acli` CLI (`acli jira workit
 
 Record the Jira ticket IDs for use in branch names and PR descriptions.
 
+**Partial failure:** If ticket creation succeeds for some tickets but fails for others: (1) Record which tickets succeeded (with IDs) and which failed (with error messages). (2) Present failed ticket descriptions to the user for manual creation or retry. (3) Ask the user whether to wait for manual ticket IDs or proceed immediately with placeholder branch names (`fix/pending-jira-<N>-<description>`). (4) If placeholders are used, flag them for manual ticket association in Step 7 (Cleanup).
+
 > **Audit:** Log this action to the audit trail. See `protocols/audit-log.md`.
 
 ### Step 5: Implement Fixes
@@ -177,6 +181,8 @@ Base branch should be `upstream/main` or the project's default branch.
 
 #### 5b. Implement Fix
 
+**Before spawning the fix agent**, record the current commit SHA as the pre-fix rollback target: `PRE_FIX_SHA=$(git rev-parse HEAD)`. This SHA is used by Step 5b-verify to revert failed fixes.
+
 Load the fix agent role from `profiles/code/agents/fix-agent.md` and spawn it in the worktree with:
 - The fix agent role definition
 - A populated Fix Context block containing: finding ID, severity, file, lines, title, evidence, recommended fix, work item type, Jira ID (if applicable), and commit message format
@@ -184,20 +190,37 @@ Load the fix agent role from `profiles/code/agents/fix-agent.md` and spawn it in
 
 The fix agent reads target files, implements the minimal fix, runs tests if detectable, and commits with the appropriate message format. It emits a structured `FIX_RESULT` block that the orchestrator parses to determine next steps. See `fix-agent.md` for the complete agent protocol.
 
-#### 5b-verify. Verify Fix (post-fix specialist re-check)
+#### 5b-verify. Verify Fix (fresh-context validation)
 
-After the fix agent commits, re-run the original specialist agent on the modified files to verify the finding is resolved:
+After the fix agent commits, verify the fix using a **fresh-context** specialist invocation. The validator has no knowledge of the original finding, eliminating confirmation bias.
 
-1. Extract the specialist role from the finding ID prefix (e.g., `SEC-003` → security-auditor)
-2. Re-invoke that specialist on the fixed file(s) only, with the original finding as context
-3. Check the specialist's output:
-   - **Finding not reproduced**: Fix is verified. Proceed to next work item.
-   - **Finding still present**: Mark fix as `incomplete`. Present the specialist's updated assessment to the user with the option to:
-     (a) Accept the partial fix as-is
-     (b) Request a second fix attempt (max 1 retry)
-     (c) Skip the fix and revert the commit
+1. **Confirm rollback target:** Verify `PRE_FIX_SHA` (recorded in Step 5b before the fix agent ran) is still valid: `git rev-parse --verify $PRE_FIX_SHA`. This is the state to revert to if the fix fails validation.
+2. Extract the specialist role from the finding ID prefix (e.g., `SEC-003` → security-auditor)
+3. Spawn a **new** agent with the same specialist role but **without** the original finding context. Give it only:
+   - The patched file(s)
+   - The specialist's standard role definition and review instructions
+   - For **Critical** findings only: a targeted hint restricted to file path and line range (e.g., `{"file": "api/proxy.go", "lines": "45-60"}`). No domain keywords, no semantic description. Validate the hint against this schema before passing to the agent.
+4. Ask the agent: "Review this code for issues in your domain"
+5. **Sanitize output:** Run the fresh agent's output through `validate-output.sh` (or `manage-cache.sh populate-findings`) before parsing. This applies the same format validation, sanitization, and delimiter checks used for Phase 1 agent outputs.
+6. Check the sanitized output:
+   - **Original issue not found (and no other issues)**: Fix is verified. Proceed to next work item. If the fix diff is non-trivial (>10 lines changed) and the original severity was Minor, log an informational note: "Fresh validator found no issues. Verify the original finding was not a false positive."
+   - **Original issue found independently**: Fix failed. `git reset --hard <known-good-SHA>` to cleanly revert (safe in isolated worktree on unpushed branch). Retry once with the fresh agent's assessment as feedback to the fix agent.
+   - **Different issue found**: Log as a new finding. Before assuming the original fix worked, verify the fix diff actually modifies the lines/pattern identified in the original finding (syntactic check against the finding's File/Lines fields). If the diff does not touch the relevant code, treat as "fix failed" instead. Otherwise proceed with the original fix and queue the new finding for the next remediation pass or `--converge` cycle.
+7. If retry also fails (fresh agent still finds the issue):
+   - `git reset --hard <known-good-SHA>` to cleanly revert
+   - Present the finding + failed fix diff + fresh agent's assessment to the user
+   - User decides: (a) accept the last attempt as-is, (b) skip the fix entirely (revert stands), (c) manually intervene
 
-This step prevents shipping fixes that don't actually resolve the issue. It adds one specialist invocation per fix but catches incomplete remediations before they reach PR review.
+**Why fresh-context?** A biased validator (same agent, same finding context) will confirm its own recommendation was implemented correctly. A fresh agent evaluates the code on its own merits. If the original finding was a false positive, the fresh agent won't flag it. Without `--converge`, a false-positive fix ships with an informational note; with `--converge`, the delta review catches regressions from unnecessary fixes.
+
+**Cost:** ~8-10K tokens per finding (single-file, single-specialist, 1 iteration). With retry: ~16-20K. For chore batches (up to 8-10 findings), validation runs per-finding, so budget is 8-10K * N_findings per batch.
+
+**Batch early termination:** For chore batches, if any finding fails validation (including retry), halt further validations for that batch. Present the user with: (1) which findings in the batch succeeded validation, (2) which finding failed and why, (3) options: commit only the successful fixes (splitting the batch into a partial PR), revert the entire batch, or manually intervene. Update budget tracking to account for early termination (charge only for validations actually run).
+
+**Budget tracking:** Update per-work-item estimate to account for validation: 15K fix + (8K * N_findings) validation. For single-finding work items, ~23K. For chore batches of 8, ~79K. Run:
+```bash
+scripts/track-budget.sh add <validation_char_count> --agent <role_prefix>-verify
+```
 
 **Scope Lock:** Before applying any patch, verify all files in the patch are in the review scope (same file list used for `validate-output.sh --scope`). If a patch touches out-of-scope files:
 - Default: warn user per-patch. User can approve or skip.
@@ -274,8 +297,11 @@ For each approved PR, create it using `gh pr create` with:
 ### Step 7: Cleanup
 
 After all PRs are created:
-1. List all worktrees created during remediation
-2. Ask user if they should be cleaned up
+1. List all worktrees created during remediation, categorized by status:
+   - **Successful**: PR created, all fixes validated
+   - **Partial**: some fixes succeeded, some failed/skipped
+   - **Failed**: all fixes failed/skipped, no PR created
+2. Ask user separately for each category whether to clean up. Default to keeping Failed/Partial worktrees for investigation.
 3. Remove worktrees only with user approval
 
 ## Branch Naming Conventions
