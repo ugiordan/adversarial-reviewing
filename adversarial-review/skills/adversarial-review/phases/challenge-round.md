@@ -99,6 +99,16 @@ For strat profile:
 | SCOP | Scope, Acceptance criteria, Completeness | NFR, Edge cases |
 | TEST | Test strategy, Verification, AC testability | Integration tests, Performance tests |
 
+For rfe profile:
+
+| Specialist | Primary domain (must read) | Adjacent domains (should read if relevant) |
+|------------|---------------------------|-------------------------------------------|
+| REQ | Requirement clarity, Measurability, Completeness, Traceability | Acceptance criteria, User scenarios |
+| FEAS | Technical approach, Effort, Dependencies | Phasing, Risk, Resource constraints |
+| ARCH | Integration, API design, Component boundaries, Data flow | Scalability, Extensibility, Observability |
+| SEC | Security risks, Auth, Data handling, Compliance | Threat mitigations, Access control |
+| COMPAT | Breaking changes, Migration path, Backward compatibility, Deprecation | API versioning, Rollback safety, Client SDK impact |
+
 The orchestrator appends to each agent's challenge prompt:
 
 > **Domain routing hint:** Your primary domain covers: {primary_domains}. Prioritize reading full findings in these categories. For findings outside your domain, read the summary only and Abstain unless you have specific counter-evidence.
@@ -116,7 +126,7 @@ Severity assessment: [Critical | Important | Minor]    (required if Agree)
 Evidence: [supporting or counter-evidence, max 2000 chars]
 ```
 
-**Strat profile addition:** When `has_verdicts: true`, challenge responses also include a `Verdict assessment: [Approve | Revise | Reject]` field for the overall document verdict.
+**Strat/RFE profile addition:** When `has_verdicts: true`, challenge responses also include a `Verdict assessment: [Approve | Revise | Reject]` field for the overall document verdict.
 
 **New findings:** Agents may raise new findings in **iterations 1 and 2 only**. New findings are **prohibited in the final iteration** (iteration 3). New findings must use the standard finding template with `Source: Challenge Round` marker.
 
@@ -249,15 +259,15 @@ The rebuttal prompt appended to iteration 3 is profile-dependent:
 >
 > Positions without evidence citations will be treated as retractions during resolution.
 
-**Strat profile:**
+**Strat/RFE profile:**
 
-> For each finding you are challenging or defending, you MUST cite specific strategy text evidence.
+> For each finding you are challenging or defending, you MUST cite specific document text evidence.
 >
-> - If you are **challenging** a finding: quote the specific strategy text that disproves the finding (e.g., the strategy already addresses this in section X, the acceptance criterion Y covers this case)
-> - If you are **defending** a finding: quote the specific strategy text that creates the risk or gap (e.g., the technical approach in paragraph N proposes X without addressing Y)
-> - If you cannot cite specific strategy text evidence, **retract your position** (change to Agree or Abstain for challenges, Withdraw for defenses)
+> - If you are **challenging** a finding: quote the specific document text that disproves the finding (e.g., the document already addresses this in section X, the acceptance criterion Y covers this case)
+> - If you are **defending** a finding: quote the specific document text that creates the risk or gap (e.g., the technical approach in paragraph N proposes X without addressing Y)
+> - If you cannot cite specific document text evidence, **retract your position** (change to Agree or Abstain for challenges, Withdraw for defenses)
 >
-> Positions without strategy text citations will be treated as retractions during resolution.
+> Positions without document text citations will be treated as retractions during resolution.
 
 ## Single-Specialist Mode
 

@@ -12,7 +12,7 @@ After scope confirmation and pre-flight budget check, initialize the local conte
    `SOURCE_ROOT` is the absolute path to the directory containing the code under review. This is stored in the manifest and included in agent prompts so agents know where to search when verifying findings. If omitted, defaults to `$(pwd)`.
    Capture `CACHE_DIR` from the JSON output (`{"cache_dir": "<path>", "session_hex": "<hex>"}`).
 
-**Pipeline mode (strat profile without `--review-only`):** After cache init, create the strategy artifacts directory:
+**Pipeline mode (strat/rfe profile without `--review-only`):** After cache init, create the strategy artifacts directory:
 ```bash
 mkdir -p "$CACHE_DIR/strategy"
 ```
@@ -32,7 +32,7 @@ This directory stores all pipeline intermediates: `strategy-draft.md`, `quick-re
    REVIEW_PROFILE=<profile> CACHE_DIR=$CACHE_DIR scripts/manage-cache.sh populate-references
    ```
 
-   `REVIEW_PROFILE` selects the profile directory for templates and references (`code` or `strat`). Defaults to `code` if not set.
+   `REVIEW_PROFILE` selects the profile directory for templates and references (`code`, `strat`, or `rfe`). Defaults to `code` if not set.
 7. **Populate context (if `--context` flags present):**
    For each `--context label=source` flag:
    ```bash

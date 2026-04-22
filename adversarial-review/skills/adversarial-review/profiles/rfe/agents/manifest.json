@@ -1,0 +1,13 @@
+{
+  "profile": "rfe",
+  "description": "RFE (Request for Enhancement) document review agents",
+  "agents": {
+    "requirements-analyst.md": "7e20623c73a8e7806807c41fb7d3321e2bbdb858d5f98ec75a95ecc41c6e7ebf",
+    "feasibility-analyst.md": "d4f7f2c959bc5b57e47192c8063199a4713bc0bee3f8eb548233c85d9bc26a76",
+    "architecture-reviewer.md": "8e5c9d6aa68d0026cd92a087c9a7bd8a6d8b163e593b633f4e6f3f57dc5c63b9",
+    "security-analyst.md": "2d2b95978f10d0654c3dbb03c7294433b94ef773c996cb5e7c9ef70b22a9aa59",
+    "compatibility-analyst.md": "d24222b3b2918ebadff6ce3e874e72a954898fdb2b8842eddb6b9ec4c4da1e03",
+    "devils-advocate.md": "06c8adba608457223be897f20f61cbfaf58f8e682c950238d91275de0d25df7e"
+  },
+  "last_updated": "2026-04-22"
+}

@@ -31,7 +31,7 @@ while [[ $# -gt 0 ]]; do
         --check-fixes) CHECK_FIXES=true; shift ;;
         --mode) MODE="${2:?--mode requires a value (finding|challenge)}"; shift 2 ;;
         --finding-ids) FINDING_IDS_FILE="${2:?--finding-ids requires a file path}"; shift 2 ;;
-        --profile) PROFILE="${2:?--profile requires a value (code|strat)}"; shift 2 ;;
+        --profile) PROFILE="${2:?--profile requires a value (code|strat|rfe)}"; shift 2 ;;
         *) echo "{\"error\": \"Unknown flag: $1\"}" >&2; exit 2 ;;
     esac
 done

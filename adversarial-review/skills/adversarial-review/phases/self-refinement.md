@@ -7,9 +7,9 @@ Each specialist independently reviews the code and iteratively refines their fin
 ## Prerequisites
 
 - Active specialists selected (from configuration or `--quick`/`--thorough` profile)
-- Review target identified and accessible (code files for `code` profile, strategy documents for `strat` profile)
+- Review target identified and accessible (code files for `code` profile, strategy documents for `strat` profile, RFE documents for `rfe` profile)
 - Budget initialized via `scripts/track-budget.sh init <budget_limit>`
-- Active profile resolved (`code` or `strat`)
+- Active profile resolved (`code`, `strat`, or `rfe`)
 
 ## Procedure
 
@@ -26,7 +26,7 @@ For each active specialist, compose a minimal prompt (~2,825 tokens) containing:
 | Project principles (conditional) | `--principles` flag, formatted per `protocols/principles.md` | ~100-500 |
 | Constraints (conditional) | `--constraints` flag | variable |
 
-Agent and template paths are resolved from the active profile directory (`profiles/code/` or `profiles/strat/`).
+Agent and template paths are resolved from the active profile directory (`profiles/code/`, `profiles/strat/`, or `profiles/rfe/`).
 
 **Conditional prompt components:**
 
@@ -115,15 +115,15 @@ On iteration 2 and later, append to the re-prompt. The verification gate is prof
 > Withdraw all ASSUMPTION-BASED findings, or investigate the code until they
 > become CODE-VERIFIED. Do not submit assumption-based findings.
 
-**Strat profile:**
+**Strat/RFE profile:**
 
 > Before submitting refined findings, classify each as:
-> - **TEXT-VERIFIED**: You can cite specific strategy text (section, paragraph,
->   or acceptance criterion) that creates or evidences the issue
+> - **TEXT-VERIFIED**: You can cite specific document text (section, paragraph,
+>   requirement, or acceptance criterion) that creates or evidences the issue
 > - **ASSUMPTION-BASED**: You inferred risk from general knowledge or common
->   patterns without finding concrete evidence in the strategy text
+>   patterns without finding concrete evidence in the document text
 >
-> Withdraw all ASSUMPTION-BASED findings, or investigate the strategy text until
+> Withdraw all ASSUMPTION-BASED findings, or investigate the document text until
 > they become TEXT-VERIFIED. Do not submit assumption-based findings.
 
 Finding withdrawals due to the verification gate will trigger non-convergence

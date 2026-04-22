@@ -39,7 +39,7 @@ This skill spawns multiple specialist sub-agents in fully isolated environments 
 The orchestrator creates tasks dynamically based on the configuration:
 
 - [ ] **Step 1:** Parse invocation flags and resolve scope
-- [ ] **Step 1b:** Strat pipeline: Create + Quick Review + Adversarial Refine (delegate to `phases/strat-pipeline.md`; only when `--profile strat` without `--review-only`)
+- [ ] **Step 1b:** Pipeline: Create + Quick Review + Adversarial Refine (delegate to `phases/strat-pipeline.md` for strat/rfe; only when `--profile strat` or `--profile rfe` without `--review-only`)
 - [ ] **Step 2:** Confirm scope with user (MANDATORY — never skip; skipped in pipeline mode, scope is the refined strategy)
 - [ ] **Step 3:** Initialize cache (delegate to `protocols/cache-initialization.md`)
 - [ ] **Step 4:** Phase 1 — Self-refinement (delegate to `phases/self-refinement.md`)
@@ -60,6 +60,7 @@ Parse the user's invocation to determine profile, specialist selection, mode, an
 |------|---------|-------------|
 | *(none)* | `code` | Source code review (default, current behavior) |
 | `--profile strat` | `strat` | Strategy document review |
+| `--profile rfe` | `rfe` | RFE (Request for Enhancement) document review |
 
 The profile determines the agent set, templates, reference modules, and validation mode. Read the profile config:
 
@@ -88,6 +89,16 @@ scripts/profile-config.sh profiles/<profile> <key>
 | `--scope` | Scope & Completeness Analyst | `profiles/strat/agents/scope-completeness-analyst.md` |
 | `--testability` | Testability Analyst | `profiles/strat/agents/testability-analyst.md` |
 
+### Specialist Flags (RFE Profile)
+
+| Flag | Specialist | Agent File |
+|------|-----------|------------|
+| `--requirements` | Requirements Analyst | `profiles/rfe/agents/requirements-analyst.md` |
+| `--feasibility` | Feasibility Analyst | `profiles/rfe/agents/feasibility-analyst.md` |
+| `--architecture` | Architecture Reviewer | `profiles/rfe/agents/architecture-reviewer.md` |
+| `--security` | Security Analyst | `profiles/rfe/agents/security-analyst.md` |
+| `--compatibility` | Compatibility Analyst | `profiles/rfe/agents/compatibility-analyst.md` |
+
 If no specialist flags are provided, activate **all specialists** for the active profile.
 
 ### Mode Flags
@@ -115,25 +126,25 @@ If no specialist flags are provided, activate **all specialists** for the active
 | `--constraints <path>` | Load enforceable constraint pack (YAML). Constraints set severity floors for findings: violations are automatically flagged at the constraint's specified severity or higher. The path can be a directory (loads `constraints.yaml` from it) or a direct YAML file. `.md` reference files in the same directory are loaded as constraint reference modules. Works with both profiles. |
 | `--persist` | Enable cross-run finding persistence. Fingerprints findings and stores history in `.adversarial-review/findings-history.jsonl`. On subsequent runs, classifies findings as new/recurring/resolved/regressed. Adds persistence section to report. |
 | `--normalize` | Normalize finding output for stability. Sorts findings canonically (specialist, file, line), standardizes formatting. Reduces noise when comparing runs. |
-| `--review-only` | Skip pipeline create/refine steps. Review the input document directly. Strat profile only. Default behavior when `--profile strat` was invoked before pipeline was added. |
-| `--confirm` | Show refined strategy for user approval before full review. Strat pipeline only. |
-| `--principles <path>` | Load project-level design principles from a YAML file. Principles are injected into all refine agents and review specialists as hard constraints. Violations are flagged as Critical findings. Works with strat profile only. See `protocols/principles.md` for YAML format. |
-| `--arch-context <repo@ref>` | Fetch architecture context from a specific git ref (tag, branch, or commit SHA). Syntax: `org/repo@ref`. The `@ref` suffix is optional; without it, uses default branch. Strat profile only. |
+| `--review-only` | Skip pipeline create/refine steps. Review the input document directly. Strat/RFE profile only. Default behavior when `--profile strat` was invoked before pipeline was added. |
+| `--confirm` | Show refined document for user approval before full review. Strat/RFE pipeline only. |
+| `--principles <path>` | Load project-level design principles from a YAML file. Principles are injected into all refine agents and review specialists as hard constraints. Violations are flagged as Critical findings. Works with strat and rfe profiles. See `protocols/principles.md` for YAML format. |
+| `--arch-context <repo@ref>` | Fetch architecture context from a specific git ref (tag, branch, or commit SHA). Syntax: `org/repo@ref`. The `@ref` suffix is optional; without it, uses default branch. Strat/RFE profile only. |
 
 ### Flag Compatibility
 
-| Flag | Code profile | Strat profile |
-|------|-------------|---------------|
-| `--delta`, `--diff`, `--triage`, `--fix` | Yes | No (error) |
-| `--context` | Yes | Yes |
-| `--constraints` | Yes | Yes |
-| `--save`, `--budget`, `--quick`, `--thorough` | Yes | Yes |
-| `--keep-cache`, `--reuse-cache` | Yes | Yes |
-| `--strict-scope` | Yes | Yes |
-| `--persist`, `--normalize` | Yes | Yes |
-| `--principles` | No (error) | Yes |
-| `--arch-context` | No (error) | Yes |
-| `--review-only` | No (error) | Yes |
+| Flag | Code profile | Strat profile | RFE profile |
+|------|-------------|---------------|-------------|
+| `--delta`, `--diff`, `--triage`, `--fix` | Yes | No (error) | No (error) |
+| `--context` | Yes | Yes | Yes |
+| `--constraints` | Yes | Yes | Yes |
+| `--save`, `--budget`, `--quick`, `--thorough` | Yes | Yes | Yes |
+| `--keep-cache`, `--reuse-cache` | Yes | Yes | Yes |
+| `--strict-scope` | Yes | Yes | Yes |
+| `--persist`, `--normalize` | Yes | Yes | Yes |
+| `--principles` | No (error) | Yes | Yes |
+| `--arch-context` | No (error) | Yes | Yes |
+| `--review-only` | No (error) | Yes | Yes |
 
 > **Note:** `--strict-scope` is an orchestrator-level flag. `validate-output.sh` always emits scope violations as warnings; the orchestrator decides whether to demote or reject based on `--strict-scope`.
 
@@ -157,15 +168,16 @@ If no specialist flags are provided, activate **all specialists** for the active
 | `--converge` + `--keep-cache` | Keep final cycle's cache. |
 | `--converge` + `--strict-scope` | Two distinct scopes: (1) convergence loop review scope is always "files modified by fixes" (the delta set), (2) `--strict-scope` controls whether fix patches that touch files outside the original review scope are rejected (vs. warned). These are independent: convergence reviews the delta, strict-scope gates what the fix agent can touch. |
 | `--converge` + `--profile strat` | Error: "--converge requires --fix, which is code profile only" |
+| `--converge` + `--profile rfe` | Error: "--converge requires --fix, which is code profile only" |
 
 ### Flag Interaction: Principles & Arch-Context Flags
 
 | Combination | Behavior |
 |------------|----------|
-| `--principles` + `--profile code` | Error: "--principles is only available for the strat profile" |
+| `--principles` + `--profile code` | Error: "--principles is only available for the strat and rfe profiles" |
 | `--principles` + `--review-only` | Composable. Principles are injected into review specialists as hard constraints. |
 | `--principles` + pipeline mode | Composable. Principles are injected into both refine agents and review specialists. |
-| `--arch-context` + `--profile code` | Error: "--arch-context is only available for the strat profile" |
+| `--arch-context` + `--profile code` | Error: "--arch-context is only available for the strat and rfe profiles" |
 | `--arch-context` + `--context architecture=<source>` | Error: "Use --arch-context OR --context architecture=<source>, not both" |
 | `--arch-context` + `--review-only` | Composable. Architecture context loaded for review specialists. |
 
@@ -181,16 +193,16 @@ If no specialist flags are provided, activate **all specialists** for the active
 
 Presets are decoupled from profiles. Which specialists are selected for `--quick` depends on the profile's `quick_specialists` config.
 
-| Flag | Code Profile | Strat Profile (pipeline) | Strat Profile (`--review-only`) | Iterations | Budget |
-|------|-------------|--------------------------|--------------------------------|------------|--------|
-| `--quick` | SEC + CORR (2) | 1 refine + SEC+FEAS review | SEC + FEAS (2) | 2 | 200K / 150K |
-| `--thorough` | All 5 | 3 refine + all 6 review | All 6 | 3 | 1M / 800K |
-| *(default)* | All 5 | 2 refine + all 6 review | All 6 | 3 | 500K / 350K |
+| Flag | Code Profile | Strat Profile (pipeline) | Strat Profile (`--review-only`) | RFE Profile (pipeline) | RFE Profile (`--review-only`) | Iterations | Budget |
+|------|-------------|--------------------------|--------------------------------|------------------------|-------------------------------|------------|--------|
+| `--quick` | SEC + CORR (2) | 1 refine + SEC+FEAS review | SEC + FEAS (2) | 1 refine + REQ+SEC review | REQ + SEC (2) | 2 | 200K / 150K |
+| `--thorough` | All 5 | 3 refine + all 6 review | All 6 | 3 refine + all 5 review | All 5 | 3 | 1M / 800K |
+| *(default)* | All 5 | 2 refine + all 6 review | All 6 | 2 refine + all 5 review | All 5 | 3 | 500K / 350K |
 
 ### Defaults
 
 - **Profile:** `code` (if `--profile` not specified)
-- **Specialists:** All for the active profile (5 for code, 6 for strat) if none specified
+- **Specialists:** All for the active profile (5 for code, 6 for strat, 5 for rfe) if none specified
 - **Iterations:** 3 self-refinement rounds (with convergence-based early exit, minimum 2)
 - **Budget:** 350K tokens
 - **Topic:** Auto-derived from scope (primary directory or file name)
@@ -209,9 +221,9 @@ Staleness warnings are informational only — they never block the review.
 
 ---
 
-## Step 1b: Strat Pipeline (Strat Profile Only)
+## Step 1b: Document Pipeline (Strat/RFE Profile)
 
-When `--profile strat` is active and `--review-only` is NOT specified, delegate to `phases/strat-pipeline.md`. This runs the full create, refine, review pipeline:
+When `--profile strat` or `--profile rfe` is active and `--review-only` is NOT specified, delegate to `phases/strat-pipeline.md`. The pipeline is shared between strat and rfe profiles; the profile config determines which agents, templates, and section structure are used. This runs the full create, refine, review pipeline:
 
 1. **Create:** Extract input from Jira key or normalize from file into strategy template
 2. **Quick Review:** Lightweight 2-specialist review to surface gaps (skipped in `--quick` mode)
@@ -233,7 +245,7 @@ Delegate to `protocols/scope-resolution.md`. Covers priority chain, sensitive fi
 
 ---
 
-## Step 2b: Deterministic Pre-Analysis (Strat Profile Only)
+## Step 2b: Deterministic Pre-Analysis (Strat/RFE Profile Only)
 
 Delegate to `protocols/pre-analysis.md`. Covers Layer 1 (threat surface extraction), Layer 2 (NFR checklist scan), finding normalization (`--normalize`), finding persistence (`--persist`), prompt version tracking, and structured JSON output.
 
@@ -345,8 +357,20 @@ Generate the final report using the profile's report template: `profiles/<profil
 
 If `--save` was specified, write the report to `docs/reviews/YYYY-MM-DD-<topic>-review.md`.
 
-**Strat profile additional outputs (when `--save` is active):**
-- **Requirements output:** `docs/reviews/YYYY-MM-DD-<topic>-requirements.md` using `profiles/strat/templates/requirements-template.md`. Splits findings by confidence tier (Required Amendments / Recommended / Human Review) and includes NFR checklist gaps. This is addressed to the STRAT author.
+**RFE profile:** The report includes up to 10 sections (see `profiles/rfe/templates/report-template.md`):
+- Executive summary with verdict agreement level (Section 1)
+- Review configuration (Section 2)
+- Per-RFE review with verdict tables and categorized findings (Section 3)
+- Cross-RFE patterns (Section 4, when reviewing 2+ RFEs)
+- Architecture context citations (Section 5, when architecture context loaded)
+- Dismissed findings (Section 6)
+- Challenge round highlights (Section 7)
+- Remediation roadmap (Section 8)
+- Methodology notes (Section 9)
+- Metadata (Section 10)
+
+**Strat/RFE profile additional outputs (when `--save` is active):**
+- **Requirements output:** `docs/reviews/YYYY-MM-DD-<topic>-requirements.md` using `profiles/<profile>/templates/requirements-template.md` (shared between strat and rfe). Splits findings by confidence tier (Required Amendments / Recommended / Human Review) and includes NFR checklist gaps. This is addressed to the document author.
 - **JSON output:** `docs/reviews/YYYY-MM-DD-<topic>-findings.json` via `scripts/findings-to-json.py`. Machine-readable findings with enrichment metadata for downstream tooling.
 
 **NEVER auto-commit.** The `--save` flag writes the file only.
@@ -369,7 +393,7 @@ When only one specialist is active (e.g., `--security` alone), the full multi-ag
 
 ## Step 8: Phase 5 — Remediation
 
-**Only when `--fix` is specified. Code profile only.** Delegate to `phases/remediation.md`. If `--fix` is used with `--profile strat`, emit an error: "Phase 5 (Remediation) is not available for the strat profile. Strategy findings require manual revision of the strategy documents."
+**Only when `--fix` is specified. Code profile only.** Delegate to `phases/remediation.md`. If `--fix` is used with `--profile strat` or `--profile rfe`, emit an error: "Phase 5 (Remediation) is not available for the strat/rfe profile. Document findings require manual revision."
 
 This phase transforms validated findings into tracked work items:
 

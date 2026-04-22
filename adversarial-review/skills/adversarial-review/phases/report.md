@@ -13,11 +13,12 @@ Assemble and present the final review report. All findings are categorized by th
 
 ### Step 1: Assemble Report
 
-Build the report using `profiles/<profile>/templates/report-template.md` with up to 14 sections for code profile, or 10 sections for strat profile (some conditional). The core sections are:
+Build the report using `profiles/<profile>/templates/report-template.md` with up to 14 sections for code profile, or 10 sections for strat/rfe profiles (some conditional). The core sections are:
 
 **Profile-specific behavior:**
 - **Code profile:** Finding details include File, Lines. Sections 10-14 (remediation, change impact, metrics, guardrails, audit log) are present. Phase 5 is available.
 - **Strat profile:** Finding details include Document, Citation. Per-strategy verdict sections replace the flat finding sections. Sections 11-14 are omitted (no diff, no fix mode). The report uses verdict agreement level as the primary indicator (see `phases/resolution.md` Verdict Resolution).
+- **RFE profile:** Finding details include Document, Citation. Per-RFE verdict sections replace the flat finding sections. Sections 11-14 are omitted (no diff, no fix mode). The report uses verdict agreement level as the primary indicator (see `phases/resolution.md` Verdict Resolution).
 
 #### Section 1: Executive Summary
 
@@ -33,13 +34,13 @@ Build the report using `profiles/<profile>/templates/report-template.md` with up
 
 Human-readable summary of review parameters (date, scope, specialists, mode flags, iterations, budget, reference modules). See `templates/report-template.md` Section 2.
 
-#### Section 3: Consensus Findings (code profile) / Per-Strategy Review (strat profile)
+#### Section 3: Consensus Findings (code profile) / Per-Document Review (strat/rfe profile)
 
 **Code profile:** Findings where all specialists unanimously agreed on validity and severity. Include:
 - Finding details (ID, severity, confidence, file, lines, title, evidence, fix)
 - Agreement count: Unanimous (N/N specialists)
 
-**Strat profile:** This section is replaced by per-strategy review sections (see `profiles/strat/templates/report-template.md` Section 3). Each strategy gets a dedicated section with verdict, per-agent verdict table, and categorized findings (consensus, majority, escalated).
+**Strat/RFE profile:** This section is replaced by per-document review sections (see `profiles/<profile>/templates/report-template.md` Section 3). Each document gets a dedicated section with verdict, per-agent verdict table, and categorized findings (consensus, majority, escalated).
 
 #### Section 4: Majority Findings
 
@@ -85,7 +86,7 @@ Cross-specialist findings targeting overlapping regions. Present as grouped tabl
 - Interaction notes describing how the findings relate
 
 **Code profile:** Co-location is based on overlapping file/line ranges.
-**Strat profile:** Co-location is based on same document and overlapping section/citation references.
+**Strat/RFE profile:** Co-location is based on same document and overlapping section/citation references.
 
 #### Section 10: Remediation Summary
 
@@ -160,28 +161,28 @@ If the `--save` flag is specified:
 4. **Create directories** if they do not exist: `mkdir -p docs/reviews/`
 5. **Write the file** — the metadata block MUST be the last element in the file
 
-### Step 4b: Generate Requirements Output (Strat Profile, when `--save`)
+### Step 4b: Generate Requirements Output (Strat/RFE Profile, when `--save`)
 
 When the active profile is `strat` or `rfe` and `--save` is specified, generate the requirements output alongside the report:
 
 1. **Split findings by confidence tier** using the confidence labels from Phase 3:
-   - **HIGH confidence** → "Required Amendments" (STRAT must address before approval)
-   - **MEDIUM confidence** → "Recommended Amendments" (STRAT should address)
+   - **HIGH confidence** → "Required Amendments" (document must address before approval)
+   - **MEDIUM confidence** → "Recommended Amendments" (document should address)
    - **LOW confidence** → "Findings Requiring Human Review" (team should evaluate)
 
 2. **Include NFR checklist gaps** from the Layer 2 scan (items scored NO or PARTIAL) in a separate section. These are deterministic assessments, not specialist opinions.
 
 3. **Include all 4 confidence signals** for each finding (self_assessment, corroboration, challenge_survival, evidence_specificity) for transparency.
 
-4. **Write to** `docs/reviews/YYYY-MM-DD-<topic>-requirements.md` using `profiles/strat/templates/requirements-template.md`.
+4. **Write to** `docs/reviews/YYYY-MM-DD-<topic>-requirements.md` using `profiles/strat/templates/requirements-template.md` (shared between strat and rfe profiles).
 
 5. **Generate JSON output** via `scripts/findings-to-json.py`:
    ```bash
-   python3 scripts/findings-to-json.py <findings-file> --profile strat --metadata '{"strat_id": "...", "review_date": "..."}'
+   python3 scripts/findings-to-json.py <findings-file> --profile <profile> --metadata '{"doc_id": "...", "review_date": "..."}'
    ```
    Write to `docs/reviews/YYYY-MM-DD-<topic>-findings.json`.
 
-The requirements output is addressed to the STRAT author. Use "the strategy" not "we found."
+The requirements output is addressed to the document author. Use "the strategy/RFE" not "we found."
 
 ### Step 5: Generate Visualizations (Optional)
 
@@ -255,13 +256,13 @@ The final report reads consensus findings from `{CACHE_DIR}/findings/`. If `--ke
 
 ## References
 
-- `profiles/<profile>/templates/report-template.md` — profile-specific report template (code: up to 14 sections, strat: up to 10 sections)
+- `profiles/<profile>/templates/report-template.md` — profile-specific report template (code: up to 14 sections, strat/rfe: up to 10 sections)
 - `templates/delta-report-template.md` — delta mode report template (code profile only)
 - `protocols/token-budget.md` — budget truncation behavior
 - `protocols/delta-mode.md` — delta mode execution and report rules
 - `scripts/manage-cache.sh` — cache management (findings read from `{CACHE_DIR}/findings/`)
 - `phases/remediation.md` — Phase 5 classification that Section 10 feeds into
-- `profiles/strat/templates/requirements-template.md` — confidence-tiered requirements output for STRAT authors
+- `profiles/strat/templates/requirements-template.md` — confidence-tiered requirements output for document authors (shared between strat and rfe profiles)
 - `scripts/findings-to-json.py` — structured JSON output with enrichment metadata
 - `scripts/nfr-scan.py` — NFR checklist scanner (Layer 2 results for requirements output)
 - `scripts/extract-threat-surface.py` — threat surface extraction (Layer 1 context)

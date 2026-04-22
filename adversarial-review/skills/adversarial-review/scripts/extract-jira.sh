@@ -63,8 +63,9 @@ if [[ -n "${CACHE_DIR:-}" ]]; then
 fi
 
 # Parse JSON and fill template using inline Python script
-echo "$jira_json" | python3 - "$key" "$template" <<'PYTHON_EOF'
+JIRA_JSON_DATA="$jira_json" python3 - "$key" "$template" <<'PYTHON_EOF'
 import json
+import os
 import re
 import sys
 
@@ -168,8 +169,8 @@ def main():
     key = sys.argv[1]
     template_path = sys.argv[2]
 
-    # Read JSON from stdin
-    jira_json = sys.stdin.read()
+    # Read JSON from environment variable (avoids pipe+heredoc stdin conflict)
+    jira_json = os.environ.get('JIRA_JSON_DATA', '')
 
     # Parse JSON
     try:

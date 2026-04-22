@@ -1,12 +1,12 @@
-# Strat Pipeline: Create, Refine, Review
+# Document Pipeline: Create, Refine, Review
 
 ## Purpose
 
-Orchestrates the full strategy pipeline when `--profile strat` is invoked without `--review-only`. Produces a refined strategy document through adversarial refinement, then subjects it to full adversarial review.
+Orchestrates the full document pipeline when `--profile strat` or `--profile rfe` is invoked without `--review-only`. Produces a refined document through adversarial refinement, then subjects it to full adversarial review. The pipeline logic is shared between strat and rfe profiles; profile-specific behavior (template structure, agent set, section names) is driven by the profile config.
 
 ## Prerequisites
 
-- Profile resolved to `strat`
+- Profile resolved to `strat` or `rfe`
 - Input identified: Jira key (regex `^[A-Z][A-Z0-9_]+-\d+$`) or file path
 - `--review-only` NOT specified
 - Budget initialized
@@ -58,11 +58,15 @@ The fetched context files are then available at `$CACHE_DIR/context/architecture
 
 ### Step 1: Create
 
+**Template selection:** The template is determined by the active profile:
+- `strat`: `profiles/strat/templates/strategy-template.md` (8 sections: TL;DR, Summary, Problem Statement, Goals, Acceptance Criteria, Dependencies, Constraints, Open Questions)
+- `rfe`: `profiles/rfe/templates/rfe-template.md` (9 sections: TL;DR, Summary, Problem Statement, Proposed Solution, Requirements, Acceptance Criteria, Dependencies, Migration & Compatibility, Open Questions)
+
 **Jira input:**
 
 ```bash
 SCRIPT_DIR="<skill_base>/scripts"
-TEMPLATE="<skill_base>/profiles/strat/templates/strategy-template.md"
+TEMPLATE="<skill_base>/profiles/<profile>/templates/<template_file>"
 "$SCRIPT_DIR/extract-jira.sh" --key <JIRA_KEY> --template "$TEMPLATE" > "$CACHE_DIR/strategy/strategy-draft.md"
 ```
 
@@ -70,7 +74,7 @@ If `extract-jira.sh` fails, abort with the error message.
 
 **File input:**
 
-Read the input file. If it already follows the strategy template structure (has at least 4 of the 8 section headings: TL;DR, Summary, Problem Statement, Goals, Acceptance Criteria, Dependencies, Constraints, Open Questions), copy it as-is to `$CACHE_DIR/strategy/strategy-draft.md`.
+Read the input file. If it already follows the active profile's template structure (has at least 4 of the section headings for the active template), copy it as-is to `$CACHE_DIR/strategy/strategy-draft.md`.
 
 If the file does not follow the template structure, the orchestrator normalizes it: read the content and map it into the template sections. Use the file content as the Problem Statement, extract any bullet lists as potential ACs/Goals, set TL;DR to "(To be generated during refinement.)", and leave other sections as "(To be defined during refinement.)"
 
@@ -86,8 +90,8 @@ Save to `$CACHE_DIR/strategy/strategy-draft.md`.
 
 - **File input:** If the file mentions multiple components (detected by heading patterns like `## Component: X` or explicit component lists), apply the same component boundary flagging.
 
-**Display:** Show the user the strategy draft and confirm:
-> "Strategy draft created from {jira key / file}. Proceeding with quick review and adversarial refinement."
+**Display:** Show the user the document draft and confirm:
+> "{Strategy/RFE} draft created from {jira key / file}. Proceeding with quick review and adversarial refinement."
 
 If multiple components were detected:
 > "Detected N components: {list}. Per-component architecture context will be loaded where available."
@@ -96,9 +100,9 @@ This is informational, not a gate (unless `--confirm` is active, in which case g
 
 ### Step 2: Quick Review
 
-Run a lightweight adversarial review on the strategy draft using the existing strat profile infrastructure. This is a self-contained mini-review: Phase 1 only, no challenge round, no resolution.
+Run a lightweight adversarial review on the document draft using the active profile's infrastructure. This is a self-contained mini-review: Phase 1 only, no challenge round, no resolution.
 
-**Specialists:** SEC + FEAS (the `quick_specialists` from strat profile config)
+**Specialists:** The `quick_specialists` from the active profile config (strat: SEC + FEAS, rfe: REQ + SEC)
 **Iterations:** 2 (minimum, no convergence exit)
 **Budget:** 20% of total budget allocated to quick review
 
@@ -107,10 +111,10 @@ Run a lightweight adversarial review on the strategy draft using the existing st
    scripts/track-budget.sh init <quick_review_budget>
    ```
 
-2. For each quick-review specialist (SEC, FEAS), compose the standard agent prompt using `phases/self-refinement.md` Step 1 procedure:
-   - Role definition from `profiles/strat/agents/<specialist>.md`
-   - Finding template from `profiles/strat/templates/finding-template.md`
-   - Cache navigation pointing to `$CACHE_DIR` (the strategy draft is the only "code" file)
+2. For each quick-review specialist, compose the standard agent prompt using `phases/self-refinement.md` Step 1 procedure:
+   - Role definition from `profiles/<profile>/agents/<specialist>.md`
+   - Finding template from `profiles/<profile>/templates/finding-template.md`
+   - Cache navigation pointing to `$CACHE_DIR` (the document draft is the only "code" file)
    - Target: `$CACHE_DIR/strategy/strategy-draft.md`
 
 3. Spawn both specialists in parallel. Run 2 iterations of self-refinement.
@@ -147,12 +151,12 @@ Run a lightweight adversarial review on the strategy draft using the existing st
 - `--thorough`: Staff Engineer + Product Architect + Security Engineer
 
 1. For each refine agent, compose the prompt:
-   - Role definition from `profiles/strat/agents/refine-<persona>.md`
-   - Append the strategy draft content (read from `$CACHE_DIR/strategy/strategy-draft.md`)
+   - Role definition from `profiles/<profile>/agents/refine-<persona>.md`
+   - Append the document draft content (read from `$CACHE_DIR/strategy/strategy-draft.md`)
    - Append quick-review findings (read from `$CACHE_DIR/strategy/quick-review-findings.json`, formatted as a readable list)
    - Append architecture context if `--context` or `--arch-context` was provided (read from cache context files)
    - If `--principles` specified: append principles section per `protocols/principles.md` Injection into Agents > Refine Agents. Append `upstream_mapping` to Product Architect and Security Engineer agents only.
-   - Append the strategy template (read from `profiles/strat/templates/strategy-template.md`) as the required output structure
+   - Append the document template (read from `profiles/<profile>/templates/<template_file>`) as the required output structure
 
 2. Spawn all refine agents in parallel.
 
@@ -168,8 +172,8 @@ Run a lightweight adversarial review on the strategy draft using the existing st
 Skip if only 1 refine agent was active (use that agent's output directly as the refined strategy).
 
 1. Compose the mediator prompt:
-   - Role definition from `profiles/strat/agents/refine-mediator.md`
-   - Append the original strategy draft
+   - Role definition from `profiles/<profile>/agents/refine-mediator.md`
+   - Append the original document draft
    - Append quick-review findings
    - If `--principles` specified: append principles section (same format as refine agents). The mediator uses principles as a tie-breaking criterion when selecting between sections.
    - Append each refine agent's output, labeled: "## Staff Engineer Version\n{content}\n\n## Product Architect Version\n{content}"
@@ -237,7 +241,7 @@ The refined strategy becomes the input for the standard adversarial review (Phas
    ```
 
 4. Proceed with standard Phases 1-4 as defined in SKILL.md Steps 4-7:
-   - Phase 1: Self-refinement (all 6 strat specialists or preset selection)
+   - Phase 1: Self-refinement (all specialists for the active profile, or preset selection)
    - Phase 2: Challenge round (adversarial debate)
    - Phase 3: Resolution (consensus)
    - Phase 4: Report (verdict + requirements)
@@ -258,9 +262,11 @@ The orchestrator tracks actual consumption. If quick review + refine consume les
 
 | Preset | Quick Review | Refine Agents | Mediator | Full Review | Default Budget |
 |--------|-------------|---------------|----------|-------------|----------------|
-| `--quick` | skip | 1 (Staff Eng) | skip | SEC+FEAS, 2 iter | 200K |
-| default | SEC+FEAS, 2 iter | 2 (Staff Eng + Prod Arch) | yes | all 6, 3 iter | 500K |
-| `--thorough` | SEC+FEAS, 2 iter | 3 (all three) | yes | all 6, 3 iter | 1M |
+| `--quick` | skip | 1 (Staff Eng) | skip | quick_specialists, 2 iter | 200K |
+| default | quick_specialists, 2 iter | 2 (Staff Eng + Prod Arch) | yes | all specialists, 3 iter | 500K |
+| `--thorough` | quick_specialists, 2 iter | 3 (all three) | yes | all specialists, 3 iter | 1M |
+
+Note: `quick_specialists` and specialist counts are profile-dependent (strat: 6 review specialists, rfe: 5 review specialists).
 
 Note: pipeline budgets are higher than review-only budgets because they include create + refine steps.
 

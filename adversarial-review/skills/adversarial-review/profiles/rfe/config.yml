@@ -1,0 +1,53 @@
+name: rfe
+description: RFE (Request for Enhancement) document review
+evidence_format: text_citation
+has_verdicts: true
+verdict_values: [approve, revise, reject]
+phase5_enabled: false
+pipeline_enabled: true
+
+agents:
+  - prefix: REQ
+    file: requirements-analyst.md
+  - prefix: FEAS
+    file: feasibility-analyst.md
+  - prefix: ARCH
+    file: architecture-reviewer.md
+  - prefix: SEC
+    file: security-analyst.md
+  - prefix: COMPAT
+    file: compatibility-analyst.md
+
+refine_agents:
+  - persona: staff-engineer
+    file: refine-staff-engineer.md
+    presets: [quick, default, thorough]
+  - persona: product-architect
+    file: refine-product-architect.md
+    presets: [default, thorough]
+  - persona: security-engineer
+    file: refine-security-engineer.md
+    presets: [thorough]
+
+mediator:
+  file: refine-mediator.md
+
+quick_specialists: [REQ, SEC]
+default_specialists: all
+thorough_specialists: all
+
+pipeline_budgets:
+  quick: 200000
+  default: 500000
+  thorough: 1000000
+
+review_only_budgets:
+  quick: 150000
+  default: 350000
+  thorough: 800000
+
+templates:
+  finding: finding-template.md
+  challenge_response: challenge-response-template.md
+  report: report-template.md
+  rfe: rfe-template.md
