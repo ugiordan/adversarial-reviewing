@@ -6,4 +6,5 @@ File: src/auth/login.py
 Lines: 42-58
 Title: SQL injection in user search endpoint (severity downgraded after review)
 Evidence: The search_users function at line 45 has partial parameterization but still allows injection via the sort parameter.
+Impact chain: Unparameterized sort clause → SQL injection via ORDER BY → data exfiltration
 Recommended fix: Parameterize the sort clause as well.

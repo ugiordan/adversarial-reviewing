@@ -44,6 +44,7 @@ Defines enforceable guardrails that the orchestrator checks programmatically dur
 - **Trigger:** Global budget exhausted.
 - **Check:** `track-budget.sh status` after every iteration.
 - **Action:** Skip remaining iterations (self-refinement), complete current exchange (challenge), stop after current fix (remediation).
+- **Disabled when:** `--no-budget` is active (unlimited mode). The check is skipped entirely.
 
 ### AGENT_BUDGET_EXCEEDED
 
@@ -52,6 +53,7 @@ Defines enforceable guardrails that the orchestrator checks programmatically dur
 - **Action:** Skip remaining iterations for that agent.
 - **Formula:** `per_agent_cap = ceil(total_budget / num_active_agents * 1.5)`
 - **Adaptive rebalancing:** After Phase 1 completes, the orchestrator calls `track-budget.sh rebalance` to redistribute unused budget from low-activity agents (< 50% usage) to high-activity agents (> 75% usage). This prevents high-finding-count specialists from hitting their cap during Phase 2 while low-activity specialists leave tokens unused.
+- **Disabled when:** `--no-budget` is active (unlimited mode). Per-agent caps are not enforced.
 
 ### WEAK_EVIDENCE / EVIDENCE_DEMOTED
 
@@ -91,15 +93,15 @@ Rendered in the report as `## Guardrails Triggered`. If no guardrails fired: "No
 
 In single-agent mode (Cursor/AGENTS.md), shell-dependent guardrails are enforced when shell is available, advisory otherwise. Shell availability = platform supports shell execution (Bash tool, terminal access).
 
-| Guardrail | Multi-agent | Single-agent |
-|-----------|------------|--------------|
-| Scope confinement | Enforced | Advisory |
-| Iteration hard cap | Enforced | Enforced if shell |
-| Budget enforcement | Enforced | Enforced if shell |
-| Agent-level budget cap | Enforced | N/A |
-| Output size limit | Enforced | Enforced if shell |
-| Remediation scope lock | Enforced | Advisory |
-| Audit log | Enforced | Advisory |
-| Destructive pattern check | Enforced | Enforced if shell |
-| Evidence threshold | Enforced | Enforced if shell |
-| Severity inflation | Informational | Advisory |
+| Guardrail | Multi-agent | Single-agent | `--no-budget` |
+|-----------|------------|--------------|---------------|
+| Scope confinement | Enforced | Advisory | Unchanged |
+| Iteration hard cap | Enforced | Enforced if shell | Unchanged |
+| Budget enforcement | Enforced | Enforced if shell | Disabled |
+| Agent-level budget cap | Enforced | N/A | Disabled |
+| Output size limit | Enforced | Enforced if shell | Unchanged |
+| Remediation scope lock | Enforced | Advisory | Unchanged |
+| Audit log | Enforced | Advisory | Unchanged |
+| Destructive pattern check | Enforced | Enforced if shell | Unchanged |
+| Evidence threshold | Enforced | Enforced if shell | Unchanged |
+| Severity inflation | Informational | Advisory | Unchanged |

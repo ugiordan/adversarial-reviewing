@@ -6,4 +6,5 @@ File: src/auth/login.py
 Lines: 42-58
 Title: N+1 query pattern in user search
 Evidence: The search function issues a separate database query for each result in the loop at line 50, causing O(N) queries instead of a single batch query.
+Impact chain: Each search result triggers separate query → O(N) database round-trips → degraded response time under load
 Recommended fix: Batch the user lookups into a single query using an IN clause.

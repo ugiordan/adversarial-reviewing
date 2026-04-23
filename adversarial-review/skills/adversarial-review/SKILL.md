@@ -68,36 +68,9 @@ The profile determines the agent set, templates, reference modules, and validati
 scripts/profile-config.sh profiles/<profile> <key>
 ```
 
-### Specialist Flags (Code Profile)
+### Specialist Flags
 
-| Flag | Specialist | Agent File |
-|------|-----------|------------|
-| `--security` | Security Auditor | `profiles/code/agents/security-auditor.md` |
-| `--performance` | Performance Analyst | `profiles/code/agents/performance-analyst.md` |
-| `--quality` | Code Quality Reviewer | `profiles/code/agents/code-quality-reviewer.md` |
-| `--correctness` | Correctness Verifier | `profiles/code/agents/correctness-verifier.md` |
-| `--architecture` | Architecture Reviewer | `profiles/code/agents/architecture-reviewer.md` |
-
-### Specialist Flags (Strat Profile)
-
-| Flag | Specialist | Agent File |
-|------|-----------|------------|
-| `--security` | Security Analyst | `profiles/strat/agents/security-analyst.md` |
-| `--feasibility` | Feasibility Analyst | `profiles/strat/agents/feasibility-analyst.md` |
-| `--architecture` | Architecture Reviewer | `profiles/strat/agents/architecture-reviewer.md` |
-| `--user-impact` | User Impact Analyst | `profiles/strat/agents/user-impact-analyst.md` |
-| `--scope` | Scope & Completeness Analyst | `profiles/strat/agents/scope-completeness-analyst.md` |
-| `--testability` | Testability Analyst | `profiles/strat/agents/testability-analyst.md` |
-
-### Specialist Flags (RFE Profile)
-
-| Flag | Specialist | Agent File |
-|------|-----------|------------|
-| `--requirements` | Requirements Analyst | `profiles/rfe/agents/requirements-analyst.md` |
-| `--feasibility` | Feasibility Analyst | `profiles/rfe/agents/feasibility-analyst.md` |
-| `--architecture` | Architecture Reviewer | `profiles/rfe/agents/architecture-reviewer.md` |
-| `--security` | Security Analyst | `profiles/rfe/agents/security-analyst.md` |
-| `--compatibility` | Compatibility Analyst | `profiles/rfe/agents/compatibility-analyst.md` |
+Read the specialist flag table from `profiles/<profile>/PROFILE.md` for the active profile.
 
 If no specialist flags are provided, activate **all specialists** for the active profile.
 
@@ -109,6 +82,7 @@ If no specialist flags are provided, activate **all specialists** for the active
 | `--save` | Write report to file. Does NOT commit to git. |
 | `--topic <name>` | Override the auto-derived topic name for the review. |
 | `--budget <tokens>` | Override the default 350K token budget. |
+| `--no-budget` | Disable the token budget entirely. No budget tracking, no per-agent caps, no pre-flight gate. The review runs to completion regardless of token consumption. |
 | `--force` | Override the 200-file hard ceiling. Requires explicit budget confirmation. |
 | `--fix` | Enable Phase 5 (Remediation). Classifies findings, drafts Jiras, creates worktree branches, implements fixes, and proposes PRs. |
 | `--diff` | Enable diff-augmented input with change-impact graph. Auto-enabled by `--delta`. |
@@ -138,7 +112,7 @@ If no specialist flags are provided, activate **all specialists** for the active
 | `--delta`, `--diff`, `--triage`, `--fix` | Yes | No (error) | No (error) |
 | `--context` | Yes | Yes | Yes |
 | `--constraints` | Yes | Yes | Yes |
-| `--save`, `--budget`, `--quick`, `--thorough` | Yes | Yes | Yes |
+| `--save`, `--budget`, `--no-budget`, `--quick`, `--thorough` | Yes | Yes | Yes |
 | `--keep-cache`, `--reuse-cache` | Yes | Yes | Yes |
 | `--strict-scope` | Yes | Yes | Yes |
 | `--persist`, `--normalize` | Yes | Yes | Yes |
@@ -157,6 +131,16 @@ If no specialist flags are provided, activate **all specialists** for the active
 | `--delta` + `--keep-cache` | Composable. Reuses previous cache if confirmed, preserves after completion. |
 | `--reuse-cache` + `--keep-cache` | Composable. Reuses specified cache and preserves after completion. |
 | `--diff` + `--delta` | Composable. Delta discovers previous cache; diff limits scope to changed files. |
+
+### Flag Interaction: Budget Flags
+
+| Combination | Behavior |
+|------------|----------|
+| `--no-budget` + `--budget <N>` | **Mutually exclusive.** Error: "Use --budget to set a limit or --no-budget to remove it, not both." |
+| `--no-budget` + `--quick` | Composable. Quick specialist/iteration selection applies, but no token cap. |
+| `--no-budget` + `--thorough` | Composable. Thorough specialist/iteration selection applies, but no token cap. |
+| `--no-budget` + `--converge` | Composable. Convergence cycles run without budget checks. Per-cycle ceiling (200K) is also disabled. Hard cap (3 cycles) and oscillation detection still apply. |
+| `--no-budget` + `--force` | Composable. Both ceiling overrides active. |
 
 ### Flag Interaction: Converge Flags
 
@@ -193,18 +177,14 @@ If no specialist flags are provided, activate **all specialists** for the active
 
 Presets are decoupled from profiles. Which specialists are selected for `--quick` depends on the profile's `quick_specialists` config.
 
-| Flag | Code Profile | Strat Profile (pipeline) | Strat Profile (`--review-only`) | RFE Profile (pipeline) | RFE Profile (`--review-only`) | Iterations | Budget |
-|------|-------------|--------------------------|--------------------------------|------------------------|-------------------------------|------------|--------|
-| `--quick` | SEC + CORR (2) | 1 refine + SEC+FEAS review | SEC + FEAS (2) | 1 refine + REQ+SEC review | REQ + SEC (2) | 2 | 200K / 150K |
-| `--thorough` | All 5 | 3 refine + all 6 review | All 6 | 3 refine + all 5 review | All 5 | 3 | 1M / 800K |
-| *(default)* | All 5 | 2 refine + all 6 review | All 6 | 2 refine + all 5 review | All 5 | 3 | 500K / 350K |
+Read the preset profile table from `profiles/<profile>/PROFILE.md` for the active profile.
 
 ### Defaults
 
 - **Profile:** `code` (if `--profile` not specified)
 - **Specialists:** All for the active profile (5 for code, 6 for strat, 5 for rfe) if none specified
 - **Iterations:** 3 self-refinement rounds (with convergence-based early exit, minimum 2)
-- **Budget:** 350K tokens
+- **Budget:** 350K tokens (disable with `--no-budget`)
 - **Topic:** Auto-derived from scope (primary directory or file name)
 
 ---
@@ -223,19 +203,9 @@ Staleness warnings are informational only — they never block the review.
 
 ## Step 1b: Document Pipeline (Strat/RFE Profile)
 
-When `--profile strat` or `--profile rfe` is active and `--review-only` is NOT specified, delegate to `phases/strat-pipeline.md`. The pipeline is shared between strat and rfe profiles; the profile config determines which agents, templates, and section structure are used. This runs the full create, refine, review pipeline:
+When `--profile strat` or `--profile rfe` is active and `--review-only` is NOT specified, delegate to `phases/strat-pipeline.md`. See `profiles/<profile>/PROFILE.md` for the full pipeline description, input detection, and `--review-only` behavior.
 
-1. **Create:** Extract input from Jira key or normalize from file into strategy template
-2. **Quick Review:** Lightweight 2-specialist review to surface gaps (skipped in `--quick` mode)
-3. **Adversarial Refine:** 2-3 role-based agents each produce a complete refined strategy
-4. **Mediator:** Section-by-section best-of merge (skipped when only 1 refine agent)
-5. **Confirm Gate:** Optional (`--confirm`), shows refined strategy for user approval
-
-After Step 1b completes, the pipeline sets the review scope to the refined strategy document and proceeds to Step 3 (cache initialization), skipping Step 2 (scope confirmation, since the pipeline already determined scope).
-
-**Input detection:** If the positional argument matches regex `^[A-Z][A-Z0-9_]+-\d+$`, it's a Jira key. Otherwise, it's a file path.
-
-**`--review-only`:** Skips this entire step. Proceeds directly to Step 2 (scope resolution) with the input file as the review target. This preserves the original strat profile behavior.
+After the pipeline completes, proceed to Step 3 (cache initialization), skipping Step 2.
 
 ---
 
@@ -247,7 +217,7 @@ Delegate to `protocols/scope-resolution.md`. Covers priority chain, sensitive fi
 
 ## Step 2b: Deterministic Pre-Analysis (Strat/RFE Profile Only)
 
-Delegate to `protocols/pre-analysis.md`. Covers Layer 1 (threat surface extraction), Layer 2 (NFR checklist scan), finding normalization (`--normalize`), finding persistence (`--persist`), prompt version tracking, and structured JSON output.
+Delegate to `protocols/pre-analysis.md`. See `profiles/<profile>/PROFILE.md` for profile-specific details.
 
 ---
 
@@ -282,13 +252,13 @@ Summary:
 
 ### Iteration Hard Cap and Budget Enforcement
 
-Before dispatching each iteration, the orchestrator checks **all three** conditions. If any fails, stop iterating for that agent and use the last iteration's output.
+Before dispatching each iteration, the orchestrator checks the applicable conditions. If any fails, stop iterating for that agent and use the last iteration's output.
 
 1. **Iteration hard cap:** `iteration_count < MAX_ITERATIONS` (see `protocols/guardrails.md` for values by profile: default 4, quick 2, thorough 4). If exceeded, emit `FORCED_CONVERGENCE` to the guardrail trip log.
-2. **Global budget:** `track-budget.sh status` must not return `exceeded: true`. If exceeded, emit `BUDGET_EXCEEDED` to the guardrail trip log.
-3. **Agent-level budget:** The response from `track-budget.sh add --agent` must not return `agent_exceeded: true`. If exceeded, emit `AGENT_BUDGET_EXCEEDED` to the guardrail trip log.
+2. **Global budget** (skipped when `--no-budget`)**:** `track-budget.sh status` must not return `exceeded: true`. If exceeded, emit `BUDGET_EXCEEDED` to the guardrail trip log.
+3. **Agent-level budget** (skipped when `--no-budget`)**:** The response from `track-budget.sh add --agent` must not return `agent_exceeded: true`. If exceeded, emit `AGENT_BUDGET_EXCEEDED` to the guardrail trip log.
 
-After each iteration, check remaining budget. If budget is exceeded, complete the current iteration but do not start another. Proceed to resolution.
+After each iteration, check remaining budget (unless `--no-budget`). If budget is exceeded, complete the current iteration but do not start another. Proceed to resolution.
 
 ### Severity Inflation Check
 
@@ -326,51 +296,7 @@ The orchestrator synthesizes challenges and defenses, applies consensus rules, a
 
 Delegate to `phases/report.md`.
 
-Generate the final report using the profile's report template: `profiles/<profile>/templates/report-template.md` (or `profiles/code/templates/delta-report-template.md` for delta mode, code profile only).
-
-**Code profile:** The report includes up to 14 sections:
-
-- Executive summary (Section 1)
-- Review configuration (Section 2) — conditional, review parameters summary
-- Validated findings with consensus status (Sections 3-6)
-- Dismissed findings (Section 7)
-- Challenge round findings (Section 8)
-- Co-located findings (Section 9)
-- **Remediation summary** (Section 10) — severity-sorted action list with remediation roadmap, blocked items, and top priorities. Always present, even without `--fix`.
-- **Change Impact** (Section 11) — conditional, when `--diff` is active
-- **Review Metrics** (Section 12) — challenge round statistics
-- **Guardrails Triggered** (Section 13) — populated from the guardrail trip log
-- **Audit Log** (Section 14) — external actions taken during `--fix` and `--triage`
-
-**Strat profile:** The report includes up to 10 sections (see `profiles/strat/templates/report-template.md`):
-- Executive summary with verdict agreement level (Section 1)
-- Review configuration (Section 2)
-- Per-strategy review with verdict tables and categorized findings (Section 3)
-- Cross-strategy patterns (Section 4, when reviewing 2+ strategies)
-- Architecture context citations (Section 5, when architecture context loaded)
-- Dismissed findings (Section 6)
-- Challenge round highlights (Section 7)
-- Remediation roadmap (Section 8)
-- Methodology notes (Section 9)
-- Metadata (Section 10)
-
-If `--save` was specified, write the report to `docs/reviews/YYYY-MM-DD-<topic>-review.md`.
-
-**RFE profile:** The report includes up to 10 sections (see `profiles/rfe/templates/report-template.md`):
-- Executive summary with verdict agreement level (Section 1)
-- Review configuration (Section 2)
-- Per-RFE review with verdict tables and categorized findings (Section 3)
-- Cross-RFE patterns (Section 4, when reviewing 2+ RFEs)
-- Architecture context citations (Section 5, when architecture context loaded)
-- Dismissed findings (Section 6)
-- Challenge round highlights (Section 7)
-- Remediation roadmap (Section 8)
-- Methodology notes (Section 9)
-- Metadata (Section 10)
-
-**Strat/RFE profile additional outputs (when `--save` is active):**
-- **Requirements output:** `docs/reviews/YYYY-MM-DD-<topic>-requirements.md` using `profiles/<profile>/templates/requirements-template.md` (shared between strat and rfe). Splits findings by confidence tier (Required Amendments / Recommended / Human Review) and includes NFR checklist gaps. This is addressed to the document author.
-- **JSON output:** `docs/reviews/YYYY-MM-DD-<topic>-findings.json` via `scripts/findings-to-json.py`. Machine-readable findings with enrichment metadata for downstream tooling.
+Generate the final report using the profile's report template: `profiles/<profile>/templates/report-template.md` (or `profiles/code/templates/delta-report-template.md` for delta mode, code profile only). See `profiles/<profile>/PROFILE.md` for the report section list and any additional outputs.
 
 **NEVER auto-commit.** The `--save` flag writes the file only.
 
@@ -449,9 +375,11 @@ When `--fix --converge` is specified, after Phase 5 completes (all fixes applied
 - Present a convergence failure report: all cycles, what was found, what was fixed, what remains
 - User chooses: keep current state, revert to the cleanest cycle (fewest findings), or manually intervene
 
-**Budget:** Two budget checks per cycle:
+**Budget** (skipped when `--no-budget`)**:** Two budget checks per cycle:
 1. **Pre-cycle gate:** Before starting each cycle, check remaining budget. If remaining budget < estimated cycle cost (~150K for delta-quick + fixes), stop and report "budget insufficient for another convergence cycle." Add `CONVERGE_BUDGET_EXCEEDED` to the guardrail trip log.
 2. **Per-cycle ceiling:** Each convergence cycle is hard-capped at 200K tokens. If a cycle exceeds this mid-execution (checked after each agent completes via `track-budget.sh status`), halt the cycle, present partial results, and ask the user whether to continue with a fresh budget allocation or stop. Add `CONVERGE_CYCLE_CAP_EXCEEDED` to the guardrail trip log.
+
+When `--no-budget` is active, both checks are skipped. The hard cap (3 cycles) and oscillation detection still apply.
 
 Pre-flight estimate for `--converge`: multiply base estimate by 2 (assumes 1 convergence cycle on average).
 
@@ -475,7 +403,7 @@ Pre-flight estimate for `--converge`: multiply base estimate by 2 (assumes 1 con
 | Scenario | Response |
 |----------|----------|
 | Zero findings from all agents | Skip Phases 2-3 and 5. Phase 4 still runs — generate report with "all clear" executive summary and empty sections. If `--save`, write the report file. |
-| Budget exceeded mid-iteration | Complete current iteration, stop further iterations. If in Phase 1: skip Phase 2 and proceed to Phase 3 (No-Debate Resolution). If in Phase 2: proceed to Phase 3 with positions collected so far. |
+| Budget exceeded mid-iteration | Complete current iteration, stop further iterations. If in Phase 1: skip Phase 2 and proceed to Phase 3 (No-Debate Resolution). If in Phase 2: proceed to Phase 3 with positions collected so far. Not applicable when `--no-budget` is active. |
 | No shell execution available | Fall back to LLM-based validation with disclaimer in report |
 | All findings dismissed in challenge | Report with "all clear" executive summary |
 
@@ -516,7 +444,7 @@ See `protocols/guardrails.md` for the full list of guardrail definitions, consta
 
 ### Token Budget
 
-Budget management uses `scripts/track-budget.sh`. See `protocols/token-budget.md` for full specification. If `status` returns `"exceeded": true`, do not start the next iteration. Proceed to resolution with findings collected so far.
+Budget management uses `scripts/track-budget.sh`. See `protocols/token-budget.md` for full specification. When `--no-budget` is active, initialize with `track-budget.sh init 0` (unlimited mode): all budget checks return `exceeded: false`, per-agent caps are disabled, and the pre-flight gate is skipped. Token consumption is still tracked for reporting purposes. If `status` returns `"exceeded": true` (only possible when a budget limit is set), do not start the next iteration. Proceed to resolution with findings collected so far.
 
 ### Convergence Detection
 

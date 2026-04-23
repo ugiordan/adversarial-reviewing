@@ -37,6 +37,7 @@ File: [repo-relative path]
 Lines: [start-end]
 Title: [max 200 chars]
 Evidence: [max 2000 chars]
+Impact chain: [max 500 chars]
 Recommended fix: [max 1000 chars]
 ```
 

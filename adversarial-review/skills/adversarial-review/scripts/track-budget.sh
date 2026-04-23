@@ -4,6 +4,7 @@
 #   init <budget_limit>          — initialize budget tracking (prints state_file path in JSON)
 #   add <file_or_chars>          — add token consumption (file or char count)
 #   estimate <num_agents> <code_tokens> <iterations> [num_work_items] [impact_graph_tokens] [reference_tokens] — estimate total cost
+#   update-limit <new_limit>     — change budget limit without resetting consumed (for auto-escalation)
 #   status                       — show remaining budget
 #   cleanup                      — remove state file
 # State stored via mktemp; caller must capture state_file from init output and set BUDGET_STATE_FILE
@@ -60,18 +61,26 @@ case "$ACTION" in
     init)
         LIMIT="${2:?Usage: track-budget.sh init <budget_limit>}"
         validate_int "$LIMIT" "budget_limit"
+        # limit=0 means unlimited mode (--no-budget)
         python3 -c "
 import json, sys
 limit = int(sys.argv[1])
 state_file = sys.argv[2]
 cost_per_1m = float(sys.argv[3])
+unlimited = limit == 0
 with open(state_file, 'w') as f:
-    json.dump({'limit': limit, 'consumed': 0}, f)
-print(json.dumps({
-    'limit': limit, 'consumed': 0, 'remaining': limit, 'exceeded': False,
+    json.dump({'limit': limit, 'consumed': 0, 'unlimited': unlimited}, f)
+result = {
+    'limit': limit, 'consumed': 0, 'exceeded': False,
+    'unlimited': unlimited,
     'state_file': state_file,
-    'budget_cost_usd': round(limit / 1_000_000 * cost_per_1m, 2)
-}))
+}
+if unlimited:
+    result['remaining'] = 'unlimited'
+else:
+    result['remaining'] = limit
+    result['budget_cost_usd'] = round(limit / 1_000_000 * cost_per_1m, 2)
+print(json.dumps(result))
 " "$LIMIT" "$STATE_FILE" "$COST_PER_1M_TOKENS_BLENDED"
         ;;
     add)
@@ -109,17 +118,25 @@ print(json.dumps({
         validate_int "$consumed" "consumed"
         validate_int "$limit" "limit"
         new_consumed=$((consumed + tokens))
-        remaining=$((limit - new_consumed))
-        exceeded=false
-        if (( remaining <= 0 )); then exceeded=true; remaining=0; fi
+
+        # limit=0 means unlimited: never exceeded
+        if (( limit == 0 )); then
+            exceeded=false
+            remaining=-1  # sentinel for unlimited
+        else
+            remaining=$((limit - new_consumed))
+            exceeded=false
+            if (( remaining <= 0 )); then exceeded=true; remaining=0; fi
+        fi
 
         python3 -c "
 import json, sys
-limit, consumed, remaining, added = int(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4])
+limit, consumed, remaining_raw, added = int(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4])
 exceeded = sys.argv[5] == 'true'
 state_file = sys.argv[6]
 agent_name = sys.argv[7]
 per_agent_cap = int(sys.argv[8])
+unlimited = limit == 0
 
 with open(state_file) as f:
     state = json.load(f)
@@ -135,13 +152,18 @@ if agent_name:
     agent_state = agents.setdefault(agent_name, {'consumed': 0})
     agent_state['consumed'] += added
     agent_consumed = agent_state['consumed']
-    if per_agent_cap > 0 and agent_consumed > per_agent_cap:
+    # per-agent caps disabled in unlimited mode
+    if not unlimited and per_agent_cap > 0 and agent_consumed > per_agent_cap:
         agent_exceeded = True
 
 with open(state_file, 'w') as f:
     json.dump(state, f)
 
-result = {'limit': limit, 'consumed': consumed, 'remaining': remaining, 'exceeded': exceeded, 'added': added}
+result = {'limit': limit, 'consumed': consumed, 'exceeded': exceeded, 'added': added, 'unlimited': unlimited}
+if unlimited:
+    result['remaining'] = 'unlimited'
+else:
+    result['remaining'] = remaining_raw
 if agent_name:
     result['agent_exceeded'] = agent_exceeded
     result['agent_consumed'] = agent_consumed
@@ -214,22 +236,82 @@ print(json.dumps(result))
         limit=$(read_state_field "limit")
         validate_int "$consumed" "consumed"
         validate_int "$limit" "limit"
-        remaining=$((limit - consumed))
-        exceeded=false
-        if (( remaining <= 0 )); then exceeded=true; remaining=0; fi
+
+        if (( limit == 0 )); then
+            exceeded=false
+            remaining=-1  # sentinel for unlimited
+        else
+            remaining=$((limit - consumed))
+            exceeded=false
+            if (( remaining <= 0 )); then exceeded=true; remaining=0; fi
+        fi
 
         python3 -c "
 import json, sys
+limit = int(sys.argv[1])
 consumed = int(sys.argv[2])
+remaining_raw = int(sys.argv[3])
+exceeded = sys.argv[4] == 'true'
 cost_per_1m = float(sys.argv[5])
-print(json.dumps({
-    'limit': int(sys.argv[1]),
+unlimited = limit == 0
+result = {
+    'limit': limit,
     'consumed': consumed,
-    'remaining': int(sys.argv[3]),
-    'exceeded': sys.argv[4] == 'true',
-    'consumed_cost_usd': round(consumed / 1_000_000 * cost_per_1m, 2)
-}))
+    'exceeded': exceeded,
+    'unlimited': unlimited,
+    'consumed_cost_usd': round(consumed / 1_000_000 * cost_per_1m, 2),
+}
+if unlimited:
+    result['remaining'] = 'unlimited'
+else:
+    result['remaining'] = remaining_raw
+print(json.dumps(result))
 " "$limit" "$consumed" "$remaining" "$exceeded" "$COST_PER_1M_TOKENS_BLENDED"
+        ;;
+    update-limit)
+        # Update the budget limit without resetting consumed tokens.
+        # Used by auto-escalation when the pre-flight estimate exceeds the current budget.
+        # Usage: track-budget.sh update-limit <new_limit>
+        NEW_LIMIT="${2:?Usage: track-budget.sh update-limit <new_limit>}"
+        validate_int "$NEW_LIMIT" "new_limit"
+        if [[ ! -f "$STATE_FILE" ]]; then
+            echo '{"error": "Budget not initialized. Run init first."}' >&2
+            exit 1
+        fi
+
+        python3 -c "
+import json, sys
+new_limit = int(sys.argv[1])
+state_file = sys.argv[2]
+cost_per_1m = float(sys.argv[3])
+unlimited = new_limit == 0
+
+with open(state_file) as f:
+    state = json.load(f)
+
+old_limit = state['limit']
+consumed = state['consumed']
+state['limit'] = new_limit
+state['unlimited'] = unlimited
+
+with open(state_file, 'w') as f:
+    json.dump(state, f)
+
+remaining = 'unlimited' if unlimited else max(0, new_limit - consumed)
+exceeded = False if unlimited else (new_limit - consumed) <= 0
+
+result = {
+    'old_limit': old_limit,
+    'new_limit': new_limit,
+    'consumed': consumed,
+    'remaining': remaining,
+    'exceeded': exceeded,
+    'unlimited': unlimited,
+}
+if not unlimited:
+    result['budget_cost_usd'] = round(new_limit / 1_000_000 * cost_per_1m, 2)
+print(json.dumps(result))
+" "$NEW_LIMIT" "$STATE_FILE" "$COST_PER_1M_TOKENS_BLENDED"
         ;;
     rebalance)
         # Redistribute unused budget from low-activity agents to high-activity ones.
@@ -248,6 +330,10 @@ multiplier = float(sys.argv[2])
 
 with open(state_file) as f:
     state = json.load(f)
+
+if state.get('unlimited', False):
+    print(json.dumps({'rebalanced': False, 'reason': 'unlimited mode, no caps to rebalance'}))
+    sys.exit(0)
 
 agents = state.get('agents', {})
 if len(agents) < 2:

@@ -264,6 +264,7 @@ File: src/auth/handler.go
 Lines: 142-150
 Title: RBAC precedence allows privilege escalation
 Evidence: The condition on line 142 uses && with || without parentheses. Due to Go operator precedence, the system:authenticated check is only applied to the second clause, allowing unauthenticated users to match the first clause. This enables privilege escalation to cluster admin.
+Impact chain: Missing parens in RBAC check → unauthenticated users match first clause → privilege escalation to cluster admin
 Recommended fix: Add explicit parentheses around the OR conditions.
 
 Finding ID: SEC-002
@@ -274,6 +275,7 @@ File: src/auth/session.go
 Lines: 88-92
 Title: Session token uses weak entropy
 Evidence: Math.random is used on line 90 for token generation. This PRNG is not cryptographically secure and produces predictable output.
+Impact chain: Weak PRNG for tokens → predictable session IDs → session hijacking
 Recommended fix: Use crypto/rand for token generation.
 FINDINGS
 
@@ -441,6 +443,7 @@ File: test-file.py
 Lines: 10-20
 Title: Test finding in scope
 Evidence: This is test evidence that is long enough to pass the minimum character threshold for validation purposes and contains file:line references like test-file.py:15 that demonstrate the issue clearly.
+Impact chain: Missing validation → invalid state → potential exploit
 Recommended fix: Fix the issue by adding proper validation.
 FINDING
 
@@ -516,6 +519,7 @@ File: other-file.py
 Lines: 10-20
 Title: Test finding out of scope
 Evidence: This is test evidence that is long enough to pass the minimum character threshold for validation purposes and contains file:line references like other-file.py:15 demonstrating the issue.
+Impact chain: Missing validation → invalid state → potential exploit
 Recommended fix: Fix the issue by adding proper validation.
 FINDING
 

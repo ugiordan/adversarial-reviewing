@@ -313,13 +313,13 @@ while IFS= read -r fid; do
         ERRORS+=("Finding $fid: Title exceeds 200 chars (${#title})")
     fi
 
-    evidence=$(awk '/^Evidence:/{found=1; next} /^Impact chain:|^Recommended [Ff]ix:/{exit} found{print}' <<< "$block")
+    evidence=$(awk '/^Evidence:/{sub(/^Evidence:[[:space:]]*/, ""); found=1; if (length($0) > 0) print; next} /^Impact chain:|^Recommended [Ff]ix:/{exit} found{print}' <<< "$block")
     if [[ ${#evidence} -gt 2000 ]]; then
         ERRORS+=("Finding $fid: Evidence exceeds 2000 chars (${#evidence})")
     fi
 
     # Impact chain extraction and length check
-    impact_chain=$(awk '/^Impact chain:/{found=1; next} /^Recommended [Ff]ix:/{exit} found{print}' <<< "$block")
+    impact_chain=$(awk '/^Impact chain:/{sub(/^Impact chain:[[:space:]]*/, ""); found=1; if (length($0) > 0) print; next} /^Recommended [Ff]ix:/{exit} found{print}' <<< "$block")
     if [[ ${#impact_chain} -gt 500 ]]; then
         ERRORS+=("Finding $fid: Impact chain exceeds 500 chars (${#impact_chain})")
     fi

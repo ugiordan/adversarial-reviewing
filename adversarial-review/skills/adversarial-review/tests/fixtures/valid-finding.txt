@@ -7,4 +7,5 @@ File: src/auth/login.py
 Lines: 42-58
 Title: SQL injection in user search endpoint
 Evidence: The search_users function at line 45 concatenates user input directly into a SQL query string without parameterization. An attacker can inject arbitrary SQL via the query parameter. Source: HTTP query parameter from unauthenticated request. Trust boundary: External.
+Impact chain: Attacker sends crafted query parameter → SQL injection in search_users → full database read/write access
 Recommended fix: Use parameterized queries. Replace string concatenation with db.execute("SELECT * FROM users WHERE name = ?", [query]).

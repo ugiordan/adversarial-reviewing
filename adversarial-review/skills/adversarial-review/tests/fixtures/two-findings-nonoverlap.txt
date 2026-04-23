@@ -6,6 +6,7 @@ File: src/auth/login.py
 Lines: 10-20
 Title: SQL injection in user search endpoint
 Evidence: The search_users function at line 15 concatenates user input directly.
+Impact chain: Attacker sends crafted input → SQL injection → database compromise
 Recommended fix: Use parameterized queries.
 
 Finding ID: SEC-002
@@ -16,4 +17,5 @@ File: src/auth/login.py
 Lines: 80-90
 Title: Missing input validation
 Evidence: The input handler on line 85 accepts arbitrary data without validation.
+Impact chain: Malformed input accepted → unexpected state → application crash or exploit
 Recommended fix: Add input validation.

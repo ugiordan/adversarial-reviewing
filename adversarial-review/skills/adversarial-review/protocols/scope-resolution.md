@@ -65,6 +65,8 @@ When `--force` is specified, the 200-file hard ceiling is lifted. The orchestrat
 
 ## Pre-flight Budget Gate
 
+**Skipped entirely when `--no-budget` is active.**
+
 After scope resolution and before dispatching Phase 1, run:
 
 ```bash
@@ -73,8 +75,16 @@ scripts/track-budget.sh estimate <num_agents> <estimated_code_tokens> <configure
 
 Capture the `estimated_tokens` value from the JSON output. Compare against the configured budget:
 
-- If `estimated_tokens > budget * 0.9`: warn the user with the estimate and budget values. Ask whether to proceed.
-- If `estimated_tokens > budget * 1.5`: recommend `--quick` or a narrower scope.
-- Users who want to proceed past the gate should set a higher `--budget` value. There is no bypass flag.
+- If `estimated_tokens > budget * 0.9` (warn threshold):
+  - Display the mismatch: "This review needs ~X tokens but budget is Y."
+  - **Auto-propose escalation:** "Raise budget to X? [Y/n]"
+  - If user confirms: raise the limit via `track-budget.sh update-limit <estimated_tokens>` (preserves existing consumption data)
+  - If user declines: proceed with the original budget (review may be truncated)
+- If `estimated_tokens > budget * 1.5` (recommend threshold):
+  - Same escalation proposal, but also suggest alternatives: "Raise budget to X, switch to --quick, or narrow scope?"
+  - If user chooses `--quick`: restart invocation parsing with quick preset
+  - If user chooses to narrow scope: return to scope confirmation
+
+The auto-escalation replaces the previous behavior of asking users to manually re-invoke with `--budget`. The orchestrator re-initializes the budget tracker with the new limit in-session.
 
 See `protocols/guardrails.md` for the `PRE_FLIGHT_WARN_THRESHOLD` and `PRE_FLIGHT_RECOMMEND_THRESHOLD` constants.

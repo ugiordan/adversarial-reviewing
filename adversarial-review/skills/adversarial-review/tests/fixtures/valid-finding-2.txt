@@ -7,4 +7,5 @@ File: src/auth/login.py
 Lines: 45-52
 Title: Hardcoded credentials in authentication module
 Evidence: The login function contains a hardcoded password check on line 48 that bypasses the normal authentication flow.
+Impact chain: Attacker discovers hardcoded creds → bypasses auth → gains unauthorized access
 Recommended fix: Remove the hardcoded credential check and use the standard authentication service.

@@ -12,7 +12,8 @@ Constrain total token consumption to prevent runaway costs. The budget is tracke
 
 | Parameter | Default | Override |
 |-----------|---------|----------|
-| Budget limit | 500,000 tokens | `--budget <tokens>` |
+| Budget limit | 350,000 tokens | `--budget <tokens>` |
+| Unlimited mode | off | `--no-budget` |
 
 ### Review Profiles
 
@@ -24,7 +25,7 @@ Pre-configured profiles adjust both specialist count and budget:
 | Default | (none) | 5 | 350,000 |
 | Thorough | `--thorough` | 5 | 800,000 |
 
-A custom `--budget` flag overrides the profile's default budget while keeping its specialist count.
+A custom `--budget` flag overrides the profile's default budget while keeping its specialist count. `--no-budget` disables the budget entirely (mutually exclusive with `--budget`).
 
 ## Budget Estimation
 
@@ -72,14 +73,45 @@ The script accepts either a file path (counts its bytes) or a raw character coun
 
 ## Budget Lifecycle
 
-1. **Init:** `scripts/track-budget.sh init <budget_limit>` — creates state file
-2. **Track:** `scripts/track-budget.sh add <consumption>` — records consumption after each agent call
-3. **Check:** `scripts/track-budget.sh status` — returns remaining budget and exceeded flag
-4. **Enforce:** orchestrator checks status before each iteration
+1. **Init:** `scripts/track-budget.sh init <budget_limit>` — creates state file. Pass `0` for unlimited mode (`--no-budget`).
+2. **Track:** `scripts/track-budget.sh add <consumption>` — records consumption after each agent call. In unlimited mode, consumption is tracked for reporting but never triggers enforcement.
+3. **Check:** `scripts/track-budget.sh status` — returns remaining budget and exceeded flag. In unlimited mode, `exceeded` is always `false` and `remaining` is `"unlimited"`.
+4. **Enforce:** orchestrator checks status before each iteration. Skipped entirely when `--no-budget` is active.
+
+## Unlimited Mode (`--no-budget`)
+
+When `--no-budget` is specified:
+
+- Budget is initialized with limit `0`, which the script treats as unlimited
+- `status` always returns `exceeded: false` and `remaining: "unlimited"`
+- `add --agent` never returns `agent_exceeded: true`
+- The pre-flight budget gate is skipped entirely
+- Per-agent caps are disabled
+- Budget rebalancing (`rebalance`) is a no-op
+- Token consumption is still tracked and reported in the final report for visibility
+- The iteration hard cap (`MAX_ITERATIONS`) and convergence detection still apply (these are not budget-gated)
 
 ## Per-Iteration Context Cap
 
 Each iteration's context is capped at **40,000 tokens**. When the local context cache is active, this cap is enforced as advisory guidance in `navigation.md`: `manage-cache.sh generate-navigation` sorts files by size descending and lists which files fit within the cap, with remaining files marked as "read only if needed". Agents are expected to prioritize the included files. This cap is independent of the overall budget.
+
+## Auto-Escalation
+
+When the pre-flight budget estimate exceeds the configured budget, the orchestrator auto-proposes raising the budget rather than asking the user to manually set `--budget`. The flow:
+
+1. Run `track-budget.sh estimate` to compute `estimated_tokens`
+2. If `estimated_tokens > budget * 0.9` (warn threshold):
+   - Display the estimate vs. budget mismatch to the user
+   - Propose: "This review needs ~X tokens. Raise budget to X? [Y/n]"
+   - If user confirms: raise the limit via `track-budget.sh update-limit <estimated_tokens>` (preserves existing consumption)
+   - If user declines: proceed with the original budget (review may be truncated)
+3. If `estimated_tokens > budget * 1.5` (recommend threshold):
+   - Same as above, but also suggest `--quick` or narrower scope as alternatives
+   - Propose: "This review needs ~X tokens (1.5x the budget). Raise budget to X, switch to --quick, or narrow scope?"
+
+The auto-escalation is an orchestrator behavior: it re-initializes the budget tracker with the higher limit. The `--budget` flag value is effectively overridden for the session.
+
+When `--no-budget` is active, the pre-flight gate is skipped entirely (auto-escalation never triggers).
 
 ## Truncation Behavior
 

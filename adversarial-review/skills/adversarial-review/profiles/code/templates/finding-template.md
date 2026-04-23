@@ -14,6 +14,7 @@ File: [repo-relative path]
 Lines: [start-end, e.g., 42-58]
 Title: [concise description, max 200 chars]
 Evidence: [code reference + explanation, max 2000 chars]
+Impact chain: [source → intermediate steps → final impact, max 500 chars]
 Recommended fix: [concrete suggestion, max 1000 chars]
 ```
 
@@ -30,6 +31,7 @@ Recommended fix: [concrete suggestion, max 1000 chars]
 | Lines            | Numeric range `start-end` (e.g., `42-58`) or single line `N` (e.g., `42`) |
 | Title            | Max 200 characters                                            |
 | Evidence         | Max 2000 characters — must include code reference and explanation |
+| Impact chain     | Max 500 characters — traces causal path from root cause through intermediate steps to final impact. Use `→` to separate steps. |
 | Recommended fix  | Max 1000 characters — must be a concrete, actionable suggestion |
 
 ## Source Trust Definitions
@@ -76,5 +78,6 @@ File: src/auth/session.ts
 Lines: 112-128
 Title: Session token generated with Math.random(), insufficient entropy for security-sensitive token
 Evidence: The session token on line 115 uses `Math.random().toString(36)` which is not cryptographically secure. Math.random() uses a PRNG that is predictable and not suitable for generating session identifiers. An attacker could predict future tokens by observing a sequence of generated values. Source: any unauthenticated client triggers token generation via POST /login. Trust boundary: External.
+Impact chain: Unauthenticated client triggers POST /login → Math.random() generates predictable token → attacker observes token sequence → predicts future tokens → session hijacking
 Recommended fix: Replace `Math.random()` with `crypto.randomBytes(32).toString('hex')` (Node.js) or `crypto.getRandomValues()` (browser) to ensure cryptographically secure token generation.
 ```

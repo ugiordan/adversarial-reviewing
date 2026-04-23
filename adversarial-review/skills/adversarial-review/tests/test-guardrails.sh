@@ -24,6 +24,7 @@ Lines: 10-20
 Title: SQL injection in login handler
 Evidence:
 The function at src/auth.ts:10 directly concatenates user input into a SQL query string without parameterization. The request.body.username value flows from the Express handler through buildQuery() at src/auth.ts:15 into db.execute() at src/auth.ts:20 without any sanitization or escaping whatsoever. Source: HTTP request body (unauthenticated). Trust boundary: External.
+Impact chain: User input flows unsanitized into SQL → SQL injection → database compromise
 Recommended fix: Use parameterized queries instead of string concatenation.
 EOF
 
@@ -38,6 +39,7 @@ Lines: 10-20
 Title: SQL injection in unrelated handler
 Evidence:
 The function at src/unrelated.ts:10 directly concatenates user input into a SQL query string without parameterization. The request.body.username value flows from the Express handler through buildQuery() at src/unrelated.ts:15 into db.execute() at src/unrelated.ts:20 without any sanitization or escaping whatsoever. Source: HTTP request body (unauthenticated). Trust boundary: External.
+Impact chain: User input flows unsanitized into SQL → SQL injection → database compromise
 Recommended fix: Use parameterized queries.
 EOF
 
@@ -97,6 +99,7 @@ Lines: 10-20
 Title: Issue one
 Evidence:
 The function at src/auth.ts:10 concatenates user input into SQL without parameterization flowing through buildQuery at line 15 and into the database layer without sanitization or escaping.
+Impact chain: User input flows into SQL → injection → database compromise
 Recommended fix: Use parameterized queries.
 
 Finding ID: SEC-002
@@ -108,6 +111,7 @@ Lines: 30-40
 Title: Issue two
 Evidence:
 The session token at src/auth.ts:30 is generated using Math.random which is not cryptographically secure per ECMA-262 specification and can be predicted by an attacker.
+Impact chain: Weak PRNG → predictable tokens → session hijacking
 Recommended fix: Use crypto.randomBytes.
 
 Finding ID: SEC-003
@@ -119,6 +123,7 @@ Lines: 50-60
 Title: Issue three
 Evidence:
 The error handler at src/auth.ts:50 logs the full stack trace to the response body which can leak internal paths to attackers making it easier to exploit the application.
+Impact chain: Stack trace in response → path disclosure → easier exploitation
 Recommended fix: Return generic error message.
 EOF
 
@@ -150,6 +155,7 @@ Lines: 10-20
 Title: SQL injection
 Evidence:
 Looks wrong.
+Impact chain: N/A
 Recommended fix: Fix it.
 EOF
 
@@ -179,6 +185,7 @@ Lines: 10-20
 Title: Leftover temp files
 Evidence:
 The build process at src/auth.ts:10 creates temporary files in /tmp that are never cleaned up, verified by tracing the createTempFile call at line 15 through the build pipeline execution path.
+Impact chain: Temp files accumulate → disk space exhaustion → build failures
 Recommended fix: rm -rf /tmp/build-* after each build cycle to clean up temporary artifacts.
 EOF
 
