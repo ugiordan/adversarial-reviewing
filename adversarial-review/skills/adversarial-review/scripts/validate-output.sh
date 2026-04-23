@@ -49,7 +49,7 @@ sys.stdout.write(unicodedata.normalize('NFKC', sys.stdin.read()))
 " <<< "$content")
 
 # Cache-path stripping fallback: if findings reference cache paths, strip prefix
-CACHE_PATH_PATTERN='[^ ]*/adversarial-review-cache-[a-f0-9]{32}-[A-Za-z0-9._-]+/code/'
+CACHE_PATH_PATTERN='[^ ]*/adversarial-review-cache-[a-f0-9]{32}-[A-Za-z0-9._-]+/[a-z]+/'
 if echo "$content" | grep -qE "$CACHE_PATH_PATTERN"; then
     WARNINGS+=("Cache paths detected in output — stripping to repo-relative paths")
     content=$(echo "$content" | sed -E "s|$CACHE_PATH_PATTERN||g")
@@ -244,7 +244,7 @@ while IFS= read -r fid; do
 
     # Check required fields (profile-dependent)
     if [[ "$PROFILE" == "code" ]]; then
-        for field in "Specialist:" "Severity:" "Confidence:" "File:" "Lines:" "Title:" "Evidence:"; do
+        for field in "Specialist:" "Severity:" "Confidence:" "File:" "Lines:" "Title:" "Evidence:" "Impact chain:"; do
             if ! grep -qF "$field" <<< "$block"; then
                 ERRORS+=("Finding $fid: missing required field '$field'")
             fi
@@ -313,9 +313,15 @@ while IFS= read -r fid; do
         ERRORS+=("Finding $fid: Title exceeds 200 chars (${#title})")
     fi
 
-    evidence=$(awk '/^Evidence:/{found=1; next} /^Recommended [Ff]ix:/{exit} found{print}' <<< "$block")
+    evidence=$(awk '/^Evidence:/{found=1; next} /^Impact chain:|^Recommended [Ff]ix:/{exit} found{print}' <<< "$block")
     if [[ ${#evidence} -gt 2000 ]]; then
         ERRORS+=("Finding $fid: Evidence exceeds 2000 chars (${#evidence})")
+    fi
+
+    # Impact chain extraction and length check
+    impact_chain=$(awk '/^Impact chain:/{found=1; next} /^Recommended [Ff]ix:/{exit} found{print}' <<< "$block")
+    if [[ ${#impact_chain} -gt 500 ]]; then
+        ERRORS+=("Finding $fid: Impact chain exceeds 500 chars (${#impact_chain})")
     fi
 
     # Evidence threshold check for high-severity findings
@@ -329,8 +335,8 @@ while IFS= read -r fid; do
         ERRORS+=("Finding $fid: Recommended fix exceeds 1000 chars (${#fix})")
     fi
 
-    # Injection heuristic — check ALL free-text fields (Title, Evidence, Recommended fix)
-    freetext="$title $evidence $fix"
+    # Injection heuristic — check ALL free-text fields (Title, Evidence, Impact chain, Recommended fix)
+    freetext="$title $evidence $impact_chain $fix"
     check_injection "$freetext" "$fid"
 
 done <<< "$finding_ids"

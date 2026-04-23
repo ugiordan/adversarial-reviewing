@@ -365,7 +365,13 @@ def parse_scan_output(text):
                 "brief": "",
             })
 
-    return {"items": items, "summary": {"parsed_from_text": True}}
+    total = len(NFR_CHECKLIST)
+    matched = len(items)
+    match_ratio = matched / total if total else 0
+    result = {"items": items, "summary": {"parsed_from_text": True, "matched_items": matched, "total_items": total, "match_ratio": round(match_ratio, 2)}}
+    if match_ratio < 0.5:
+        result["warning"] = f"Only {matched}/{total} NFR items matched in scan output. Output may be malformed. Gap severity assignments are unreliable."
+    return result
 
 
 def main():
