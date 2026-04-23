@@ -219,7 +219,7 @@ After the fix agent commits, verify the fix using a **fresh-context** specialist
 
 **Budget tracking:** Update per-work-item estimate to account for validation: 15K fix + (8K * N_findings) validation. For single-finding work items, ~23K. For chore batches of 8, ~79K. Run:
 ```bash
-scripts/track-budget.sh add <validation_char_count> --agent <role_prefix>-verify
+${CLAUDE_SKILL_DIR}/scripts/track-budget.sh add <validation_char_count> --agent <role_prefix>-verify
 ```
 
 **Scope Lock:** Before applying any patch, verify all files in the patch are in the review scope (same file list used for `validate-output.sh --scope`). If a patch touches out-of-scope files:
@@ -343,7 +343,7 @@ Note: in agent-tool execution models (e.g., Claude Code), the trap may not persi
 
 - `templates/jira-template.md` — Jira ticket description template
 - `templates/report-template.md` — finding format for reference
-- `scripts/manage-cache.sh` — cache management and cleanup
+- `${CLAUDE_SKILL_DIR}/scripts/manage-cache.sh` — cache management and cleanup
 - `protocols/guardrails.md` — guardrail definitions, constants, enforcement behavior
 - `protocols/audit-log.md` — external action audit log format
 - `protocols/destructive-patterns.txt` — regex patterns for destructive command detection

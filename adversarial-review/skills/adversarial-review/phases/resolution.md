@@ -93,7 +93,7 @@ When N_effective < N (global specialist count), the report labels the finding wi
 Collect all challenge round positions into a votes JSON file and run the resolution script:
 
 ```bash
-python3 scripts/resolve-votes.py <votes.json>
+python3 ${CLAUDE_SKILL_DIR}/scripts/resolve-votes.py <votes.json>
 ```
 
 The orchestrator builds `votes.json` from challenge round responses:
@@ -130,7 +130,7 @@ Before running `resolve-votes.py`, handle iteration 3 rebuttal evidence:
 Run cross-specialist deduplication on resolved findings:
 
 ```bash
-scripts/deduplicate.sh <resolved_findings> --cross-specialist
+${CLAUDE_SKILL_DIR}/scripts/deduplicate.sh <resolved_findings> --cross-specialist
 ```
 
 This catches near-duplicates that survived the challenge round because they were raised by different specialists with different framing.
@@ -350,8 +350,8 @@ Phase 3 reads deduplicated findings from `{CACHE_DIR}/findings/`. No cache write
 
 ## References
 
-- `scripts/deduplicate.sh` — post-debate cross-specialist deduplication
-- `scripts/manage-cache.sh` — cache management (findings read from `{CACHE_DIR}/findings/`)
+- `${CLAUDE_SKILL_DIR}/scripts/deduplicate.sh` — post-debate cross-specialist deduplication
+- `${CLAUDE_SKILL_DIR}/scripts/manage-cache.sh` — cache management (findings read from `{CACHE_DIR}/findings/`)
 - `templates/report-template.md` — report sections that resolution maps findings into
 - `protocols/convergence-detection.md` — iteration bounds that feed into persistent disagreement detection
 - `phases/challenge-round.md` — domain affinity tables (advisory routing, pool metadata)

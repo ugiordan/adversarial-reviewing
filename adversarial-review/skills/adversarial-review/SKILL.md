@@ -1,6 +1,7 @@
 ---
 name: adversarial-review
 description: Multi-agent adversarial review with isolated specialists, programmatic validation, and evidence-based resolution. Use for reviewing code, designs, or documentation from multiple perspectives.
+user-invocable: true
 license: Apache-2.0
 compatibility: Requires agent platform with shell execution and subagent spawning capabilities, git, python3, openssl
 metadata:
@@ -65,7 +66,7 @@ Parse the user's invocation to determine profile, specialist selection, mode, an
 The profile determines the agent set, templates, reference modules, and validation mode. Read the profile config:
 
 ```bash
-scripts/profile-config.sh profiles/<profile> <key>
+${CLAUDE_SKILL_DIR}/scripts/profile-config.sh profiles/<profile> <key>
 ```
 
 ### Specialist Flags
@@ -89,7 +90,7 @@ If no specialist flags are provided, activate **all specialists** for the active
 | `--diff --range <range>` | Specify git commit range for diff (e.g., `main..HEAD`, `HEAD~3..HEAD`) |
 | `--triage <source>` | Evaluate external review comments. Source: `pr:<N>`, `file:<path>`, or `-` (stdin) |
 | `--gap-analysis` | Include coverage gap analysis in triage report (auto-enabled by `--thorough --triage`) |
-| `--update-references` | Run `scripts/update-references.sh` before starting review. If used alone (without files/dirs), runs update and exits. If combined with review flags, runs update then proceeds with review. |
+| `--update-references` | Run `${CLAUDE_SKILL_DIR}/scripts/update-references.sh` before starting review. If used alone (without files/dirs), runs update and exits. If combined with review flags, runs update then proceeds with review. |
 | `--list-references` | Show all discovered reference modules and exit. Ignores all other flags. |
 | `--keep-cache` | Preserve cache after review. Writes `.adversarial-review/last-cache.json` with session hex + commit SHA. Prints session hex for reuse. |
 | `--reuse-cache <hex>` | Reuse an existing cache by session hex. Validates manifest (SHA-256 per file + commit SHA). Skips code/template/reference population. Findings regenerated. |
@@ -120,7 +121,7 @@ If no specialist flags are provided, activate **all specialists** for the active
 | `--arch-context` | No (error) | Yes | Yes |
 | `--review-only` | No (error) | Yes | Yes |
 
-> **Note:** `--strict-scope` is an orchestrator-level flag. `validate-output.sh` always emits scope violations as warnings; the orchestrator decides whether to demote or reject based on `--strict-scope`.
+> **Note:** `--strict-scope` is an orchestrator-level flag. `${CLAUDE_SKILL_DIR}/scripts/validate-output.sh` always emits scope violations as warnings; the orchestrator decides whether to demote or reject based on `--strict-scope`.
 
 ### Flag Interaction: Cache Flags
 
@@ -194,7 +195,7 @@ Read the preset profile table from `profiles/<profile>/PROFILE.md` for the activ
 Before proceeding to scope resolution, run staleness check for each active specialist:
 
 ```bash
-scripts/discover-references.sh <specialist> --check-staleness
+${CLAUDE_SKILL_DIR}/scripts/discover-references.sh <specialist> --check-staleness
 ```
 
 Staleness warnings are informational only — they never block the review.
@@ -241,13 +242,13 @@ Summary:
 
 2. **Spawn agents in parallel** — dispatch via the host platform's subagent mechanism. Each agent reads `navigation.md` first, then code files from the cache.
 
-3. **Validate and cache findings** — run `manage-cache.sh populate-findings` on each agent's output (replaces separate `validate-output.sh` invocation). This validates, sanitizes, splits findings, and generates the summary table.
+3. **Validate and cache findings** — run `${CLAUDE_SKILL_DIR}/scripts/manage-cache.sh populate-findings` on each agent's output (replaces separate `validate-output.sh` invocation). This validates, sanitizes, splits findings, and generates the summary table.
 
 4. **Track budget** — after each agent completes, update the budget tracker with per-agent tracking.
 
    ```bash
-   scripts/track-budget.sh add <iteration_char_count> --agent <role_prefix> --per-agent-cap <cap>
-   scripts/track-budget.sh status
+   ${CLAUDE_SKILL_DIR}/scripts/track-budget.sh add <iteration_char_count> --agent <role_prefix> --per-agent-cap <cap>
+   ${CLAUDE_SKILL_DIR}/scripts/track-budget.sh status
    ```
 
 ### Iteration Hard Cap and Budget Enforcement
@@ -255,8 +256,8 @@ Summary:
 Before dispatching each iteration, the orchestrator checks the applicable conditions. If any fails, stop iterating for that agent and use the last iteration's output.
 
 1. **Iteration hard cap:** `iteration_count < MAX_ITERATIONS` (see `protocols/guardrails.md` for values by profile: default 4, quick 2, thorough 4). If exceeded, emit `FORCED_CONVERGENCE` to the guardrail trip log.
-2. **Global budget** (skipped when `--no-budget`)**:** `track-budget.sh status` must not return `exceeded: true`. If exceeded, emit `BUDGET_EXCEEDED` to the guardrail trip log.
-3. **Agent-level budget** (skipped when `--no-budget`)**:** The response from `track-budget.sh add --agent` must not return `agent_exceeded: true`. If exceeded, emit `AGENT_BUDGET_EXCEEDED` to the guardrail trip log.
+2. **Global budget** (skipped when `--no-budget`)**:** `${CLAUDE_SKILL_DIR}/scripts/track-budget.sh status` must not return `exceeded: true`. If exceeded, emit `BUDGET_EXCEEDED` to the guardrail trip log.
+3. **Agent-level budget** (skipped when `--no-budget`)**:** The response from `${CLAUDE_SKILL_DIR}/scripts/track-budget.sh add --agent` must not return `agent_exceeded: true`. If exceeded, emit `AGENT_BUDGET_EXCEEDED` to the guardrail trip log.
 
 After each iteration, check remaining budget (unless `--no-budget`). If budget is exceeded, complete the current iteration but do not start another. Proceed to resolution.
 
@@ -265,7 +266,7 @@ After each iteration, check remaining budget (unless `--no-budget`). If budget i
 After all specialists complete self-refinement, run the severity inflation check:
 
 ```bash
-python3 scripts/severity-check.py {CACHE_DIR}/findings/
+python3 ${CLAUDE_SKILL_DIR}/scripts/severity-check.py {CACHE_DIR}/findings/
 ```
 
 If `any_inflation` is `true` in the output, emit a `SEVERITY_INFLATION` warning to the guardrail trip log for each flagged specialist. Include the warning in the specialist's challenge round context so challengers can scrutinize severity assignments.
@@ -286,7 +287,7 @@ In this phase, specialists challenge each other's findings through structured de
 
 Delegate to `phases/resolution.md`.
 
-The orchestrator synthesizes challenges and defenses, applies consensus rules, and produces the final validated finding set. Convergence detection uses `scripts/detect-convergence.sh`. Deduplication uses `scripts/deduplicate.sh`.
+The orchestrator synthesizes challenges and defenses, applies consensus rules, and produces the final validated finding set. Convergence detection uses `${CLAUDE_SKILL_DIR}/scripts/detect-convergence.sh`. Deduplication uses `${CLAUDE_SKILL_DIR}/scripts/deduplicate.sh`.
 
 **Cache interaction:** Phase 3 reads deduplicated findings from `{CACHE_DIR}/findings/`. No cache writes — deduplication and ranking operate on the finding files already in the cache.
 
@@ -377,7 +378,7 @@ When `--fix --converge` is specified, after Phase 5 completes (all fixes applied
 
 **Budget** (skipped when `--no-budget`)**:** Two budget checks per cycle:
 1. **Pre-cycle gate:** Before starting each cycle, check remaining budget. If remaining budget < estimated cycle cost (~150K for delta-quick + fixes), stop and report "budget insufficient for another convergence cycle." Add `CONVERGE_BUDGET_EXCEEDED` to the guardrail trip log.
-2. **Per-cycle ceiling:** Each convergence cycle is hard-capped at 200K tokens. If a cycle exceeds this mid-execution (checked after each agent completes via `track-budget.sh status`), halt the cycle, present partial results, and ask the user whether to continue with a fresh budget allocation or stop. Add `CONVERGE_CYCLE_CAP_EXCEEDED` to the guardrail trip log.
+2. **Per-cycle ceiling:** Each convergence cycle is hard-capped at 200K tokens. If a cycle exceeds this mid-execution (checked after each agent completes via `${CLAUDE_SKILL_DIR}/scripts/track-budget.sh status`), halt the cycle, present partial results, and ask the user whether to continue with a fresh budget allocation or stop. Add `CONVERGE_CYCLE_CAP_EXCEEDED` to the guardrail trip log.
 
 When `--no-budget` is active, both checks are skipped. The hard cap (3 cycles) and oscillation detection still apply.
 
@@ -411,7 +412,7 @@ Pre-flight estimate for `--converge`: multiply base estimate by 2 (assumes 1 con
 
 | Scenario | Response |
 |----------|----------|
-| `manage-cache.sh init` fails | Abort review with error |
+| `${CLAUDE_SKILL_DIR}/scripts/manage-cache.sh init` fails | Abort review with error |
 | `populate-code` fails (collision, missing file) | Abort review — cache integrity cannot be guaranteed |
 | `populate-templates` or `populate-references` fails | Abort review — agents need templates and references |
 | `populate-findings` fails | Spawn fresh agent with error, max 2 retries. Exclude agent if retries exhausted. |
@@ -444,7 +445,7 @@ See `protocols/guardrails.md` for the full list of guardrail definitions, consta
 
 ### Token Budget
 
-Budget management uses `scripts/track-budget.sh`. See `protocols/token-budget.md` for full specification. When `--no-budget` is active, initialize with `track-budget.sh init 0` (unlimited mode): all budget checks return `exceeded: false`, per-agent caps are disabled, and the pre-flight gate is skipped. Token consumption is still tracked for reporting purposes. If `status` returns `"exceeded": true` (only possible when a budget limit is set), do not start the next iteration. Proceed to resolution with findings collected so far.
+Budget management uses `${CLAUDE_SKILL_DIR}/scripts/track-budget.sh`. See `protocols/token-budget.md` for full specification. When `--no-budget` is active, initialize with `${CLAUDE_SKILL_DIR}/scripts/track-budget.sh init 0` (unlimited mode): all budget checks return `exceeded: false`, per-agent caps are disabled, and the pre-flight gate is skipped. Token consumption is still tracked for reporting purposes. If `status` returns `"exceeded": true` (only possible when a budget limit is set), do not start the next iteration. Proceed to resolution with findings collected so far.
 
 ### Convergence Detection
 

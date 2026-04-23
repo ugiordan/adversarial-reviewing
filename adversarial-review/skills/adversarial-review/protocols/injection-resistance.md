@@ -6,7 +6,7 @@ Detect and reject agent outputs that contain prompt injection patterns — text 
 
 ## Implementation
 
-**Script:** `scripts/validate-output.sh`
+**Script:** `${CLAUDE_SKILL_DIR}/scripts/validate-output.sh`
 
 Injection detection runs on all free-text fields (Title, Evidence, Recommended fix) of every finding during output validation.
 
@@ -85,6 +85,6 @@ The markers `NO_FINDINGS_REPORTED` and `NO_TRIAGE_EVALUATIONS` are stripped from
 
 ## References
 
-- `scripts/validate-output.sh` — injection detection implementation
+- `${CLAUDE_SKILL_DIR}/scripts/validate-output.sh` — injection detection implementation
 - `protocols/input-isolation.md` — delimiter-based isolation that prevents code-under-review from injecting
 - `protocols/mediated-communication.md` — provenance and field isolation marker definitions

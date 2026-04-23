@@ -8,7 +8,7 @@ Each specialist independently reviews the code and iteratively refines their fin
 
 - Active specialists selected (from configuration or `--quick`/`--thorough` profile)
 - Review target identified and accessible (code files for `code` profile, strategy documents for `strat` profile, RFE documents for `rfe` profile)
-- Budget initialized via `scripts/track-budget.sh init <budget_limit>`
+- Budget initialized via `${CLAUDE_SKILL_DIR}/scripts/track-budget.sh init <budget_limit>`
 - Active profile resolved (`code`, `strat`, or `rfe`)
 
 ## Procedure
@@ -79,7 +79,7 @@ Gather raw output from each agent.
 Run `manage-cache.sh populate-findings` on each agent's output:
 
 ```bash
-CACHE_DIR=$CACHE_DIR scripts/manage-cache.sh populate-findings <agent_name> <role_prefix> <output_file> --scope <scope_file>
+CACHE_DIR=$CACHE_DIR ${CLAUDE_SKILL_DIR}/scripts/manage-cache.sh populate-findings <agent_name> <role_prefix> <output_file> --scope <scope_file>
 ```
 
 This single call replaces the separate `validate-output.sh` invocation. It:
@@ -127,7 +127,7 @@ On iteration 2 and later, append to the re-prompt. The verification gate is prof
 > they become TEXT-VERIFIED. Do not submit assumption-based findings.
 
 Finding withdrawals due to the verification gate will trigger non-convergence
-in `scripts/detect-convergence.sh` (the finding set changed between iterations).
+in `${CLAUDE_SKILL_DIR}/scripts/detect-convergence.sh` (the finding set changed between iterations).
 This is expected and desirable — the next iteration re-checks the refined set.
 
 #### Cross-Artifact Consistency Pass (Iteration 2+, CORR only)
@@ -153,7 +153,7 @@ For the Correctness Verifier (CORR) agent only, append to the iteration 2+ re-pr
 
 #### Reference Cross-Check (Iteration 2+)
 
-When reference modules are available (see `scripts/discover-references.sh`), append to the iteration 2+ re-prompt after the verification gate:
+When reference modules are available (see `${CLAUDE_SKILL_DIR}/scripts/discover-references.sh`), append to the iteration 2+ re-prompt after the verification gate:
 
 > Cross-check your findings against the provided reference materials:
 > 1. **Gaps**: Do the references flag issue patterns you missed?
@@ -188,13 +188,13 @@ Repeat Steps 3-5 for up to **3 total iterations** per agent. On iteration 2+, ea
 | Maximum iterations | **3** (default) — target cap, proceed to Phase 2 regardless of convergence |
 | Safety hard cap | `MAX_ITERATIONS` (default 4, quick 2, thorough 4) — defense-in-depth ceiling for orchestrator bugs. If the maximum iterations check is bypassed due to a logic error, this absolute ceiling prevents unbounded iteration. Emits `FORCED_CONVERGENCE` guardrail. See `protocols/guardrails.md`. |
 | Profile overrides | `--quick`: max 2, `--delta`: max 2, `--thorough`: max 3 |
-| Convergence detection | Run `scripts/detect-convergence.sh` after each iteration (starting from iteration 2) |
+| Convergence detection | Run `${CLAUDE_SKILL_DIR}/scripts/detect-convergence.sh` after each iteration (starting from iteration 2) |
 | Convergence criteria | Finding ID + Severity identity between consecutive iterations |
 
 **Convergence detection invocation:**
 
 ```bash
-scripts/detect-convergence.sh <iteration_N_output> <iteration_N_minus_1_output>
+${CLAUDE_SKILL_DIR}/scripts/detect-convergence.sh <iteration_N_output> <iteration_N_minus_1_output>
 ```
 
 - Exit code 0: converged — stop iterating (only honored after minimum 2 iterations)
@@ -207,7 +207,7 @@ scripts/detect-convergence.sh <iteration_N_output> <iteration_N_minus_1_output>
 After convergence check, update navigation for the next iteration:
 
 ```bash
-CACHE_DIR=$CACHE_DIR scripts/manage-cache.sh generate-navigation <iteration+1> 1
+CACHE_DIR=$CACHE_DIR ${CLAUDE_SKILL_DIR}/scripts/manage-cache.sh generate-navigation <iteration+1> 1
 ```
 
 ### Step 6b: Output Iteration Status
@@ -219,8 +219,8 @@ After convergence detection for each iteration, output a progress status block (
 After each iteration, track token consumption:
 
 ```bash
-scripts/track-budget.sh add <iteration_char_count>
-scripts/track-budget.sh status
+${CLAUDE_SKILL_DIR}/scripts/track-budget.sh add <iteration_char_count>
+${CLAUDE_SKILL_DIR}/scripts/track-budget.sh status
 ```
 
 If the budget is exceeded:
@@ -267,8 +267,8 @@ Iteration 3 (only if not converged):
 - `protocols/convergence-detection.md` — convergence criteria and iteration bounds
 - `protocols/token-budget.md` — budget tracking and enforcement
 - `protocols/guardrails.md` — guardrail definitions, constants, enforcement behavior
-- `scripts/manage-cache.sh` — cache management and finding validation
-- `scripts/detect-convergence.sh` — convergence detection implementation
-- `scripts/discover-references.sh` — reference module discovery and filtering
-- `scripts/track-budget.sh` — budget tracking implementation
+- `${CLAUDE_SKILL_DIR}/scripts/manage-cache.sh` — cache management and finding validation
+- `${CLAUDE_SKILL_DIR}/scripts/detect-convergence.sh` — convergence detection implementation
+- `${CLAUDE_SKILL_DIR}/scripts/discover-references.sh` — reference module discovery and filtering
+- `${CLAUDE_SKILL_DIR}/scripts/track-budget.sh` — budget tracking implementation
 - `profiles/<profile>/templates/finding-template.md` — required finding output format (profile-specific)

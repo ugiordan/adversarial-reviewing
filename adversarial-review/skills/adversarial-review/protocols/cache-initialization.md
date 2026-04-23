@@ -7,7 +7,7 @@ After scope confirmation and pre-flight budget check, initialize the local conte
 1. **Generate session hex:** Run `openssl rand -hex 16`. This identifies the cache session (separate from delimiter hex).
 2. **Initialize cache directory:**
    ```bash
-   SOURCE_ROOT=<absolute_path_to_source> scripts/manage-cache.sh init <session_hex>
+   SOURCE_ROOT=<absolute_path_to_source> ${CLAUDE_SKILL_DIR}/scripts/manage-cache.sh init <session_hex>
    ```
    `SOURCE_ROOT` is the absolute path to the directory containing the code under review. This is stored in the manifest and included in agent prompts so agents know where to search when verifying findings. If omitted, defaults to `$(pwd)`.
    Capture `CACHE_DIR` from the JSON output (`{"cache_dir": "<path>", "session_hex": "<hex>"}`).
@@ -18,35 +18,35 @@ mkdir -p "$CACHE_DIR/strategy"
 ```
 This directory stores all pipeline intermediates: `strategy-draft.md`, `quick-review-findings.json`, `refine-*.md`, `mediator-log.md`, `strategy-refined.md`.
 
-3. **Generate delimiter hex:** Run `scripts/generate-delimiters.sh` to produce a session-wide `REVIEW_TARGET` delimiter hex. Collision-check against all scope files.
+3. **Generate delimiter hex:** Run `${CLAUDE_SKILL_DIR}/scripts/generate-delimiters.sh` to produce a session-wide `REVIEW_TARGET` delimiter hex. Collision-check against all scope files.
 4. **Populate code:**
    ```bash
-   CACHE_DIR=$CACHE_DIR scripts/manage-cache.sh populate-code <scope_file> <delimiter_hex>
+   CACHE_DIR=$CACHE_DIR ${CLAUDE_SKILL_DIR}/scripts/manage-cache.sh populate-code <scope_file> <delimiter_hex>
    ```
 5. **Populate templates:**
    ```bash
-   REVIEW_PROFILE=<profile> CACHE_DIR=$CACHE_DIR scripts/manage-cache.sh populate-templates
+   REVIEW_PROFILE=<profile> CACHE_DIR=$CACHE_DIR ${CLAUDE_SKILL_DIR}/scripts/manage-cache.sh populate-templates
    ```
 6. **Populate references:**
    ```bash
-   REVIEW_PROFILE=<profile> CACHE_DIR=$CACHE_DIR scripts/manage-cache.sh populate-references
+   REVIEW_PROFILE=<profile> CACHE_DIR=$CACHE_DIR ${CLAUDE_SKILL_DIR}/scripts/manage-cache.sh populate-references
    ```
 
    `REVIEW_PROFILE` selects the profile directory for templates and references (`code`, `strat`, or `rfe`). Defaults to `code` if not set.
 7. **Populate context (if `--context` flags present):**
    For each `--context label=source` flag:
    ```bash
-   CONTEXT_LABEL=<label> CONTEXT_SOURCE=<source> CACHE_DIR=$CACHE_DIR scripts/manage-cache.sh populate-context
+   CONTEXT_LABEL=<label> CONTEXT_SOURCE=<source> CACHE_DIR=$CACHE_DIR ${CLAUDE_SKILL_DIR}/scripts/manage-cache.sh populate-context
    ```
    Context files appear in the navigation under `## Context: <label>` headings. Agents read them like any other cached file. The label tells agents what the context represents (e.g., `architecture` = component boundaries and APIs, `compliance` = regulatory requirements, `threat-model` = known attack surfaces).
 8. **Populate constraints (if `--constraints` flag present):**
    ```bash
-   CONSTRAINTS_SOURCE=<path> CACHE_DIR=$CACHE_DIR scripts/manage-cache.sh populate-constraints
+   CONSTRAINTS_SOURCE=<path> CACHE_DIR=$CACHE_DIR ${CLAUDE_SKILL_DIR}/scripts/manage-cache.sh populate-constraints
    ```
    Constraints are loaded from a pack directory (containing `constraints.yaml` + `.md` reference files) or a direct YAML file. Constraints are filtered by the active `REVIEW_PROFILE`: constraints with a `profile` field that doesn't match the active profile are dropped. The navigation includes a `## Constraints` section listing all active constraints with their severity floors and a clear instruction that agents cannot downgrade below the constraint severity.
 9. **Generate navigation:**
    ```bash
-   CACHE_DIR=$CACHE_DIR scripts/manage-cache.sh generate-navigation 1 1
+   CACHE_DIR=$CACHE_DIR ${CLAUDE_SKILL_DIR}/scripts/manage-cache.sh generate-navigation 1 1
    ```
 10. **Set cleanup trap** (via Bash tool):
     ```bash
@@ -65,10 +65,10 @@ When `--reuse-cache` is specified, replace steps 2-8 above with:
 
 1. Validate hex: must match `^[a-f0-9]{32}$`.
 2. Scan `$TMPDIR` for directories matching `adversarial-review-cache-<hex>-*`.
-3. Run `scripts/manage-cache.sh validate-cache <path>`. If invalid, abort with mismatch details.
+3. Run `${CLAUDE_SKILL_DIR}/scripts/manage-cache.sh validate-cache <path>`. If invalid, abort with mismatch details.
 4. Set `CACHE_DIR` to the resolved path. Skip all populate steps.
 5. Clear findings: `rm -rf "$CACHE_DIR/findings/"*` then `mkdir -p "$CACHE_DIR/findings"`.
-6. Regenerate navigation: `scripts/manage-cache.sh generate-navigation 1 1`.
+6. Regenerate navigation: `${CLAUDE_SKILL_DIR}/scripts/manage-cache.sh generate-navigation 1 1`.
 
 ## `--delta` Auto-Discovery
 

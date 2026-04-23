@@ -6,7 +6,7 @@ Determine when iterative review has stabilized and further iterations would not 
 
 ## Implementation
 
-**Script:** `scripts/detect-convergence.sh`
+**Script:** `${CLAUDE_SKILL_DIR}/scripts/detect-convergence.sh`
 
 ## Phase 1: Self-Refinement Convergence
 
@@ -18,7 +18,7 @@ The script extracts `Finding ID: <PREFIX>-<NNN>` and corresponding `Severity: <l
 
 **Script invocation:**
 ```bash
-scripts/detect-convergence.sh <iteration_N_file> <iteration_N_minus_1_file>
+${CLAUDE_SKILL_DIR}/scripts/detect-convergence.sh <iteration_N_file> <iteration_N_minus_1_file>
 ```
 
 **Output:** JSON object with the following fields:
@@ -60,9 +60,9 @@ The minimum of 2 iterations applies to both Phase 1 and Phase 2 independently. E
 
 **Convergence is detected by the shell script, NOT self-reported by the agent.**
 
-Agents are never asked "have you converged?" or "are you done?" The orchestrator runs `scripts/detect-convergence.sh` on the output files and uses the exit code to decide whether to continue iterating. This prevents agents from prematurely declaring convergence to reduce their workload.
+Agents are never asked "have you converged?" or "are you done?" The orchestrator runs `${CLAUDE_SKILL_DIR}/scripts/detect-convergence.sh` on the output files and uses the exit code to decide whether to continue iterating. This prevents agents from prematurely declaring convergence to reduce their workload.
 
 ## References
 
-- `scripts/detect-convergence.sh` — convergence detection implementation
+- `${CLAUDE_SKILL_DIR}/scripts/detect-convergence.sh` — convergence detection implementation
 - `protocols/token-budget.md` — budget exhaustion can also terminate iterations early

@@ -108,7 +108,7 @@ Run a lightweight adversarial review on the document draft using the active prof
 
 1. Initialize a nested budget tracker:
    ```bash
-   scripts/track-budget.sh init <quick_review_budget>
+   ${CLAUDE_SKILL_DIR}/scripts/track-budget.sh init <quick_review_budget>
    ```
 
 2. For each quick-review specialist, compose the standard agent prompt using `phases/self-refinement.md` Step 1 procedure:
@@ -164,7 +164,7 @@ Run a lightweight adversarial review on the document draft using the active prof
 
 4. Track budget for each agent:
    ```bash
-   scripts/track-budget.sh add <char_count> --agent REFINE-<PERSONA>
+   ${CLAUDE_SKILL_DIR}/scripts/track-budget.sh add <char_count> --agent REFINE-<PERSONA>
    ```
 
 ### Step 3a: Mediator
@@ -188,7 +188,7 @@ Skip if only 1 refine agent was active (use that agent's output directly as the 
 
 6. Track budget:
    ```bash
-   scripts/track-budget.sh add <char_count> --agent MEDIATOR
+   ${CLAUDE_SKILL_DIR}/scripts/track-budget.sh add <char_count> --agent MEDIATOR
    ```
 
 ### Step 3b: Confirm Gate (optional)
@@ -237,7 +237,7 @@ The refined strategy becomes the input for the standard adversarial review (Phas
 
 3. Regenerate cache navigation to include the refined strategy as the review target:
    ```bash
-   CACHE_DIR=$CACHE_DIR scripts/manage-cache.sh generate-navigation 1 1
+   CACHE_DIR=$CACHE_DIR ${CLAUDE_SKILL_DIR}/scripts/manage-cache.sh generate-navigation 1 1
    ```
 
 4. Proceed with standard Phases 1-4 as defined in SKILL.md Steps 4-7:

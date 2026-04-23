@@ -6,7 +6,7 @@ Prevent the code under review from influencing agent behavior through prompt inj
 
 ## Implementation
 
-**Script:** `scripts/generate-delimiters.sh`
+**Script:** `${CLAUDE_SKILL_DIR}/scripts/generate-delimiters.sh`
 
 ### Random Delimiter Generation
 
@@ -20,7 +20,7 @@ The script generates cryptographically random delimiters using a CSPRNG source:
 
 ### Unicode Normalization
 
-Agent output is normalized to NFKC form during validation by `scripts/validate-output.sh` using Python's `unicodedata.normalize('NFKC', ...)`. This prevents unicode-based injection attacks (e.g., homoglyph substitution, invisible characters, compatibility decomposition tricks). Note: normalization occurs at validation time, not during delimiter generation.
+Agent output is normalized to NFKC form during validation by `${CLAUDE_SKILL_DIR}/scripts/validate-output.sh` using Python's `unicodedata.normalize('NFKC', ...)`. This prevents unicode-based injection attacks (e.g., homoglyph substitution, invisible characters, compatibility decomposition tricks). Note: normalization occurs at validation time, not during delimiter generation.
 
 ### Anti-Instruction Wrapper
 
@@ -125,5 +125,5 @@ This is added by the orchestrator when building the agent prompt, not by `parse-
 
 ## References
 
-- `scripts/generate-delimiters.sh` — delimiter generation implementation
-- `scripts/validate-output.sh` — validates that agent output does not contain injection patterns
+- `${CLAUDE_SKILL_DIR}/scripts/generate-delimiters.sh` — delimiter generation implementation
+- `${CLAUDE_SKILL_DIR}/scripts/validate-output.sh` — validates that agent output does not contain injection patterns

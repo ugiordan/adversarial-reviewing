@@ -7,7 +7,7 @@ When `--profile strat` is active, run two deterministic analysis layers before d
 Extract a keyword-based threat surface inventory from each strategy document. No LLM required.
 
 ```bash
-python3 scripts/extract-threat-surface.py <strat-file>
+python3 ${CLAUDE_SKILL_DIR}/scripts/extract-threat-surface.py <strat-file>
 ```
 
 **Output (stdout):** JSON with:
@@ -31,10 +31,10 @@ Run the recurring NFR checklist against each strategy document.
 
 ```bash
 # Generate scan prompt
-python3 scripts/nfr-scan.py --prompt <strat-file> [--surface <threat-surface.json>]
+python3 ${CLAUDE_SKILL_DIR}/scripts/nfr-scan.py --prompt <strat-file> [--surface <threat-surface.json>]
 
 # Parse scan output into structured JSON
-python3 scripts/nfr-scan.py --parse <scan-output-file>
+python3 ${CLAUDE_SKILL_DIR}/scripts/nfr-scan.py --parse <scan-output-file>
 ```
 
 The NFR checklist contains 23 items across 6 categories (Authentication & Authorization, Testability, Security, Feasibility, Compliance & Governance, Cross-Cutting). Each item has a deterministic severity decision tree: the answer (YES/NO/PARTIAL/N/A) combined with context conditions produces a severity level without LLM judgment.
@@ -59,7 +59,7 @@ Phases 1-3 (self-refinement, challenge, resolution) form Layer 3. Specialists re
 After Phase 4 (Report), normalize findings for stability:
 
 ```bash
-python3 scripts/normalize_findings.py normalize <findings_file>
+python3 ${CLAUDE_SKILL_DIR}/scripts/normalize_findings.py normalize <findings_file>
 ```
 
 This sorts findings canonically (specialist prefix, file path, line number), standardizes formatting (severity/confidence casing, line range format, file path normalization), and collapses whitespace. The normalized output replaces the raw findings in the report.
@@ -70,13 +70,13 @@ After Phase 4 (Report), run cross-run finding persistence:
 
 ```bash
 # Fingerprint current findings
-python3 scripts/fingerprint_findings.py fingerprint <findings_json>
+python3 ${CLAUDE_SKILL_DIR}/scripts/fingerprint_findings.py fingerprint <findings_json>
 
 # Compare against previous run (if history exists)
-python3 scripts/fingerprint_findings.py compare <current_json> <previous_json>
+python3 ${CLAUDE_SKILL_DIR}/scripts/fingerprint_findings.py compare <current_json> <previous_json>
 
 # Append to history (idempotency: check protocols/idempotency.md Finding History before appending)
-python3 scripts/fingerprint_findings.py history append <findings_json>
+python3 ${CLAUDE_SKILL_DIR}/scripts/fingerprint_findings.py history append <findings_json>
 ```
 
 History is stored at `.adversarial-review/findings-history.jsonl`. Each entry records the fingerprint, finding ID, severity, title, timestamp, and commit SHA. The report's Section 15 (Finding Persistence) is populated from the comparison output.
@@ -86,7 +86,7 @@ History is stored at `.adversarial-review/findings-history.jsonl`. Each entry re
 Before Phase 1, compute prompt versions for all active specialists:
 
 ```bash
-python3 scripts/prompt_version.py manifest <agents_dir>
+python3 ${CLAUDE_SKILL_DIR}/scripts/prompt_version.py manifest <agents_dir>
 ```
 
 The manifest is stored in the cache and included in the report metadata block (`prompt_versions` field). This enables tracking which prompt version produced which findings across runs.
@@ -96,7 +96,7 @@ The manifest is stored in the cache and included in the report metadata block (`
 After Phase 4 (Report), generate machine-readable JSON output:
 
 ```bash
-python3 scripts/findings-to-json.py <findings-file> --profile strat [--metadata '{"strat_id": "..."}']
+python3 ${CLAUDE_SKILL_DIR}/scripts/findings-to-json.py <findings-file> --profile strat [--metadata '{"strat_id": "..."}']
 ```
 
 This produces enriched JSON with severity/confidence numeric mappings, specialist prefix extraction, evidence quality signals, and summary statistics. The JSON output is written alongside the report when `--save` is active.

@@ -30,7 +30,7 @@ Write the list of in-scope files (one repo-relative path per line) to a temporar
 Generate the scope confirmation display using the formatting script:
 
 ```bash
-python3 scripts/format-scope.py <scope_file> \
+python3 ${CLAUDE_SKILL_DIR}/scripts/format-scope.py <scope_file> \
   --source-dir <repo_root> \
   --specialists "<comma_separated_prefixes>" \
   --budget-limit <budget> \
@@ -70,7 +70,7 @@ When `--force` is specified, the 200-file hard ceiling is lifted. The orchestrat
 After scope resolution and before dispatching Phase 1, run:
 
 ```bash
-scripts/track-budget.sh estimate <num_agents> <estimated_code_tokens> <configured_iterations>
+${CLAUDE_SKILL_DIR}/scripts/track-budget.sh estimate <num_agents> <estimated_code_tokens> <configured_iterations>
 ```
 
 Capture the `estimated_tokens` value from the JSON output. Compare against the configured budget:

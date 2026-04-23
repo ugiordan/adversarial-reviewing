@@ -14,16 +14,16 @@ Specialists challenge each other's findings through structured debate. All commu
 
 ### Step 1: Pre-Debate Deduplication
 
-Run `scripts/deduplicate.sh` on all Phase 1 findings combined (unchanged):
+Run `${CLAUDE_SKILL_DIR}/scripts/deduplicate.sh` on all Phase 1 findings combined (unchanged):
 
 ```bash
-scripts/deduplicate.sh <all_phase1_findings>
+${CLAUDE_SKILL_DIR}/scripts/deduplicate.sh <all_phase1_findings>
 ```
 
 ### Step 2: Build Cross-Agent Summary
 
 ```bash
-CACHE_DIR=$CACHE_DIR scripts/manage-cache.sh build-summary
+CACHE_DIR=$CACHE_DIR ${CLAUDE_SKILL_DIR}/scripts/manage-cache.sh build-summary
 ```
 
 Merges all agents' `summary.md` files into `findings/cross-agent-summary.md`.
@@ -31,13 +31,13 @@ Merges all agents' `summary.md` files into `findings/cross-agent-summary.md`.
 ### Step 3: Generate Phase 2 Navigation
 
 ```bash
-CACHE_DIR=$CACHE_DIR scripts/manage-cache.sh generate-navigation <iteration> 2
+CACHE_DIR=$CACHE_DIR ${CLAUDE_SKILL_DIR}/scripts/manage-cache.sh generate-navigation <iteration> 2
 ```
 
 Updates `navigation.md` for Phase 2. On subsequent challenge iterations, pass resolved finding IDs:
 
 ```bash
-CACHE_DIR=$CACHE_DIR scripts/manage-cache.sh generate-navigation <iteration> 2 --resolved-ids <resolved_file>
+CACHE_DIR=$CACHE_DIR ${CLAUDE_SKILL_DIR}/scripts/manage-cache.sh generate-navigation <iteration> 2 --resolved-ids <resolved_file>
 ```
 
 ### Step 3.5: Generate Finding IDs File
@@ -135,7 +135,7 @@ Evidence: [supporting or counter-evidence, max 2000 chars]
 After each challenge exchange, check budget status:
 
 ```bash
-scripts/track-budget.sh status
+${CLAUDE_SKILL_DIR}/scripts/track-budget.sh status
 ```
 
 If `exceeded: true`, complete the current exchange but skip subsequent rounds. Emit `BUDGET_EXCEEDED` to the guardrail trip log. Proceed to Phase 3 with findings as-is.
@@ -144,19 +144,19 @@ If `exceeded: true`, complete the current exchange but skip subsequent rounds. E
 
 When reference modules are available, they are included in the challenge round prompts using the same `REFERENCE_DATA` delimiter wrapping as Phase 1 iteration 2+. Challengers evaluating findings benefit from reference material to identify false positives or missed severity classifications.
 
-The same specialist-filtered modules and delimiter isolation apply. See `protocols/input-isolation.md` for the REFERENCE_DATA delimiter specification and `scripts/discover-references.sh` for module discovery.
+The same specialist-filtered modules and delimiter isolation apply. See `protocols/input-isolation.md` for the REFERENCE_DATA delimiter specification and `${CLAUDE_SKILL_DIR}/scripts/discover-references.sh` for module discovery.
 
 ### Step 5: Validate Responses
 
 Two distinct validation paths:
 
-1. **Challenge responses:** Run `scripts/validate-output.sh` with challenge mode:
+1. **Challenge responses:** Run `${CLAUDE_SKILL_DIR}/scripts/validate-output.sh` with challenge mode:
    ```bash
-   scripts/validate-output.sh <response_file> <role_prefix> --mode challenge --finding-ids <ids_file> --profile <profile>
+   ${CLAUDE_SKILL_DIR}/scripts/validate-output.sh <response_file> <role_prefix> --mode challenge --finding-ids <ids_file> --profile <profile>
    ```
 2. **New findings raised during challenge:** Run through `manage-cache.sh populate-findings`:
    ```bash
-   CACHE_DIR=$CACHE_DIR scripts/manage-cache.sh populate-findings <agent> <role_prefix> <new_findings_file> --scope <scope_file>
+   CACHE_DIR=$CACHE_DIR ${CLAUDE_SKILL_DIR}/scripts/manage-cache.sh populate-findings <agent> <role_prefix> <new_findings_file> --scope <scope_file>
    ```
 
 Failed validations: spawn fresh agent with error, up to 2 attempts (same as Phase 1).
@@ -171,10 +171,10 @@ Resolved findings proceed directly to the report as consensus findings.
 
 ### Step 7: Detect Convergence
 
-Run `scripts/detect-convergence.sh` on the challenge round output:
+Run `${CLAUDE_SKILL_DIR}/scripts/detect-convergence.sh` on the challenge round output:
 
 ```bash
-scripts/detect-convergence.sh <iteration_N_responses> <iteration_N_minus_1_responses>
+${CLAUDE_SKILL_DIR}/scripts/detect-convergence.sh <iteration_N_responses> <iteration_N_minus_1_responses>
 ```
 
 Phase 2 convergence requires all of:
@@ -200,8 +200,8 @@ After each challenge iteration's convergence check, output a progress status blo
 After each iteration:
 
 ```bash
-scripts/track-budget.sh add <iteration_char_count>
-scripts/track-budget.sh status
+${CLAUDE_SKILL_DIR}/scripts/track-budget.sh add <iteration_char_count>
+${CLAUDE_SKILL_DIR}/scripts/track-budget.sh status
 ```
 
 If exceeded: complete current iteration, skip remaining iterations, proceed to Phase 3.
@@ -308,12 +308,12 @@ Triage-Discovery findings are debated using the standard challenge response temp
 - `protocols/convergence-detection.md` — Phase 2 convergence criteria
 - `protocols/token-budget.md` — budget tracking and per-iteration context cap
 - `protocols/guardrails.md` — guardrail definitions, constants, enforcement behavior
-- `scripts/deduplicate.sh` — pre-debate deduplication
-- `scripts/discover-references.sh` — reference module discovery and filtering
-- `scripts/generate-delimiters.sh` — field-level isolation marker generation
-- `scripts/validate-output.sh` — response validation
-- `scripts/detect-convergence.sh` — convergence detection
-- `scripts/track-budget.sh` — budget tracking
+- `${CLAUDE_SKILL_DIR}/scripts/deduplicate.sh` — pre-debate deduplication
+- `${CLAUDE_SKILL_DIR}/scripts/discover-references.sh` — reference module discovery and filtering
+- `${CLAUDE_SKILL_DIR}/scripts/generate-delimiters.sh` — field-level isolation marker generation
+- `${CLAUDE_SKILL_DIR}/scripts/validate-output.sh` — response validation
+- `${CLAUDE_SKILL_DIR}/scripts/detect-convergence.sh` — convergence detection
+- `${CLAUDE_SKILL_DIR}/scripts/track-budget.sh` — budget tracking
 - `profiles/<profile>/templates/challenge-response-template.md` — challenge response format (profile-specific)
 - `profiles/<profile>/templates/finding-template.md` — new finding format (profile-specific, with Source marker)
 - `templates/sanitized-document-template.md` — sanitized document format (shared)

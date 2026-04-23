@@ -4,7 +4,7 @@
 
 After scope confirmation, run:
 ```bash
-bash scripts/build-impact-graph.sh [--diff-file <patch> | --git-range <range>] --search-dir <repo_root>
+bash ${CLAUDE_SKILL_DIR}/scripts/build-impact-graph.sh [--diff-file <patch> | --git-range <range>] --search-dir <repo_root>
 ```
 
 The impact graph is context-only — agents CANNOT file findings against impact graph files.

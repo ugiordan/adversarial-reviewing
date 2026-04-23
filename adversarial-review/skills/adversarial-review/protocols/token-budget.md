@@ -6,7 +6,7 @@ Constrain total token consumption to prevent runaway costs. The budget is tracke
 
 ## Implementation
 
-**Script:** `scripts/track-budget.sh`
+**Script:** `${CLAUDE_SKILL_DIR}/scripts/track-budget.sh`
 
 ## Configuration
 
@@ -55,7 +55,7 @@ This is a rough estimate — actual cost depends on fix complexity.
 
 **Script invocation:**
 ```bash
-scripts/track-budget.sh estimate <num_agents> <code_tokens> <iterations> [num_work_items]
+${CLAUDE_SKILL_DIR}/scripts/track-budget.sh estimate <num_agents> <code_tokens> <iterations> [num_work_items]
 ```
 
 The optional `num_work_items` parameter (default 0) adds Phase 5 remediation overhead to the estimate. The `init` action returns a `state_file` path in its JSON output — the caller must set `BUDGET_STATE_FILE` to this value before calling `add` or `status`.
@@ -66,16 +66,16 @@ Tokens are estimated using the **char/4 heuristic**: divide character count by 4
 
 **Script invocation:**
 ```bash
-scripts/track-budget.sh add <file_or_char_count>
+${CLAUDE_SKILL_DIR}/scripts/track-budget.sh add <file_or_char_count>
 ```
 
 The script accepts either a file path (counts its bytes) or a raw character count.
 
 ## Budget Lifecycle
 
-1. **Init:** `scripts/track-budget.sh init <budget_limit>` — creates state file. Pass `0` for unlimited mode (`--no-budget`).
-2. **Track:** `scripts/track-budget.sh add <consumption>` — records consumption after each agent call. In unlimited mode, consumption is tracked for reporting but never triggers enforcement.
-3. **Check:** `scripts/track-budget.sh status` — returns remaining budget and exceeded flag. In unlimited mode, `exceeded` is always `false` and `remaining` is `"unlimited"`.
+1. **Init:** `${CLAUDE_SKILL_DIR}/scripts/track-budget.sh init <budget_limit>` — creates state file. Pass `0` for unlimited mode (`--no-budget`).
+2. **Track:** `${CLAUDE_SKILL_DIR}/scripts/track-budget.sh add <consumption>` — records consumption after each agent call. In unlimited mode, consumption is tracked for reporting but never triggers enforcement.
+3. **Check:** `${CLAUDE_SKILL_DIR}/scripts/track-budget.sh status` — returns remaining budget and exceeded flag. In unlimited mode, `exceeded` is always `false` and `remaining` is `"unlimited"`.
 4. **Enforce:** orchestrator checks status before each iteration. Skipped entirely when `--no-budget` is active.
 
 ## Unlimited Mode (`--no-budget`)
@@ -136,6 +136,6 @@ The `status` action computes `remaining` and `exceeded` dynamically from these v
 
 ## References
 
-- `scripts/track-budget.sh` — budget tracking implementation
+- `${CLAUDE_SKILL_DIR}/scripts/track-budget.sh` — budget tracking implementation
 - `protocols/convergence-detection.md` — iteration bounds that interact with budget
 - `protocols/delta-mode.md` — delta reviews use the same budget mechanism

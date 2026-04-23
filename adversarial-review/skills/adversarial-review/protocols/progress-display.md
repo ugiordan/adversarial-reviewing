@@ -33,7 +33,7 @@ Update task status as each completes. For single-specialist mode, Phase 2 runs i
 The orchestrator outputs a status block at each phase transition and after each self-refinement iteration. Generate it using the formatting script:
 
 ```bash
-python3 scripts/format-status.py \
+python3 ${CLAUDE_SKILL_DIR}/scripts/format-status.py \
   --topic "<topic>" \
   --phase "<phase_name>" \
   --progress "<progress_detail>" \

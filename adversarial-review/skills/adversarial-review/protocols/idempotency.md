@@ -58,7 +58,7 @@ Before each `acli jira workitem create`:
 4. If user chooses "link to existing": use existing ticket ID for branch naming, skip creation
 5. Log the decision via `write-audit-log.sh`:
    ```bash
-   scripts/write-audit-log.sh jira dedup_match finding=SEC-001 existing=PROJ-456 decision=linked
+   ${CLAUDE_SKILL_DIR}/scripts/write-audit-log.sh jira dedup_match finding=SEC-001 existing=PROJ-456 decision=linked
    ```
 
 ## Branches (Phase 5)
