@@ -27,12 +27,18 @@ Write the list of in-scope files (one repo-relative path per line) to a temporar
 
 ## Scope Confirmation (MANDATORY)
 
-Before proceeding, display to the user:
-1. The resolved file list
-2. Total estimated token count
-3. Which specialists will be activated
+Generate the scope confirmation display using the formatting script:
 
-**Wait for explicit user approval.** Do not proceed without it.
+```bash
+python3 scripts/format-scope.py <scope_file> \
+  --source-dir <repo_root> \
+  --specialists "<comma_separated_prefixes>" \
+  --budget-limit <budget> \
+  --budget-estimate '<track-budget.sh estimate JSON output>' \
+  [--sensitive "<excluded_files>"]
+```
+
+Display the script output to the user verbatim. **Wait for explicit user approval.** Do not proceed without it.
 
 ## Scope Immutability
 

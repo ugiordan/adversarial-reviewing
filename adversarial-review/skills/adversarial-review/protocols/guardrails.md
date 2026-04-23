@@ -62,7 +62,7 @@ Defines enforceable guardrails that the orchestrator checks programmatically dur
 ### SEVERITY_INFLATION
 
 - **Trigger:** > 50% of a specialist's findings are Critical, OR > 80% are Critical + Important.
-- **Check:** Orchestrator calculates after self-refinement completes.
+- **Check:** `scripts/severity-check.py` after self-refinement completes.
 - **Action:** Informational warning. Included in challenge round context.
 
 ### PRINCIPLE_SEVERITY_ESCALATION

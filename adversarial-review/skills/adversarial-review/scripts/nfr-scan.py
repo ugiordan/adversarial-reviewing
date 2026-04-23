@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """NFR checklist scanner for STRAT documents (Layer 2).
 
-Runs the recurring NFR checklist against a STRAT document using a lightweight
-LLM call. Produces structured YES/NO/PARTIAL assessments per checklist item
+Runs the recurring NFR checklist against a STRAT document.
+Produces structured YES/NO/PARTIAL assessments per checklist item
 with citations and deterministic severity assignment.
 
 This script generates the prompt for the NFR scan agent. The actual LLM call

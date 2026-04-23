@@ -27,7 +27,7 @@ Save the output to `{CACHE_DIR}/threat-surface-<strat-id>.json`. Pass the tier t
 
 ## Layer 2: NFR Checklist Scan
 
-Run the recurring NFR checklist against each strategy document using a lightweight LLM call (haiku-tier).
+Run the recurring NFR checklist against each strategy document.
 
 ```bash
 # Generate scan prompt

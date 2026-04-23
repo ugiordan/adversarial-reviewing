@@ -90,69 +90,40 @@ When N_effective < N (global specialist count), the report labels the finding wi
 
 ### Step 3: Resolve Each Finding
 
-For each finding, tally positions and apply rules in order. All threshold computations use N_effective (from Step 2b), not the global specialist count N:
+Collect all challenge round positions into a votes JSON file and run the resolution script:
 
-#### 3a. Consensus (Unanimous Agreement)
+```bash
+python3 scripts/resolve-votes.py <votes.json>
+```
 
-**Condition:**
-- Quorum is met: `(agree_count + challenge_count) >= quorum`
-- All specialists who took a position chose Agree, and no challenges exist
+The orchestrator builds `votes.json` from challenge round responses:
 
-**Result:** Include in report Section 3 (Consensus Findings).
+```json
+{
+  "global_specialist_count": 5,
+  "findings": [
+    {
+      "id": "SEC-001",
+      "originator": "SEC",
+      "severity": "Important",
+      "votes": [
+        {"specialist": "SEC", "position": "Agree", "severity": "Important"},
+        {"specialist": "CORR", "position": "Challenge", "severity": null},
+        {"specialist": "ARCH", "position": "Abstain", "severity": null}
+      ]
+    }
+  ]
+}
+```
 
-#### 3b. Strict Majority (Quorum Met)
+The script applies resolution rules in order (consensus, majority, dismissed, escalated, quorum not met) using domain-scoped voting pools, and resolves severity for passing findings. Each finding in the output includes: `outcome`, vote counts, `n_effective`, `n_global`, `resolved_severity`, `severity_disputed`, `label` (e.g. "Consensus (3/5 specialists)"), and `report_section`.
 
-**Condition:**
-- Quorum is met: `(agree_count + challenge_count) >= quorum`
-- Strict majority agrees: `agree_count >= strict_majority`
+**Pre-script adjustments for persistent disagreement (3f):**
 
-**Result:** Include in report Section 4 (Majority Findings). Note all dissenting positions and any severity disputes.
-
-#### 3c. Dismissed
-
-**Condition:**
-- Quorum is met: `(agree_count + challenge_count) >= quorum`
-- Strict majority chose Challenge: `challenge_count >= strict_majority`
-
-**Result:** Include in report Section 7 (Dismissed Findings) with rejection reasoning.
-
-#### 3d. No Majority (Quorum Met)
-
-**Condition:**
-- Quorum is met: `(agree_count + challenge_count) >= quorum`
-- Strict majority NOT reached: `agree_count < strict_majority`
-- NOT dismissed: `challenge_count < strict_majority`
-
-**Result:** Escalate to user. Include in report Section 5 (Escalated Disagreements) with all positions presented.
-
-#### 3e. Quorum Not Met (safety net)
-
-**Condition:**
-- Quorum is NOT met: `(agree_count + challenge_count) < quorum`
-- Too many abstentions to reach a valid decision
-
-**Result:** Escalate to user. Include in report Section 6 (Escalated - Quorum Not Met).
-
-**Note:** With domain-scoped voting pools (Step 2), this rule is **structurally unreachable**. N_effective equals the count of active positions by definition, so `(agree_count + challenge_count) = N_effective >= quorum` is always true when N_effective >= 2. Findings with N_effective < 2 use single-specialist resolution instead of reaching this rule. Rule 3e is retained as a defensive safety net in case of implementation bugs or future changes to pool computation.
-
-#### 3f. Persistent Disagreement
-
-**Condition:** Finding went through all 3 challenge round iterations without reaching consensus or majority.
-
-**Evidence-based resolution (post iteration 3 rebuttal):**
-- If a challenger provided no file:line evidence in iteration 3, treat their Challenge as a retraction (convert to Abstain). Recount votes with the updated positions, then re-apply rules 3a-3e on the updated tallies.
-- If an originator provided no file:line evidence in iteration 3, treat the finding as withdrawn. Move to Section 7 (Dismissed).
-- If both sides provided file:line evidence and still disagree, this is a genuine disagreement. Escalate to user with all evidence presented.
-
-**Result:** If no rule matches after recount, escalate to user. Include in report Section 5 (Escalated Disagreements) with all evidence from the rebuttal round.
-
-### Step 4: Resolve Severity
-
-For findings that pass (consensus or majority):
-
-1. **Majority severity:** use the severity level agreed by the majority of specialists
-2. **No severity majority:** use the **highest** severity among all Agree positions
-3. **Severity disputes:** note in the report which specialists disagreed on severity
+Before running `resolve-votes.py`, handle iteration 3 rebuttal evidence:
+- If a challenger provided no file:line evidence in iteration 3, convert their Challenge to Abstain in the votes JSON
+- If an originator provided no file:line evidence in iteration 3, remove the finding from the votes JSON (dismissed)
+- Then run the script on the adjusted votes
 
 ### Step 5: Post-Debate Deduplication
 

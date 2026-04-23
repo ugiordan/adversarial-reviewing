@@ -22,17 +22,34 @@ Build the report using `profiles/<profile>/templates/report-template.md` with up
 
 #### Section 1: Executive Summary
 
-- Finding count by severity (Critical / Important / Minor)
+Generate the finding summary table from the resolution output:
+
+```bash
+python3 scripts/summarize-findings.py <resolution_output.json>
+```
+
+Include the script output verbatim, then add:
 - List of specialists involved
 - Scope of reviewed files (count and paths)
-- **Agreement level** from Phase 3 resolution (Full Consensus / Strong Agreement / Partial Agreement / Split Decision / No Agreement) with breakdown: N unanimous, N majority, N escalated, N dismissed
-- Configuration parameters: iterations completed, convergence status (achieved/not achieved per phase), token budget (used/total)
+- **Agreement level** from Phase 3 resolution (Full Consensus / Strong Agreement / Partial Agreement / Split Decision / No Agreement) with breakdown from the summary output
 - If budget was exceeded, include: **"Review truncated due to token budget"**
 - If agreement level is **Split Decision** or **No Agreement**, include a prominent disclaimer: **"Specialists significantly disagreed. Majority findings should be treated with reduced confidence."**
 
 #### Section 2: Review Configuration (conditional)
 
-Human-readable summary of review parameters (date, scope, specialists, mode flags, iterations, budget, reference modules). See `templates/report-template.md` Section 2.
+Generate using the metadata formatting script:
+
+```bash
+python3 scripts/format-report-meta.py \
+  --topic "<topic>" --profile <profile> \
+  --specialists "<list>" --iterations <n> \
+  --budget-json '<track-budget.sh status output>' \
+  --budget-limit <budget> \
+  [--commit <sha>] [--preset <preset>] \
+  [--flags "<flags>"] [--guardrails '<json_array>']
+```
+
+Include the script output verbatim.
 
 #### Section 3: Consensus Findings (code profile) / Per-Document Review (strat/rfe profile)
 

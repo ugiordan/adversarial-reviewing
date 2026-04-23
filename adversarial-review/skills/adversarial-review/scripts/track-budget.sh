@@ -12,9 +12,9 @@ set -euo pipefail
 
 ACTION="${1:?Usage: track-budget.sh <init|add|estimate|status|rebalance> [args]}"
 
-# Cost per 1M tokens (USD). Blended rate based on Claude Sonnet 4 pricing
-# (~60% input at $3/1M, ~40% output at $15/1M). Update when pricing changes.
-COST_PER_1M_TOKENS_BLENDED=7.80
+# Cost per 1M tokens (USD). Default blended rate (~60% input, ~40% output).
+# Override via COST_PER_1M_TOKENS environment variable for different models.
+COST_PER_1M_TOKENS_BLENDED="${COST_PER_1M_TOKENS:-7.80}"
 # Agent budget multiplier (matches guardrails.md AGENT_BUDGET_MULTIPLIER)
 AGENT_BUDGET_MULTIPLIER=1.5
 

@@ -292,14 +292,13 @@ After each iteration, check remaining budget. If budget is exceeded, complete th
 
 ### Severity Inflation Check
 
-After all specialists complete self-refinement, compute the severity distribution for each specialist. If any specialist has:
+After all specialists complete self-refinement, run the severity inflation check:
 
-- More than 50% of findings at **Critical** severity, or
-- More than 80% of findings at **Critical + Important** combined
+```bash
+python3 scripts/severity-check.py {CACHE_DIR}/findings/
+```
 
-emit a `SEVERITY_INFLATION` warning to the guardrail trip log. Include this warning in the specialist's challenge round context so challengers can scrutinize severity assignments.
-
-See `protocols/guardrails.md` for the `SEVERITY_INFLATION_CRITICAL_THRESHOLD` and `SEVERITY_INFLATION_COMBINED_THRESHOLD` constants.
+If `any_inflation` is `true` in the output, emit a `SEVERITY_INFLATION` warning to the guardrail trip log for each flagged specialist. Include the warning in the specialist's challenge round context so challengers can scrutinize severity assignments.
 
 ---
 
