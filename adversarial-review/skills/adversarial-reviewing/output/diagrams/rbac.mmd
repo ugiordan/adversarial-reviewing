@@ -1,0 +1,616 @@
+graph TD
+    %% RBAC hierarchy for rhods-operator
+    classDef sa fill:#4a90d9,stroke:#2c5f8a,color:#fff
+    classDef role fill:#e8a838,stroke:#b07828,color:#fff
+    classDef resource fill:#5cb85c,stroke:#3d8b3d,color:#fff
+
+    sa_2["ServiceAccount: redhat-ods-operator-controller-manager (system)"] -->|bound via rhods-operator-rolebinding| crb_1["rhods-operator-rolebinding"]
+    class sa_2 sa
+    crb_1 -->|grants| cr_rhods_operator_role["CR: rhods-operator-role"]
+    class cr_rhods_operator_role role
+    cr_dashboard_editor_role -->|create, delete, get, list, patch, update, watch| res_3["components.platform.opendatahub.io: dashboards"]
+    class res_3 resource
+    cr_dashboard_editor_role -->|get| res_4["components.platform.opendatahub.io: dashboards/status"]
+    class res_4 resource
+    cr_dashboard_viewer_role -->|get, list, watch| res_5["components.platform.opendatahub.io: dashboards"]
+    class res_5 resource
+    cr_dashboard_viewer_role -->|get| res_6["components.platform.opendatahub.io: dashboards/status"]
+    class res_6 resource
+    cr_datasciencepipelines_editor_role -->|create, delete, get, list, patch, update, watch| res_7["components.platform.opendatahub.io: datasciencepipelines"]
+    class res_7 resource
+    cr_datasciencepipelines_editor_role -->|get| res_8["components.platform.opendatahub.io: datasciencepipelines/status"]
+    class res_8 resource
+    cr_datasciencepipelines_viewer_role -->|get, list, watch| res_9["components.platform.opendatahub.io: datasciencepipelines"]
+    class res_9 resource
+    cr_datasciencepipelines_viewer_role -->|get| res_10["components.platform.opendatahub.io: datasciencepipelines/status"]
+    class res_10 resource
+    cr_kserve_editor_role -->|create, delete, get, list, patch, update, watch| res_11["components.platform.opendatahub.io: kserves"]
+    class res_11 resource
+    cr_kserve_editor_role -->|get| res_12["components.platform.opendatahub.io: kserves/status"]
+    class res_12 resource
+    cr_kserve_viewer_role -->|get, list, watch| res_13["components.platform.opendatahub.io: kserves"]
+    class res_13 resource
+    cr_kserve_viewer_role -->|get| res_14["components.platform.opendatahub.io: kserves/status"]
+    class res_14 resource
+    cr_kueue_editor_role -->|create, delete, get, list, patch, update, watch| res_15["components.platform.opendatahub.io: kueues"]
+    class res_15 resource
+    cr_kueue_editor_role -->|get| res_16["components.platform.opendatahub.io: kueues/status"]
+    class res_16 resource
+    cr_kueue_viewer_role -->|get, list, watch| res_17["components.platform.opendatahub.io: kueues"]
+    class res_17 resource
+    cr_kueue_viewer_role -->|get| res_18["components.platform.opendatahub.io: kueues/status"]
+    class res_18 resource
+    cr_modelregistry_editor_role -->|create, delete, get, list, patch, update, watch| res_19["components.platform.opendatahub.io: modelregistries"]
+    class res_19 resource
+    cr_modelregistry_editor_role -->|get| res_20["components.platform.opendatahub.io: modelregistries/status"]
+    class res_20 resource
+    cr_modelregistry_viewer_role -->|get, list, watch| res_21["components.platform.opendatahub.io: modelregistries"]
+    class res_21 resource
+    cr_modelregistry_viewer_role -->|get| res_22["components.platform.opendatahub.io: modelregistries/status"]
+    class res_22 resource
+    cr_ray_editor_role -->|create, delete, get, list, patch, update, watch| res_23["components.platform.opendatahub.io: rays"]
+    class res_23 resource
+    cr_ray_editor_role -->|get| res_24["components.platform.opendatahub.io: rays/status"]
+    class res_24 resource
+    cr_ray_viewer_role -->|get, list, watch| res_25["components.platform.opendatahub.io: rays"]
+    class res_25 resource
+    cr_ray_viewer_role -->|get| res_26["components.platform.opendatahub.io: rays/status"]
+    class res_26 resource
+    cr_trainingoperator_editor_role -->|create, delete, get, list, patch, update, watch| res_27["components.platform.opendatahub.io: trainingoperators"]
+    class res_27 resource
+    cr_trainingoperator_editor_role -->|get| res_28["components.platform.opendatahub.io: trainingoperators/status"]
+    class res_28 resource
+    cr_trainingoperator_viewer_role -->|get, list, watch| res_29["components.platform.opendatahub.io: trainingoperators"]
+    class res_29 resource
+    cr_trainingoperator_viewer_role -->|get| res_30["components.platform.opendatahub.io: trainingoperators/status"]
+    class res_30 resource
+    cr_trustyai_editor_role -->|create, delete, get, list, patch, update, watch| res_31["components.platform.opendatahub.io: trustyais"]
+    class res_31 resource
+    cr_trustyai_editor_role -->|get| res_32["components.platform.opendatahub.io: trustyais/status"]
+    class res_32 resource
+    cr_trustyai_viewer_role -->|get, list, watch| res_33["components.platform.opendatahub.io: trustyais"]
+    class res_33 resource
+    cr_trustyai_viewer_role -->|get| res_34["components.platform.opendatahub.io: trustyais/status"]
+    class res_34 resource
+    cr_workbenches_editor_role -->|create, delete, get, list, patch, update, watch| res_35["components.platform.opendatahub.io: workbenches"]
+    class res_35 resource
+    cr_workbenches_editor_role -->|get| res_36["components.platform.opendatahub.io: workbenches/status"]
+    class res_36 resource
+    cr_workbenches_viewer_role -->|get, list, watch| res_37["components.platform.opendatahub.io: workbenches"]
+    class res_37 resource
+    cr_workbenches_viewer_role -->|get| res_38["components.platform.opendatahub.io: workbenches/status"]
+    class res_38 resource
+    cr_datasciencecluster_editor_role -->|create, delete, get, list, patch, update, watch| res_39["datasciencecluster.opendatahub.io: datascienceclusters"]
+    class res_39 resource
+    cr_datasciencecluster_editor_role -->|get| res_40["datasciencecluster.opendatahub.io: datascienceclusters/status"]
+    class res_40 resource
+    cr_datasciencecluster_viewer_role -->|get, list, watch| res_41["datasciencecluster.opendatahub.io: datascienceclusters"]
+    class res_41 resource
+    cr_datasciencecluster_viewer_role -->|get| res_42["datasciencecluster.opendatahub.io: datascienceclusters/status"]
+    class res_42 resource
+    cr_dscinitialization_editor_role -->|create, delete, get, list, patch, update, watch| res_43["dscinitialization.opendatahub.io: dscinitializations"]
+    class res_43 resource
+    cr_dscinitialization_editor_role -->|get| res_44["dscinitialization.opendatahub.io: dscinitializations/status"]
+    class res_44 resource
+    cr_dscinitialization_viewer_role -->|get, list, watch| res_45["dscinitialization.opendatahub.io: dscinitializations"]
+    class res_45 resource
+    cr_dscinitialization_viewer_role -->|get| res_46["dscinitialization.opendatahub.io: dscinitializations/status"]
+    class res_46 resource
+    cr_rhods_operator_role -->|get, list, watch| res_47["core: clusterversions"]
+    class res_47 resource
+    cr_rhods_operator_role -->|get, list, watch| res_48["core: nodes"]
+    class res_48 resource
+    cr_rhods_operator_role -->|get, list, watch| res_49["core: rhmis"]
+    class res_49 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_50["core: configmaps"]
+    class res_50 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_51["core: events"]
+    class res_51 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_52["core: namespaces"]
+    class res_52 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_53["core: secrets"]
+    class res_53 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_54["core: secrets/finalizers"]
+    class res_54 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_55["core: serviceaccounts"]
+    class res_55 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_56["core: services/finalizers"]
+    class res_56 resource
+    cr_rhods_operator_role -->|delete, get, patch, update| res_57["core: configmaps/status"]
+    class res_57 resource
+    cr_rhods_operator_role -->|*| res_58["core: deployments"]
+    class res_58 resource
+    cr_rhods_operator_role -->|*| res_59["core: persistentvolumeclaims"]
+    class res_59 resource
+    cr_rhods_operator_role -->|*| res_60["core: persistentvolumes"]
+    class res_60 resource
+    cr_rhods_operator_role -->|*| res_61["core: pods"]
+    class res_61 resource
+    cr_rhods_operator_role -->|*| res_62["core: pods/exec"]
+    class res_62 resource
+    cr_rhods_operator_role -->|*| res_63["core: pods/log"]
+    class res_63 resource
+    cr_rhods_operator_role -->|create, delete, get, list, update, watch| res_64["core: endpoints"]
+    class res_64 resource
+    cr_rhods_operator_role -->|delete, get, list, patch, update, watch| res_65["core: namespaces/finalizers"]
+    class res_65 resource
+    cr_rhods_operator_role -->|*| res_66["core: services"]
+    class res_66 resource
+    cr_rhods_operator_role -->|*| res_67["*: deployments"]
+    class res_67 resource
+    cr_rhods_operator_role -->|*| res_68["*: replicasets"]
+    class res_68 resource
+    cr_rhods_operator_role -->|*| res_69["*: services"]
+    class res_69 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_70["*: statefulsets"]
+    class res_70 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_71["admissionregistration.k8s.io: mutatingwebhookconfigurations"]
+    class res_71 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_72["admissionregistration.k8s.io: validatingadmissionpolicies"]
+    class res_72 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_73["admissionregistration.k8s.io: validatingadmissionpolicybindings"]
+    class res_73 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_74["admissionregistration.k8s.io: validatingwebhookconfigurations"]
+    class res_74 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_75["apiextensions.k8s.io: customresourcedefinitions"]
+    class res_75 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_76["apiregistration.k8s.io: apiservices"]
+    class res_76 resource
+    cr_rhods_operator_role -->|*| res_77["apps: deployments"]
+    class res_77 resource
+    cr_rhods_operator_role -->|*| res_78["apps: deployments/finalizers"]
+    class res_78 resource
+    cr_rhods_operator_role -->|*| res_79["apps: replicasets"]
+    class res_79 resource
+    cr_rhods_operator_role -->|*| res_80["apps: statefulsets"]
+    class res_80 resource
+    cr_rhods_operator_role -->|*| res_81["argoproj.io: workflows"]
+    class res_81 resource
+    cr_rhods_operator_role -->|create, get| res_82["authentication.k8s.io: tokenreviews"]
+    class res_82 resource
+    cr_rhods_operator_role -->|*| res_83["authorino.kuadrant.io: authconfigs"]
+    class res_83 resource
+    cr_rhods_operator_role -->|create, get| res_84["authorization.k8s.io: subjectaccessreviews"]
+    class res_84 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_85["autoscaling: horizontalpodautoscalers"]
+    class res_85 resource
+    cr_rhods_operator_role -->|delete, get, list, patch| res_86["autoscaling.openshift.io: machineautoscalers"]
+    class res_86 resource
+    cr_rhods_operator_role -->|delete, get, list, patch| res_87["autoscaling.openshift.io: machinesets"]
+    class res_87 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_88["batch: cronjobs"]
+    class res_88 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_89["batch: jobs/status"]
+    class res_89 resource
+    cr_rhods_operator_role -->|*| res_90["batch: jobs"]
+    class res_90 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_91["build.openshift.io: buildconfigs"]
+    class res_91 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, watch| res_92["build.openshift.io: buildconfigs/instantiate"]
+    class res_92 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, watch| res_93["build.openshift.io: builds"]
+    class res_93 resource
+    cr_rhods_operator_role -->|create, patch| res_94["cert-manager.io: certificates"]
+    class res_94 resource
+    cr_rhods_operator_role -->|create, patch| res_95["cert-manager.io: issuers"]
+    class res_95 resource
+    cr_rhods_operator_role -->|get, list, watch| res_96["components.platform.opendatahub.io: codeflares"]
+    class res_96 resource
+    cr_rhods_operator_role -->|get| res_97["components.platform.opendatahub.io: codeflares/status"]
+    class res_97 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_98["components.platform.opendatahub.io: dashboards"]
+    class res_98 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_99["components.platform.opendatahub.io: datasciencepipelines"]
+    class res_99 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_100["components.platform.opendatahub.io: feastoperators"]
+    class res_100 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_101["components.platform.opendatahub.io: kserves"]
+    class res_101 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_102["components.platform.opendatahub.io: kueues"]
+    class res_102 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_103["components.platform.opendatahub.io: llamastackoperators"]
+    class res_103 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_104["components.platform.opendatahub.io: modelcontrollers"]
+    class res_104 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_105["components.platform.opendatahub.io: modelmeshservings"]
+    class res_105 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_106["components.platform.opendatahub.io: modelregistries"]
+    class res_106 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_107["components.platform.opendatahub.io: rays"]
+    class res_107 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_108["components.platform.opendatahub.io: trainingoperators"]
+    class res_108 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_109["components.platform.opendatahub.io: trustyais"]
+    class res_109 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_110["components.platform.opendatahub.io: workbenches"]
+    class res_110 resource
+    cr_rhods_operator_role -->|create, get, list, patch, update, use, watch| res_111["components.platform.opendatahub.io: dashboards/finalizers"]
+    class res_111 resource
+    cr_rhods_operator_role -->|get, patch, update| res_112["components.platform.opendatahub.io: dashboards/status"]
+    class res_112 resource
+    cr_rhods_operator_role -->|get, patch, update| res_113["components.platform.opendatahub.io: datasciencepipelines/status"]
+    class res_113 resource
+    cr_rhods_operator_role -->|get, patch, update| res_114["components.platform.opendatahub.io: feastoperators/status"]
+    class res_114 resource
+    cr_rhods_operator_role -->|get, patch, update| res_115["components.platform.opendatahub.io: kserves/status"]
+    class res_115 resource
+    cr_rhods_operator_role -->|get, patch, update| res_116["components.platform.opendatahub.io: kueues/status"]
+    class res_116 resource
+    cr_rhods_operator_role -->|get, patch, update| res_117["components.platform.opendatahub.io: llamastackoperators/status"]
+    class res_117 resource
+    cr_rhods_operator_role -->|get, patch, update| res_118["components.platform.opendatahub.io: modelcontrollers/status"]
+    class res_118 resource
+    cr_rhods_operator_role -->|get, patch, update| res_119["components.platform.opendatahub.io: modelmeshservings/status"]
+    class res_119 resource
+    cr_rhods_operator_role -->|get, patch, update| res_120["components.platform.opendatahub.io: modelregistries/status"]
+    class res_120 resource
+    cr_rhods_operator_role -->|get, patch, update| res_121["components.platform.opendatahub.io: rays/status"]
+    class res_121 resource
+    cr_rhods_operator_role -->|get, patch, update| res_122["components.platform.opendatahub.io: trainingoperators/status"]
+    class res_122 resource
+    cr_rhods_operator_role -->|get, patch, update| res_123["components.platform.opendatahub.io: trustyais/status"]
+    class res_123 resource
+    cr_rhods_operator_role -->|get, patch, update| res_124["components.platform.opendatahub.io: workbenches/status"]
+    class res_124 resource
+    cr_rhods_operator_role -->|update| res_125["components.platform.opendatahub.io: datasciencepipelines/finalizers"]
+    class res_125 resource
+    cr_rhods_operator_role -->|update| res_126["components.platform.opendatahub.io: feastoperators/finalizers"]
+    class res_126 resource
+    cr_rhods_operator_role -->|update| res_127["components.platform.opendatahub.io: kserves/finalizers"]
+    class res_127 resource
+    cr_rhods_operator_role -->|update| res_128["components.platform.opendatahub.io: kueues/finalizers"]
+    class res_128 resource
+    cr_rhods_operator_role -->|update| res_129["components.platform.opendatahub.io: llamastackoperators/finalizers"]
+    class res_129 resource
+    cr_rhods_operator_role -->|update| res_130["components.platform.opendatahub.io: modelcontrollers/finalizers"]
+    class res_130 resource
+    cr_rhods_operator_role -->|update| res_131["components.platform.opendatahub.io: modelmeshservings/finalizers"]
+    class res_131 resource
+    cr_rhods_operator_role -->|update| res_132["components.platform.opendatahub.io: modelregistries/finalizers"]
+    class res_132 resource
+    cr_rhods_operator_role -->|update| res_133["components.platform.opendatahub.io: rays/finalizers"]
+    class res_133 resource
+    cr_rhods_operator_role -->|update| res_134["components.platform.opendatahub.io: trainingoperators/finalizers"]
+    class res_134 resource
+    cr_rhods_operator_role -->|update| res_135["components.platform.opendatahub.io: trustyais/finalizers"]
+    class res_135 resource
+    cr_rhods_operator_role -->|update| res_136["components.platform.opendatahub.io: workbenches/finalizers"]
+    class res_136 resource
+    cr_rhods_operator_role -->|get, list, watch| res_137["config.openshift.io: authentications"]
+    class res_137 resource
+    cr_rhods_operator_role -->|get, list, watch| res_138["config.openshift.io: clusterversions"]
+    class res_138 resource
+    cr_rhods_operator_role -->|get| res_139["config.openshift.io: ingresses"]
+    class res_139 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_140["console.openshift.io: consolelinks"]
+    class res_140 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_141["console.openshift.io: odhquickstarts"]
+    class res_141 resource
+    cr_rhods_operator_role -->|create, delete, get, patch| res_142["controller-runtime.sigs.k8s.io: controllermanagerconfigs"]
+    class res_142 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_143["coordination.k8s.io: leases"]
+    class res_143 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_144["dashboard.opendatahub.io: acceleratorprofiles"]
+    class res_144 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_145["dashboard.opendatahub.io: odhapplications"]
+    class res_145 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_146["dashboard.opendatahub.io: odhdocuments"]
+    class res_146 resource
+    cr_rhods_operator_role -->|get, list, update, watch| res_147["dashboard.opendatahub.io: hardwareprofiles"]
+    class res_147 resource
+    cr_rhods_operator_role -->|create, delete, deletecollection, get, list, patch, update, watch| res_148["datasciencecluster.opendatahub.io: datascienceclusters"]
+    class res_148 resource
+    cr_rhods_operator_role -->|patch, update| res_149["datasciencecluster.opendatahub.io: datascienceclusters/finalizers"]
+    class res_149 resource
+    cr_rhods_operator_role -->|get, patch, update| res_150["datasciencecluster.opendatahub.io: datascienceclusters/status"]
+    class res_150 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_151["datasciencepipelinesapplications.opendatahub.io: datasciencepipelinesapplications"]
+    class res_151 resource
+    cr_rhods_operator_role -->|get, patch, update| res_152["datasciencepipelinesapplications.opendatahub.io: datasciencepipelinesapplications/finalizers"]
+    class res_152 resource
+    cr_rhods_operator_role -->|get, patch, update| res_153["datasciencepipelinesapplications.opendatahub.io: datasciencepipelinesapplications/status"]
+    class res_153 resource
+    cr_rhods_operator_role -->|create, delete, deletecollection, get, list, patch, update, watch| res_154["dscinitialization.opendatahub.io: dscinitializations"]
+    class res_154 resource
+    cr_rhods_operator_role -->|delete, get, patch, update| res_155["dscinitialization.opendatahub.io: dscinitializations/finalizers"]
+    class res_155 resource
+    cr_rhods_operator_role -->|delete, get, patch, update| res_156["dscinitialization.opendatahub.io: dscinitializations/status"]
+    class res_156 resource
+    cr_rhods_operator_role -->|delete, get, list, patch, watch| res_157["events.k8s.io: events"]
+    class res_157 resource
+    cr_rhods_operator_role -->|*| res_158["extensions: deployments"]
+    class res_158 resource
+    cr_rhods_operator_role -->|*| res_159["extensions: replicasets"]
+    class res_159 resource
+    cr_rhods_operator_role -->|delete, get, list, patch, watch| res_160["extensions: ingresses"]
+    class res_160 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_161["features.opendatahub.io: featuretrackers"]
+    class res_161 resource
+    cr_rhods_operator_role -->|get, patch, update| res_162["features.opendatahub.io: featuretrackers/finalizers"]
+    class res_162 resource
+    cr_rhods_operator_role -->|delete, get, patch, update| res_163["features.opendatahub.io: featuretrackers/status"]
+    class res_163 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_164["gateway.networking.k8s.io: gatewayclasses"]
+    class res_164 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_165["gateway.networking.k8s.io: gateways"]
+    class res_165 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_166["gateway.networking.k8s.io: httproutes"]
+    class res_166 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_167["image.openshift.io: imagestreams"]
+    class res_167 resource
+    cr_rhods_operator_role -->|get| res_168["image.openshift.io: imagestreamtags"]
+    class res_168 resource
+    cr_rhods_operator_role -->|get| res_169["image.openshift.io: registry/metrics"]
+    class res_169 resource
+    cr_rhods_operator_role -->|get, list, watch| res_170["inference.networking.x-k8s.io: inferencemodels"]
+    class res_170 resource
+    cr_rhods_operator_role -->|get, list, watch| res_171["inference.networking.x-k8s.io: inferencepools"]
+    class res_171 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_172["infrastructure.opendatahub.io: hardwareprofiles"]
+    class res_172 resource
+    cr_rhods_operator_role -->|update| res_173["infrastructure.opendatahub.io: hardwareprofiles/finalizers"]
+    class res_173 resource
+    cr_rhods_operator_role -->|get, patch, update| res_174["infrastructure.opendatahub.io: hardwareprofiles/status"]
+    class res_174 resource
+    cr_rhods_operator_role -->|delete, get, list, patch, watch| res_175["integreatly.org: rhmis"]
+    class res_175 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_176["keda.sh: triggerauthentications"]
+    class res_176 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_177["kueue.openshift.io: kueues"]
+    class res_177 resource
+    cr_rhods_operator_role -->|get, patch, update| res_178["kueue.openshift.io: kueues/status"]
+    class res_178 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_179["kueue.x-k8s.io: clusterqueues"]
+    class res_179 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_180["kueue.x-k8s.io: localqueues"]
+    class res_180 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_181["kueue.x-k8s.io: resourceflavors"]
+    class res_181 resource
+    cr_rhods_operator_role -->|get, patch, update| res_182["kueue.x-k8s.io: clusterqueues/status"]
+    class res_182 resource
+    cr_rhods_operator_role -->|get, patch, update| res_183["kueue.x-k8s.io: localqueues/status"]
+    class res_183 resource
+    cr_rhods_operator_role -->|*| res_184["machinelearning.seldon.io: seldondeployments"]
+    class res_184 resource
+    cr_rhods_operator_role -->|create, get, list, patch, update, use, watch| res_185["maistra.io: servicemeshcontrolplanes"]
+    class res_185 resource
+    cr_rhods_operator_role -->|create, get, list, patch, update, use, watch| res_186["maistra.io: servicemeshmemberrolls"]
+    class res_186 resource
+    cr_rhods_operator_role -->|create, get, list, patch, update, use, watch| res_187["maistra.io: servicemeshmembers/finalizers"]
+    class res_187 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, use, watch| res_188["maistra.io: servicemeshmembers"]
+    class res_188 resource
+    cr_rhods_operator_role -->|get, list, watch| res_189["metrics.k8s.io: nodes"]
+    class res_189 resource
+    cr_rhods_operator_role -->|get, list, watch| res_190["metrics.k8s.io: pods"]
+    class res_190 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_191["modelregistry.opendatahub.io: modelregistries"]
+    class res_191 resource
+    cr_rhods_operator_role -->|get, update| res_192["modelregistry.opendatahub.io: modelregistries/finalizers"]
+    class res_192 resource
+    cr_rhods_operator_role -->|get, patch, update| res_193["modelregistry.opendatahub.io: modelregistries/status"]
+    class res_193 resource
+    cr_rhods_operator_role -->|create, delete, deletecollection, get, patch| res_194["monitoring.coreos.com: alertmanagerconfigs"]
+    class res_194 resource
+    cr_rhods_operator_role -->|create, delete, deletecollection, get, patch| res_195["monitoring.coreos.com: alertmanagers"]
+    class res_195 resource
+    cr_rhods_operator_role -->|create, delete, deletecollection, get, patch| res_196["monitoring.coreos.com: alertmanagers/finalizers"]
+    class res_196 resource
+    cr_rhods_operator_role -->|create, delete, deletecollection, get, patch| res_197["monitoring.coreos.com: alertmanagers/status"]
+    class res_197 resource
+    cr_rhods_operator_role -->|create, delete, deletecollection, get, patch| res_198["monitoring.coreos.com: probes"]
+    class res_198 resource
+    cr_rhods_operator_role -->|create, delete, deletecollection, get, patch| res_199["monitoring.coreos.com: prometheuses"]
+    class res_199 resource
+    cr_rhods_operator_role -->|create, delete, deletecollection, get, patch| res_200["monitoring.coreos.com: prometheuses/finalizers"]
+    class res_200 resource
+    cr_rhods_operator_role -->|create, delete, deletecollection, get, patch| res_201["monitoring.coreos.com: prometheuses/status"]
+    class res_201 resource
+    cr_rhods_operator_role -->|create, delete, deletecollection, get, patch| res_202["monitoring.coreos.com: thanosrulers"]
+    class res_202 resource
+    cr_rhods_operator_role -->|create, delete, deletecollection, get, patch| res_203["monitoring.coreos.com: thanosrulers/finalizers"]
+    class res_203 resource
+    cr_rhods_operator_role -->|create, delete, deletecollection, get, patch| res_204["monitoring.coreos.com: thanosrulers/status"]
+    class res_204 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_205["monitoring.coreos.com: podmonitors"]
+    class res_205 resource
+    cr_rhods_operator_role -->|create, delete, deletecollection, get, list, patch, update, watch| res_206["monitoring.coreos.com: prometheusrules"]
+    class res_206 resource
+    cr_rhods_operator_role -->|create, delete, deletecollection, get, list, patch, update, watch| res_207["monitoring.coreos.com: servicemonitors"]
+    class res_207 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_208["monitoring.rhobs: monitoringstacks"]
+    class res_208 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_209["monitoring.rhobs: prometheusrules"]
+    class res_209 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_210["monitoring.rhobs: servicemonitors"]
+    class res_210 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_211["monitoring.rhobs: thanosqueriers"]
+    class res_211 resource
+    cr_rhods_operator_role -->|update| res_212["monitoring.rhobs: monitoringstacks/finalizers"]
+    class res_212 resource
+    cr_rhods_operator_role -->|update| res_213["monitoring.rhobs: prometheusrules/finalizers"]
+    class res_213 resource
+    cr_rhods_operator_role -->|update| res_214["monitoring.rhobs: servicemonitors/finalizers"]
+    class res_214 resource
+    cr_rhods_operator_role -->|update| res_215["monitoring.rhobs: thanosqueriers/finalizers"]
+    class res_215 resource
+    cr_rhods_operator_role -->|get, patch, update| res_216["monitoring.rhobs: monitoringstacks/status"]
+    class res_216 resource
+    cr_rhods_operator_role -->|get, patch, update| res_217["monitoring.rhobs: prometheusrules/status"]
+    class res_217 resource
+    cr_rhods_operator_role -->|get, patch, update| res_218["monitoring.rhobs: servicemonitors/status"]
+    class res_218 resource
+    cr_rhods_operator_role -->|get, patch, update| res_219["monitoring.rhobs: thanosqueriers/status"]
+    class res_219 resource
+    cr_rhods_operator_role -->|*| res_220["networking.istio.io: destinationrules"]
+    class res_220 resource
+    cr_rhods_operator_role -->|*| res_221["networking.istio.io: envoyfilters"]
+    class res_221 resource
+    cr_rhods_operator_role -->|*| res_222["networking.istio.io: gateways"]
+    class res_222 resource
+    cr_rhods_operator_role -->|*| res_223["networking.istio.io: virtualservices"]
+    class res_223 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_224["networking.istio.io: virtualservices/finalizers"]
+    class res_224 resource
+    cr_rhods_operator_role -->|delete, get, patch, update| res_225["networking.istio.io: virtualservices/status"]
+    class res_225 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_226["networking.k8s.io: ingresses"]
+    class res_226 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_227["networking.k8s.io: networkpolicies"]
+    class res_227 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_228["oauth.openshift.io: oauthclients"]
+    class res_228 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_229["opendatahub.io: odhdashboardconfigs"]
+    class res_229 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_230["opentelemetry.io: instrumentations"]
+    class res_230 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_231["opentelemetry.io: opentelemetrycollectors"]
+    class res_231 resource
+    cr_rhods_operator_role -->|update| res_232["opentelemetry.io: instrumentations/finalizers"]
+    class res_232 resource
+    cr_rhods_operator_role -->|update| res_233["opentelemetry.io: opentelemetrycollectors/finalizers"]
+    class res_233 resource
+    cr_rhods_operator_role -->|get, patch, update| res_234["opentelemetry.io: instrumentations/status"]
+    class res_234 resource
+    cr_rhods_operator_role -->|get, patch, update| res_235["opentelemetry.io: opentelemetrycollectors/status"]
+    class res_235 resource
+    cr_rhods_operator_role -->|*| res_236["operator.authorino.kuadrant.io: authorinos"]
+    class res_236 resource
+    cr_rhods_operator_role -->|*| res_237["operator.knative.dev: knativeservings"]
+    class res_237 resource
+    cr_rhods_operator_role -->|get, patch, update| res_238["operator.knative.dev: knativeservings/finalizers"]
+    class res_238 resource
+    cr_rhods_operator_role -->|delete, get, list, patch, watch| res_239["operator.openshift.io: consoles"]
+    class res_239 resource
+    cr_rhods_operator_role -->|delete, get, list, patch, watch| res_240["operator.openshift.io: ingresscontrollers"]
+    class res_240 resource
+    cr_rhods_operator_role -->|get, list, watch| res_241["operators.coreos.com: catalogsources"]
+    class res_241 resource
+    cr_rhods_operator_role -->|get, list, watch| res_242["operators.coreos.com: operatorconditions"]
+    class res_242 resource
+    cr_rhods_operator_role -->|delete, get, list, update, watch| res_243["operators.coreos.com: clusterserviceversions"]
+    class res_243 resource
+    cr_rhods_operator_role -->|create, delete, get, patch| res_244["operators.coreos.com: customresourcedefinitions"]
+    class res_244 resource
+    cr_rhods_operator_role -->|delete, get, list, watch| res_245["operators.coreos.com: subscriptions"]
+    class res_245 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch| res_246["ray.io: rayclusters"]
+    class res_246 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_247["ray.io: rayjobs"]
+    class res_247 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_248["ray.io: rayservices"]
+    class res_248 resource
+    cr_rhods_operator_role -->|*| res_249["rbac.authorization.k8s.io: clusterrolebindings"]
+    class res_249 resource
+    cr_rhods_operator_role -->|*| res_250["rbac.authorization.k8s.io: clusterroles"]
+    class res_250 resource
+    cr_rhods_operator_role -->|*| res_251["rbac.authorization.k8s.io: rolebindings"]
+    class res_251 resource
+    cr_rhods_operator_role -->|*| res_252["rbac.authorization.k8s.io: roles"]
+    class res_252 resource
+    cr_rhods_operator_role -->|get| res_253["route.openshift.io: routers/federate"]
+    class res_253 resource
+    cr_rhods_operator_role -->|get| res_254["route.openshift.io: routers/metrics"]
+    class res_254 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_255["route.openshift.io: routes"]
+    class res_255 resource
+    cr_rhods_operator_role -->|*| res_256["security.istio.io: authorizationpolicies"]
+    class res_256 resource
+    cr_rhods_operator_role -->|*| res_257["security.openshift.io: securitycontextconstraints"]
+    class res_257 resource
+    cr_rhods_operator_role -->|*| res_258["security.openshift.io: securitycontextconstraints"]
+    class res_258 resource
+    cr_rhods_operator_role -->|*| res_259["security.openshift.io: securitycontextconstraints"]
+    class res_259 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_260["services.platform.opendatahub.io: auths"]
+    class res_260 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_261["services.platform.opendatahub.io: monitorings"]
+    class res_261 resource
+    cr_rhods_operator_role -->|update| res_262["services.platform.opendatahub.io: auths/finalizers"]
+    class res_262 resource
+    cr_rhods_operator_role -->|update| res_263["services.platform.opendatahub.io: gatewayconfigs/finalizers"]
+    class res_263 resource
+    cr_rhods_operator_role -->|update| res_264["services.platform.opendatahub.io: monitorings/finalizers"]
+    class res_264 resource
+    cr_rhods_operator_role -->|get, patch, update| res_265["services.platform.opendatahub.io: auths/status"]
+    class res_265 resource
+    cr_rhods_operator_role -->|get, patch, update| res_266["services.platform.opendatahub.io: gatewayconfigs/status"]
+    class res_266 resource
+    cr_rhods_operator_role -->|get, patch, update| res_267["services.platform.opendatahub.io: monitorings/status"]
+    class res_267 resource
+    cr_rhods_operator_role -->|create, get, list, patch, update, watch| res_268["services.platform.opendatahub.io: gatewayconfigs"]
+    class res_268 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_269["serving.knative.dev: services"]
+    class res_269 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_270["serving.knative.dev: services/finalizers"]
+    class res_270 resource
+    cr_rhods_operator_role -->|delete, get, patch, update| res_271["serving.knative.dev: services/status"]
+    class res_271 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_272["serving.kserve.io: clusterservingruntimes"]
+    class res_272 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_273["serving.kserve.io: clusterservingruntimes/finalizers"]
+    class res_273 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_274["serving.kserve.io: inferencegraphs"]
+    class res_274 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_275["serving.kserve.io: inferenceservices"]
+    class res_275 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_276["serving.kserve.io: inferenceservices/finalizers"]
+    class res_276 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_277["serving.kserve.io: llminferenceserviceconfigs"]
+    class res_277 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_278["serving.kserve.io: predictors"]
+    class res_278 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_279["serving.kserve.io: servingruntimes/finalizers"]
+    class res_279 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_280["serving.kserve.io: trainedmodels"]
+    class res_280 resource
+    cr_rhods_operator_role -->|delete, get, patch, update| res_281["serving.kserve.io: clusterservingruntimes/status"]
+    class res_281 resource
+    cr_rhods_operator_role -->|delete, get, patch, update| res_282["serving.kserve.io: inferencegraphs/status"]
+    class res_282 resource
+    cr_rhods_operator_role -->|delete, get, patch, update| res_283["serving.kserve.io: inferenceservices/status"]
+    class res_283 resource
+    cr_rhods_operator_role -->|delete, get, patch, update| res_284["serving.kserve.io: predictors/status"]
+    class res_284 resource
+    cr_rhods_operator_role -->|delete, get, patch, update| res_285["serving.kserve.io: trainedmodels/status"]
+    class res_285 resource
+    cr_rhods_operator_role -->|get, patch, update| res_286["serving.kserve.io: llminferenceserviceconfigs/status"]
+    class res_286 resource
+    cr_rhods_operator_role -->|get, patch, update| res_287["serving.kserve.io: predictors/finalizers"]
+    class res_287 resource
+    cr_rhods_operator_role -->|get, patch, update| res_288["serving.kserve.io: servingruntimes/status"]
+    class res_288 resource
+    cr_rhods_operator_role -->|get, list, watch| res_289["serving.kserve.io: llminferenceservices"]
+    class res_289 resource
+    cr_rhods_operator_role -->|get, list, watch| res_290["serving.kserve.io: llminferenceservices/status"]
+    class res_290 resource
+    cr_rhods_operator_role -->|*| res_291["serving.kserve.io: servingruntimes"]
+    class res_291 resource
+    cr_rhods_operator_role -->|create, delete, get, patch| res_292["snapshot.storage.k8s.io: volumesnapshots"]
+    class res_292 resource
+    cr_rhods_operator_role -->|*| res_293["template.openshift.io: templates"]
+    class res_293 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_294["tempo.grafana.com: tempomonolithics"]
+    class res_294 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, update, watch| res_295["tempo.grafana.com: tempostacks"]
+    class res_295 resource
+    cr_rhods_operator_role -->|create, delete, get, list, patch, watch| res_296["user.openshift.io: groups"]
+    class res_296 resource
+    cr_rhods_operator_role -->|delete, get, list, patch, update, watch| res_297["user.openshift.io: users"]
+    class res_297 resource
+    cr_auth_editor_role -->|create, delete, get, list, patch, update, watch| res_298["services.opendatahub.io: auths"]
+    class res_298 resource
+    cr_auth_editor_role -->|get| res_299["services.opendatahub.io: auths/status"]
+    class res_299 resource
+    cr_auth_viewer_role -->|get, list, watch| res_300["services.opendatahub.io: auths"]
+    class res_300 resource
+    cr_auth_viewer_role -->|get| res_301["services.opendatahub.io: auths/status"]
+    class res_301 resource
+    cr_monitoring_editor_role -->|create, delete, get, list, patch, update, watch| res_302["services.platform.opendatahub.io: monitorings"]
+    class res_302 resource
+    cr_monitoring_editor_role -->|get| res_303["services.platform.opendatahub.io: monitorings/status"]
+    class res_303 resource
+    cr_monitoring_viewer_role -->|get, list, watch| res_304["services.platform.opendatahub.io: monitorings"]
+    class res_304 resource
+    cr_monitoring_viewer_role -->|get| res_305["services.platform.opendatahub.io: monitorings/status"]
+    class res_305 resource

@@ -1,0 +1,38 @@
+graph LR
+    %% Dependency graph for rhods-operator
+
+    classDef component fill:#3498db,stroke:#2980b9,color:#fff,stroke-width:3px
+    classDef internal fill:#2ecc71,stroke:#27ae60,color:#fff
+    classDef external fill:#95a5a6,stroke:#7f8c8d,color:#333
+
+    comp_rhods_operator["rhods-operator"]
+    class comp_rhods_operator component
+
+    %% Key external dependencies
+    ext_1["logr\nv1.4.2"]
+    class ext_1 external
+    comp_rhods_operator --> ext_1
+    ext_2["api\nv0.31.0"]
+    class ext_2 external
+    comp_rhods_operator --> ext_2
+    ext_3["monitoring\nv0.68.0"]
+    class ext_3 external
+    comp_rhods_operator --> ext_3
+    ext_4["client_golang\nv1.20.5"]
+    class ext_4 external
+    comp_rhods_operator --> ext_4
+    ext_5["api\nv0.32.4"]
+    class ext_5 external
+    comp_rhods_operator --> ext_5
+    ext_6["apiextensions-apiserver\nv0.32.4"]
+    class ext_6 external
+    comp_rhods_operator --> ext_6
+    ext_7["apimachinery\nv0.32.4"]
+    class ext_7 external
+    comp_rhods_operator --> ext_7
+    ext_8["client-go\nv0.32.4"]
+    class ext_8 external
+    comp_rhods_operator --> ext_8
+    ext_9["controller-runtime\nv0.20.4"]
+    class ext_9 external
+    comp_rhods_operator --> ext_9
