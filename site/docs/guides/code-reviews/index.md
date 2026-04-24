@@ -17,20 +17,20 @@ The code profile is the default review mode. It analyzes source code from 5 spec
 Run all 5 (default):
 
 ```bash
-/adversarial-review src/
+/adversarial-reviewing src/
 ```
 
 Run specific specialists:
 
 ```bash
 # Security only
-/adversarial-review src/ --security
+/adversarial-reviewing src/ --security
 
 # Security + correctness
-/adversarial-review src/ --security --correctness
+/adversarial-reviewing src/ --security --correctness
 
 # Architecture + quality
-/adversarial-review src/ --architecture --quality
+/adversarial-reviewing src/ --architecture --quality
 ```
 
 ## Presets
@@ -40,7 +40,7 @@ Run specific specialists:
 2 specialists (SEC + CORR), 2 iterations, 150K token budget:
 
 ```bash
-/adversarial-review src/ --quick
+/adversarial-reviewing src/ --quick
 ```
 
 ### Thorough mode
@@ -48,26 +48,26 @@ Run specific specialists:
 All 5 specialists, 3 iterations, 800K token budget:
 
 ```bash
-/adversarial-review src/ --thorough
+/adversarial-reviewing src/ --thorough
 ```
 
 ### Custom budget
 
 ```bash
-/adversarial-review src/ --budget 500000
+/adversarial-reviewing src/ --budget 500000
 ```
 
 ## Reviewing specific files
 
 ```bash
 # Single file
-/adversarial-review src/auth/handler.go
+/adversarial-reviewing src/auth/handler.go
 
 # Directory
-/adversarial-review src/controllers/
+/adversarial-reviewing src/controllers/
 
 # Multiple targets
-/adversarial-review src/auth/ src/middleware/ pkg/db/
+/adversarial-reviewing src/auth/ src/middleware/ pkg/db/
 ```
 
 ## Delta mode (re-review changes only)
@@ -75,7 +75,7 @@ All 5 specialists, 3 iterations, 800K token budget:
 After applying fixes, re-review only what changed:
 
 ```bash
-/adversarial-review src/ --delta
+/adversarial-reviewing src/ --delta
 ```
 
 Delta mode detects changes since the last review and focuses specialists on modified code.
@@ -83,7 +83,7 @@ Delta mode detects changes since the last review and focuses specialists on modi
 ## Saving reports
 
 ```bash
-/adversarial-review src/ --save
+/adversarial-reviewing src/ --save
 ```
 
 Reports are written to `docs/reviews/YYYY-MM-DD-<topic>-review.md`.
@@ -93,7 +93,7 @@ Reports are written to `docs/reviews/YYYY-MM-DD-<topic>-review.md`.
 By default, findings on files outside the review target are demoted to Minor. Use `--strict-scope` to reject them entirely:
 
 ```bash
-/adversarial-review src/auth/ --strict-scope
+/adversarial-reviewing src/auth/ --strict-scope
 ```
 
 ## Advanced modes

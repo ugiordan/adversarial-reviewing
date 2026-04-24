@@ -1,5 +1,5 @@
 {
-  "name": "adversarial-review",
+  "name": "adversarial-reviewing",
   "description": "Multi-agent adversarial code review with isolated specialists, programmatic validation, and evidence-based resolution.",
   "version": "1.0.0",
   "author": {

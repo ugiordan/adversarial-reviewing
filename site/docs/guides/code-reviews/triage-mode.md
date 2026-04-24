@@ -6,13 +6,13 @@ Triage mode evaluates external review comments instead of performing independent
 
 ```bash
 # Triage PR comments (requires GitHub MCP tools)
-/adversarial-review --triage pr:42
+/adversarial-reviewing --triage pr:42
 
 # Triage comments from a file
-/adversarial-review --triage file:reviews/comments.json
+/adversarial-reviewing --triage file:reviews/comments.json
 
 # Read comments from stdin
-/adversarial-review --triage -
+/adversarial-reviewing --triage -
 ```
 
 ## How it works
@@ -45,7 +45,7 @@ protected resources.
 For deeper analysis, combine triage with change-impact analysis:
 
 ```bash
-/adversarial-review --triage pr:42 --diff --thorough
+/adversarial-reviewing --triage pr:42 --diff --thorough
 ```
 
 This gives specialists both the external comments and the full change-impact graph for context.
@@ -55,7 +55,7 @@ This gives specialists both the external comments and the full change-impact gra
 Add `--gap-analysis` to identify areas the reviewers missed:
 
 ```bash
-/adversarial-review --triage pr:42 --gap-analysis
+/adversarial-reviewing --triage pr:42 --gap-analysis
 ```
 
 The gap analysis section shows coverage by specialist domain and highlights files or patterns that received no review attention.

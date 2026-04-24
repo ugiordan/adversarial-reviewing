@@ -9,7 +9,7 @@ Make sure the plugin is [installed](installation.md). Open a Claude Code session
 ## Step 1: Run the review
 
 ```bash
-/adversarial-review src/controllers/ --security --correctness --save
+/adversarial-reviewing src/controllers/ --security --correctness --save
 ```
 
 This runs two specialists against the controllers directory and saves the report.

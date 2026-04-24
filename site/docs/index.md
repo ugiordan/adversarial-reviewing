@@ -13,7 +13,7 @@ hide:
   </p>
   <p>
     <a href="getting-started/installation/" class="md-button md-button--primary">Get Started</a>
-    <a href="https://github.com/ugiordan/adversarial-review" class="md-button">GitHub</a>
+    <a href="https://github.com/ugiordan/adversarial-reviewing" class="md-button">GitHub</a>
   </p>
 </div>
 
@@ -139,7 +139,7 @@ The **code profile** (default) reviews source code with file:line evidence and s
 flowchart TB
     subgraph code["Code Profile (default)"]
         direction TB
-        CR["Code review\n/adversarial-review src/"]
+        CR["Code review\n/adversarial-reviewing src/"]
         TR["Triage external comments\n--triage pr:42"]
         CI["Change-impact analysis\n--diff"]
         DL["Delta re-review\n--delta"]

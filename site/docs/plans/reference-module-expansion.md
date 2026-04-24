@@ -2,7 +2,7 @@
 
 ## Problem Statement
 
-The adversarial-review tool currently has an imbalanced reference module distribution. All 4 code profile modules are security-focused (OWASP Top 10, ASVS, K8s security, agentic AI security), leaving PERF, QUAL, CORR, and ARCH agents with zero domain-specific reference material. The strat profile has 3 organization-specific "all specialist" modules but nothing domain-specific per specialist.
+The adversarial-reviewing tool currently has an imbalanced reference module distribution. All 4 code profile modules are security-focused (OWASP Top 10, ASVS, K8s security, agentic AI security), leaving PERF, QUAL, CORR, and ARCH agents with zero domain-specific reference material. The strat profile has 3 organization-specific "all specialist" modules but nothing domain-specific per specialist.
 
 This means non-security code agents and all strat agents rely entirely on LLM training knowledge, which is less precise and cannot be updated independently of model releases.
 
@@ -306,7 +306,7 @@ The 3 existing strat `all/` modules are RHOAI-specific and should be migrated ou
 3. Run `discover_references.py <specialist> --builtin-dir profiles/code/references` for each and verify discovery
 4. Run token count check: `discover_references.py --list-all --token-count --budget-check 350000`
 5. Add test fixtures per module (known-good input + expected behavior)
-6. Run adversarial-review on a sample Go controller file, compare findings with/without modules
+6. Run adversarial-reviewing on a sample Go controller file, compare findings with/without modules
 
 **Acceptance criteria (Phase 1):**
 1. Each module has valid YAML frontmatter

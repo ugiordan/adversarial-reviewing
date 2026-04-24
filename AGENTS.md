@@ -2,11 +2,11 @@
 
 ## Installation Check
 
-Before proceeding, verify that adversarial-review is installed:
+Before proceeding, verify that adversarial-reviewing is installed:
 
 ```bash
 AR_HOME="${ADVERSARIAL_REVIEW_HOME:-$HOME/.adversarial-review/adversarial-review}"
-[ -d "$AR_HOME/scripts" ] || echo "ERROR: adversarial-review not found at $AR_HOME. Clone it or set ADVERSARIAL_REVIEW_HOME."
+[ -d "$AR_HOME/scripts" ] || echo "ERROR: adversarial-reviewing not found at $AR_HOME. Clone it or set ADVERSARIAL_REVIEW_HOME."
 ```
 
 ## Overview

@@ -70,7 +70,7 @@ token_estimate: 2500
 ### List discovered modules
 
 ```bash
-/adversarial-review --list-references
+/adversarial-reviewing --list-references
 ```
 
 Shows all modules across all three layers with metadata: name, version, token count, staleness, and source.
@@ -78,7 +78,7 @@ Shows all modules across all three layers with metadata: name, version, token co
 ### Check for updates
 
 ```bash
-/adversarial-review --update-references --check-only
+/adversarial-reviewing --update-references --check-only
 ```
 
 Checks modules with a `source_url` for newer versions without applying changes.
@@ -86,7 +86,7 @@ Checks modules with a `source_url` for newer versions without applying changes.
 ### Update modules
 
 ```bash
-/adversarial-review --update-references
+/adversarial-reviewing --update-references
 ```
 
 Interactively updates modules from their `source_url`. Shows a diff for each update and asks for confirmation.

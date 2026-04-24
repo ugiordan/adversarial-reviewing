@@ -1,7 +1,7 @@
-site_name: Adversarial Review
-site_url: https://ugiordan.github.io/adversarial-review
-repo_url: https://github.com/ugiordan/adversarial-review
-repo_name: ugiordan/adversarial-review
+site_name: Adversarial Reviewing
+site_url: https://ugiordan.github.io/adversarial-reviewing
+repo_url: https://github.com/ugiordan/adversarial-reviewing
+repo_name: ugiordan/adversarial-reviewing
 edit_uri: edit/main/site/docs/
 
 theme:

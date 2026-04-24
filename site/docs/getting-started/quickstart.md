@@ -7,7 +7,7 @@ After [installing](installation.md) the plugin, here's how to run your first rev
 In a Claude Code session, point it at a file or directory:
 
 ```bash
-/adversarial-review src/auth/
+/adversarial-reviewing src/auth/
 ```
 
 This runs all 5 specialists (Security, Performance, Quality, Correctness, Architecture) with default settings: 2 self-refinement iterations, 350K token budget.
@@ -17,7 +17,7 @@ This runs all 5 specialists (Security, Performance, Quality, Correctness, Archit
 For a fast check with fewer specialists:
 
 ```bash
-/adversarial-review src/ --quick
+/adversarial-reviewing src/ --quick
 ```
 
 Quick mode uses 2 specialists (Security + Correctness), 2 iterations, and a 150K budget.
@@ -27,7 +27,7 @@ Quick mode uses 2 specialists (Security + Correctness), 2 iterations, and a 150K
 For a deep review:
 
 ```bash
-/adversarial-review src/ --thorough
+/adversarial-reviewing src/ --thorough
 ```
 
 Thorough mode uses all 5 specialists, 3 iterations, and an 800K budget.
@@ -35,7 +35,7 @@ Thorough mode uses all 5 specialists, 3 iterations, and an 800K budget.
 ## Save the report
 
 ```bash
-/adversarial-review src/ --save
+/adversarial-reviewing src/ --save
 ```
 
 Writes the report to `docs/reviews/YYYY-MM-DD-<topic>-review.md`.
@@ -43,7 +43,7 @@ Writes the report to `docs/reviews/YYYY-MM-DD-<topic>-review.md`.
 ## Strategy document review
 
 ```bash
-/adversarial-review artifacts/strat-tasks/ --profile strat
+/adversarial-reviewing artifacts/strat-tasks/ --profile strat
 ```
 
 Runs 6 strategy specialists and produces per-document verdicts (Approve/Revise/Reject).

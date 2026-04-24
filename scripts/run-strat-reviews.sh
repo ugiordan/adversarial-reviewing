@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run adversarial-review strat profile on all STRAT files in a directory.
+# Run adversarial-reviewing strat profile on all STRAT files in a directory.
 #
 # Usage:
 #   ./scripts/run-strat-reviews.sh [input-dir] [output-dir]
@@ -12,7 +12,7 @@
 # Results are saved to output-dir/<strat-id>-review.md
 #
 # Environment variables:
-#   REVIEW_MODE   Review depth flag passed to adversarial-review (default: quick)
+#   REVIEW_MODE   Review depth flag passed to adversarial-reviewing (default: quick)
 #   DRY_RUN       If set to 1, print commands without executing (default: 0)
 
 set -euo pipefail
@@ -62,10 +62,10 @@ for strat_file in "${strat_files[@]}"; do
 
   echo "--- [$((completed + failed + 1))/$total] $filename"
 
-  # The actual invocation goes through the Claude Code skill (adversarial-review),
+  # The actual invocation goes through the Claude Code skill (adversarial-reviewing),
   # which spawns sub-agents for each reviewer. This script documents the expected
   # command and can be used as a runner scaffold.
-  cmd="/adversarial-review \"$strat_file\" --profile strat --${REVIEW_MODE} --save"
+  cmd="/adversarial-reviewing \"$strat_file\" --profile strat --${REVIEW_MODE} --save"
   echo "  cmd: $cmd"
   echo "  output: ${OUTPUT_DIR}/${strat_id}-review.md"
 

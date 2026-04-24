@@ -1,5 +1,5 @@
 <!-- If you cloned to a different location, replace the path below -->
-<!-- Default install path: $HOME/.adversarial-review/adversarial-review -->
+<!-- Default install path: $HOME/.adversarial-review/adversarial-reviewing -->
 
 # Adversarial Review -- Cursor Rules (Degraded Single-Agent Mode)
 
@@ -15,7 +15,7 @@ isolation are advisory only -- output validation depends on agent compliance.
 
 ## Workflow
 
-When the user invokes `@adversarial-review` (or asks for an adversarial review),
+When the user invokes `@adversarial-reviewing` (or asks for an adversarial review),
 execute the following steps **sequentially** inside the single agent context.
 
 ### Phase 1 -- Specialist analysis

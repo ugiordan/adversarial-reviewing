@@ -1,11 +1,11 @@
 # CLI Flags
 
-Complete reference for all flags accepted by `/adversarial-review`.
+Complete reference for all flags accepted by `/adversarial-reviewing`.
 
 ## Invocation
 
 ```
-/adversarial-review [files/dirs] [flags]
+/adversarial-reviewing [files/dirs] [flags]
 ```
 
 When no files are specified, the review targets staged changes or the current directory.

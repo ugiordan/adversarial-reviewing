@@ -1,6 +1,6 @@
 # Scripts
 
-All scripts live in `skills/adversarial-review/scripts/`. They provide programmatic validation that does not depend on LLM judgment.
+All scripts live in `skills/adversarial-reviewing/scripts/`. They provide programmatic validation that does not depend on LLM judgment.
 
 ## Bash scripts
 

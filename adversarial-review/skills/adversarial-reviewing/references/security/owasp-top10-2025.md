@@ -3,7 +3,7 @@ name: owasp-top10-2025
 specialist: security
 version: "1.0.0"
 last_updated: "2026-03-26"
-source_url: "https://raw.githubusercontent.com/ugiordan/adversarial-review/main/adversarial-review/skills/adversarial-review/references/security/owasp-top10-2025.md"
+source_url: "https://raw.githubusercontent.com/ugiordan/adversarial-reviewing/main/adversarial-review/skills/adversarial-review/references/security/owasp-top10-2025.md"
 description: "OWASP Top 10:2025 vulnerability categories with code-level verification patterns"
 enabled: true
 ---

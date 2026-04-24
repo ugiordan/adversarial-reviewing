@@ -12,18 +12,18 @@ From inside a Claude Code session:
 
 ```bash
 # One-time marketplace registration
-/plugin marketplace add ugiordan/adversarial-review
+/plugin marketplace add ugiordan/adversarial-reviewing
 
 # Install globally (works in every project)
-/plugin install adversarial-review@ugiordan-adversarial-review
+/plugin install adversarial-reviewing@ugiordan-adversarial-reviewing
 ```
 
-After installation, start a new session. The skill activates automatically when relevant, or invoke directly via `/adversarial-review`.
+After installation, start a new session. The skill activates automatically when relevant, or invoke directly via `/adversarial-reviewing`.
 
 To update later:
 
 ```bash
-/plugin update adversarial-review
+/plugin update adversarial-reviewing
 ```
 
 ### Option B: Manual setup
@@ -33,18 +33,18 @@ If `/plugin` commands are unavailable:
 1. Clone the marketplace repo:
 
     ```bash
-    git clone https://github.com/ugiordan/adversarial-review.git \
-      $HOME/.claude/plugins/marketplaces/ugiordan-adversarial-review
+    git clone https://github.com/ugiordan/adversarial-reviewing.git \
+      $HOME/.claude/plugins/marketplaces/ugiordan-adversarial-reviewing
     ```
 
 2. Copy the plugin to the cache:
 
     ```bash
-    mkdir -p $HOME/.claude/plugins/cache/ugiordan-adversarial-review/adversarial-review/1.0.0
-    rsync -a $HOME/.claude/plugins/marketplaces/ugiordan-adversarial-review/adversarial-review/ \
-      $HOME/.claude/plugins/cache/ugiordan-adversarial-review/adversarial-review/1.0.0/
-    cp $HOME/.claude/plugins/marketplaces/ugiordan-adversarial-review/.claude-plugin/marketplace.json \
-      $HOME/.claude/plugins/cache/ugiordan-adversarial-review/adversarial-review/1.0.0/.claude-plugin/
+    mkdir -p $HOME/.claude/plugins/cache/ugiordan-adversarial-reviewing/adversarial-review/1.0.0
+    rsync -a $HOME/.claude/plugins/marketplaces/ugiordan-adversarial-reviewing/adversarial-review/ \
+      $HOME/.claude/plugins/cache/ugiordan-adversarial-reviewing/adversarial-review/1.0.0/
+    cp $HOME/.claude/plugins/marketplaces/ugiordan-adversarial-reviewing/.claude-plugin/marketplace.json \
+      $HOME/.claude/plugins/cache/ugiordan-adversarial-reviewing/adversarial-review/1.0.0/.claude-plugin/
     ```
 
 3. Add to `~/.claude/settings.json`:
@@ -52,13 +52,13 @@ If `/plugin` commands are unavailable:
     ```json
     {
       "enabledPlugins": {
-        "adversarial-review@ugiordan-adversarial-review": true
+        "adversarial-reviewing@ugiordan-adversarial-reviewing": true
       },
       "extraKnownMarketplaces": {
-        "ugiordan-adversarial-review": {
+        "ugiordan-adversarial-reviewing": {
           "source": {
             "source": "git",
-            "url": "https://github.com/ugiordan/adversarial-review.git"
+            "url": "https://github.com/ugiordan/adversarial-reviewing.git"
           }
         }
       }
@@ -68,10 +68,10 @@ If `/plugin` commands are unavailable:
 4. Add to `~/.claude/plugins/installed_plugins.json` (inside the `"plugins"` object):
 
     ```json
-    "adversarial-review@ugiordan-adversarial-review": [
+    "adversarial-reviewing@ugiordan-adversarial-reviewing": [
       {
         "scope": "user",
-        "installPath": "<HOME>/.claude/plugins/cache/ugiordan-adversarial-review/adversarial-review/1.0.0",
+        "installPath": "<HOME>/.claude/plugins/cache/ugiordan-adversarial-reviewing/adversarial-review/1.0.0",
         "version": "1.0.0",
         "installedAt": "<ISO-8601-timestamp>",
         "lastUpdated": "<ISO-8601-timestamp>",
@@ -86,11 +86,11 @@ Cursor cannot spawn isolated sub-agents. The plugin adapts to a sequential perso
 
 ```bash
 # Clone the repo
-git clone https://github.com/ugiordan/adversarial-review.git $HOME/.adversarial-review
+git clone https://github.com/ugiordan/adversarial-reviewing.git $HOME/.adversarial-review
 
 # Copy rules to your project
 mkdir -p .cursor/rules
-cp $HOME/.adversarial-review/.cursor/rules/adversarial-review.mdc .cursor/rules/
+cp $HOME/.adversarial-review/.cursor/rules/adversarial-reviewing.mdc .cursor/rules/
 ```
 
 !!! note "Limitations in Cursor mode"
@@ -105,7 +105,7 @@ For any AI tool that supports AGENTS.md or similar context injection:
 
 ```bash
 # Clone the repo
-git clone https://github.com/ugiordan/adversarial-review.git $HOME/.adversarial-review
+git clone https://github.com/ugiordan/adversarial-reviewing.git $HOME/.adversarial-review
 ```
 
 Reference or inline `AGENTS.md` in your AI tool's context. Feature set depends on the tool's capabilities.

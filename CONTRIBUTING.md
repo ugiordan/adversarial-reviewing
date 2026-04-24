@@ -7,7 +7,7 @@ Thank you for considering contributing to Adversarial Review.
 1. Fork and clone the repository
 2. Run the test suite to verify your setup:
    ```bash
-   cd adversarial-review/skills/adversarial-review
+   cd adversarial-review/skills/adversarial-reviewing
    bash tests/run-all-tests.sh
    ```
 3. Create a feature branch from `main`
@@ -34,7 +34,7 @@ Thank you for considering contributing to Adversarial Review.
 ### Running Tests
 
 ```bash
-cd adversarial-review/skills/adversarial-review
+cd adversarial-review/skills/adversarial-reviewing
 bash tests/run-all-tests.sh
 ```
 
@@ -43,7 +43,7 @@ All tests must pass before submitting a PR.
 ### Linting
 
 ```bash
-shellcheck adversarial-review/skills/adversarial-review/scripts/*.sh
+shellcheck adversarial-review/skills/adversarial-reviewing/scripts/*.sh
 ```
 
 ### Writing Tests

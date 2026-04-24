@@ -6,10 +6,10 @@ Phase 5 generates and applies fixes for confirmed findings. It requires explicit
 
 ```bash
 # Full review with remediation
-/adversarial-review src/ --fix
+/adversarial-reviewing src/ --fix
 
 # Preview without writing anything
-/adversarial-review src/ --fix --dry-run
+/adversarial-reviewing src/ --fix --dry-run
 ```
 
 ## Pipeline
@@ -107,7 +107,7 @@ This prevents shipping fixes that don't actually address the issue. It adds one 
 Preview what the remediation would do without writing anything:
 
 ```bash
-/adversarial-review src/ --fix --dry-run
+/adversarial-reviewing src/ --fix --dry-run
 ```
 
 This runs the full classification and shows the proposed Jira drafts, branch names, and fix descriptions, but writes no files and creates no branches.
@@ -117,5 +117,5 @@ This runs the full classification and shows the proposed Jira drafts, branch nam
 When `--strict-scope` is active, remediation patches that touch files outside the review target are rejected entirely (not just flagged):
 
 ```bash
-/adversarial-review src/auth/ --fix --strict-scope
+/adversarial-reviewing src/auth/ --fix --strict-scope
 ```

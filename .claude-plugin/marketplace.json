@@ -1,12 +1,12 @@
 {
-  "name": "ugiordan-adversarial-review",
+  "name": "ugiordan-adversarial-reviewing",
   "owner": {
     "name": "Ugo Giordano",
     "email": "ugiordan@redhat.com"
   },
   "plugins": [
     {
-      "name": "adversarial-review",
+      "name": "adversarial-reviewing",
       "source": "./adversarial-review",
       "description": "Multi-agent adversarial code review with debate protocol",
       "version": "1.0.0",

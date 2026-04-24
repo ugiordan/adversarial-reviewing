@@ -6,13 +6,13 @@ The `--diff` flag enriches the review with git diff context and a change-impact 
 
 ```bash
 # Diff against current HEAD
-/adversarial-review src/ --diff
+/adversarial-reviewing src/ --diff
 
 # Specify a commit range
-/adversarial-review src/ --diff --range main..HEAD
+/adversarial-reviewing src/ --diff --range main..HEAD
 
 # Combined with triage
-/adversarial-review --triage pr:42 --diff
+/adversarial-reviewing --triage pr:42 --diff
 ```
 
 ## What it provides

@@ -10,14 +10,14 @@
 ## Clone the repo
 
 ```bash
-git clone https://github.com/ugiordan/adversarial-review.git
-cd adversarial-review
+git clone https://github.com/ugiordan/adversarial-reviewing.git
+cd adversarial-reviewing
 ```
 
 ## Repository structure
 
 ```
-adversarial-review/
+adversarial-reviewing/
   .claude-plugin/           # Marketplace metadata
   .cursor/rules/            # Cursor IDE rules
   .github/workflows/        # CI (test.yml)
@@ -25,8 +25,8 @@ adversarial-review/
     .claude-plugin/
       plugin.json           # Plugin manifest
     commands/
-      adversarial-review.md # Command definition
-    skills/adversarial-review/
+      adversarial-reviewing.md # Command definition
+    skills/adversarial-reviewing/
       SKILL.md              # Main orchestration procedure
       profiles/             # Code and strategy profiles
       phases/               # Phase procedures
@@ -44,7 +44,7 @@ adversarial-review/
 ## Running tests
 
 ```bash
-cd adversarial-review/skills/adversarial-review
+cd adversarial-review/skills/adversarial-reviewing
 bash tests/run-all-tests.sh
 ```
 
@@ -88,11 +88,11 @@ To test changes locally before pushing:
 
     ```bash
     rsync -a adversarial-review/ \
-      $HOME/.claude/plugins/cache/ugiordan-adversarial-review/adversarial-review/1.0.0/
+      $HOME/.claude/plugins/cache/ugiordan-adversarial-reviewing/adversarial-review/1.0.0/
     ```
 
 2. Start a new Claude Code session
-3. Run `/adversarial-review` against test code
+3. Run `/adversarial-reviewing` against test code
 
 ## Writing tests
 

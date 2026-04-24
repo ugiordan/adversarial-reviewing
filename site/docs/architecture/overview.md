@@ -122,7 +122,7 @@ Agent prompts evolve over time. Without version tracking, there's no way to know
 
 | Component | Location | Purpose |
 |-----------|----------|---------|
-| SKILL.md | `skills/adversarial-review/SKILL.md` | Main orchestration procedure |
+| SKILL.md | `skills/adversarial-reviewing/SKILL.md` | Main orchestration procedure |
 | Phases | `phases/` | Per-phase execution procedures |
 | Protocols | `protocols/` | Operational rules and constraints |
 | Agents | `profiles/<profile>/agents/` | Specialist prompt definitions |

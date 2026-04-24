@@ -6,16 +6,16 @@ The `--context` flag injects labeled reference material into the review. This gi
 
 ```bash
 # From a git repository
-/adversarial-review src/ --context architecture=https://github.com/org/repo
+/adversarial-reviewing src/ --context architecture=https://github.com/org/repo
 
 # From a local directory
-/adversarial-review src/ --context architecture=./docs/arch
+/adversarial-reviewing src/ --context architecture=./docs/arch
 
 # From a single file
-/adversarial-review src/ --context threatmodel=./docs/threat-model.md
+/adversarial-reviewing src/ --context threatmodel=./docs/threat-model.md
 
 # Multiple context sources (repeatable)
-/adversarial-review src/ \
+/adversarial-reviewing src/ \
   --context architecture=https://github.com/org/repo \
   --context compliance=./docs/compliance/
 ```
@@ -72,9 +72,9 @@ Context injection works identically for code and strategy profiles:
 
 ```bash
 # Code profile with architecture context
-/adversarial-review src/ --context architecture=./docs/arch
+/adversarial-reviewing src/ --context architecture=./docs/arch
 
 # Strategy profile with architecture context
-/adversarial-review docs/strat/ --profile strat \
+/adversarial-reviewing docs/strat/ --profile strat \
   --context architecture=https://github.com/org/repo
 ```

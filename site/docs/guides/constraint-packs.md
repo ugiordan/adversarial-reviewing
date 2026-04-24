@@ -6,13 +6,13 @@ Constraint packs are organizational bundles containing enforced rules and refere
 
 ```bash
 # Strategy review with RHOAI constraints
-adversarial-review --profile strat --constraints packs/rhoai/ strategy.md
+adversarial-reviewing --profile strat --constraints packs/rhoai/ strategy.md
 
 # Code review with RHOAI constraints
-adversarial-review --constraints packs/rhoai/ src/
+adversarial-reviewing --constraints packs/rhoai/ src/
 
 # Combine with context for maximum coverage
-adversarial-review --constraints packs/rhoai/ --context architecture=./docs src/
+adversarial-reviewing --constraints packs/rhoai/ --context architecture=./docs src/
 ```
 
 ## How constraints work
@@ -112,7 +112,7 @@ Both flags are composable: use `--constraints` for hard rules and `--context` fo
 10 constraints covering FIPS compliance, auth patterns, RBAC scope, secrets management, image provenance, and more. 3 reference modules with detailed platform context.
 
 ```bash
-adversarial-review --profile strat --constraints packs/rhoai/ strategy.md
+adversarial-reviewing --profile strat --constraints packs/rhoai/ strategy.md
 ```
 
 | ID | Title | Severity | Profile |

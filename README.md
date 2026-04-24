@@ -189,40 +189,40 @@ Default: all specialists for the active profile. Use flags to select specific on
 
 ```
 # One-time marketplace registration
-/plugin marketplace add ugiordan/adversarial-review
+/plugin marketplace add ugiordan/adversarial-reviewing
 
 # Install globally (works in every project)
-/plugin install adversarial-review@ugiordan-adversarial-review
+/plugin install adversarial-reviewing@ugiordan-adversarial-reviewing
 ```
 
 **Option B: Manual setup** (if `/plugin` commands are unavailable):
 
 1. Clone the marketplace repo:
 ```bash
-git clone https://github.com/ugiordan/adversarial-review.git \
-  $HOME/.claude/plugins/marketplaces/ugiordan-adversarial-review
+git clone https://github.com/ugiordan/adversarial-reviewing.git \
+  $HOME/.claude/plugins/marketplaces/ugiordan-adversarial-reviewing
 ```
 
 2. Copy the plugin to the cache:
 ```bash
-mkdir -p $HOME/.claude/plugins/cache/ugiordan-adversarial-review/adversarial-review/1.0.0
-rsync -a $HOME/.claude/plugins/marketplaces/ugiordan-adversarial-review/adversarial-review/ \
-  $HOME/.claude/plugins/cache/ugiordan-adversarial-review/adversarial-review/1.0.0/
-cp $HOME/.claude/plugins/marketplaces/ugiordan-adversarial-review/.claude-plugin/marketplace.json \
-  $HOME/.claude/plugins/cache/ugiordan-adversarial-review/adversarial-review/1.0.0/.claude-plugin/
+mkdir -p $HOME/.claude/plugins/cache/ugiordan-adversarial-reviewing/adversarial-review/1.0.0
+rsync -a $HOME/.claude/plugins/marketplaces/ugiordan-adversarial-reviewing/adversarial-review/ \
+  $HOME/.claude/plugins/cache/ugiordan-adversarial-reviewing/adversarial-review/1.0.0/
+cp $HOME/.claude/plugins/marketplaces/ugiordan-adversarial-reviewing/.claude-plugin/marketplace.json \
+  $HOME/.claude/plugins/cache/ugiordan-adversarial-reviewing/adversarial-review/1.0.0/.claude-plugin/
 ```
 
 3. Add to `~/.claude/settings.json`:
 ```json
 {
   "enabledPlugins": {
-    "adversarial-review@ugiordan-adversarial-review": true
+    "adversarial-reviewing@ugiordan-adversarial-reviewing": true
   },
   "extraKnownMarketplaces": {
-    "ugiordan-adversarial-review": {
+    "ugiordan-adversarial-reviewing": {
       "source": {
         "source": "git",
-        "url": "https://github.com/ugiordan/adversarial-review.git"
+        "url": "https://github.com/ugiordan/adversarial-reviewing.git"
       }
     }
   }
@@ -231,10 +231,10 @@ cp $HOME/.claude/plugins/marketplaces/ugiordan-adversarial-review/.claude-plugin
 
 4. Add to `~/.claude/plugins/installed_plugins.json` (inside the `"plugins"` object):
 ```json
-"adversarial-review@ugiordan-adversarial-review": [
+"adversarial-reviewing@ugiordan-adversarial-reviewing": [
   {
     "scope": "user",
-    "installPath": "<HOME>/.claude/plugins/cache/ugiordan-adversarial-review/adversarial-review/1.0.0",
+    "installPath": "<HOME>/.claude/plugins/cache/ugiordan-adversarial-reviewing/adversarial-review/1.0.0",
     "version": "1.0.0",
     "installedAt": "<ISO-8601-timestamp>",
     "lastUpdated": "<ISO-8601-timestamp>",
@@ -243,22 +243,22 @@ cp $HOME/.claude/plugins/marketplaces/ugiordan-adversarial-review/.claude-plugin
 ]
 ```
 
-After installation, start a new session. The skill activates automatically when relevant, or invoke directly via `/adversarial-review`.
+After installation, start a new session. The skill activates automatically when relevant, or invoke directly via `/adversarial-reviewing`.
 
 To update later:
 ```
-/plugin update adversarial-review
+/plugin update adversarial-reviewing
 ```
 
 ### Cursor (Degraded Single-Agent Mode)
 
 ```bash
 # Clone the repo
-git clone https://github.com/ugiordan/adversarial-review.git $HOME/.adversarial-review
+git clone https://github.com/ugiordan/adversarial-reviewing.git $HOME/.adversarial-review
 
 # Copy rules to your project
 mkdir -p .cursor/rules
-cp $HOME/.adversarial-review/.cursor/rules/adversarial-review.mdc .cursor/rules/
+cp $HOME/.adversarial-review/.cursor/rules/adversarial-reviewing.mdc .cursor/rules/
 ```
 
 Cursor cannot spawn isolated sub-agents. The plugin adapts to a sequential persona mode where the agent role-plays each specialist in sequence. The `.mdc` rules file supports code profile only. Strategy profile (`--profile strat`) is not available in Cursor mode.
@@ -267,7 +267,7 @@ Cursor cannot spawn isolated sub-agents. The plugin adapts to a sequential perso
 
 ```bash
 # Clone the repo
-git clone https://github.com/ugiordan/adversarial-review.git $HOME/.adversarial-review
+git clone https://github.com/ugiordan/adversarial-reviewing.git $HOME/.adversarial-review
 ```
 
 Reference or inline `AGENTS.md` in your AI tool's context. Feature set depends on tool capabilities.
@@ -275,7 +275,7 @@ Reference or inline `AGENTS.md` in your AI tool's context. Feature set depends o
 ## Usage
 
 ```
-/adversarial-review [files/dirs] [flags]
+/adversarial-reviewing [files/dirs] [flags]
 ```
 
 ### Mode Flags
@@ -310,37 +310,37 @@ Reference or inline `AGENTS.md` in your AI tool's context. Feature set depends o
 
 ```bash
 # Review staged changes with all specialists
-/adversarial-review
+/adversarial-reviewing
 
 # Security-focused review of specific files
-/adversarial-review src/auth/ --security
+/adversarial-reviewing src/auth/ --security
 
 # Quick review of recent changes
-/adversarial-review --quick --delta
+/adversarial-reviewing --quick --delta
 
 # Thorough review with report saved and fixes proposed
-/adversarial-review src/ --thorough --save --fix
+/adversarial-reviewing src/ --thorough --save --fix
 
 # Triage PR review comments
-/adversarial-review --triage pr:42
+/adversarial-reviewing --triage pr:42
 
 # Triage comments from a file
-/adversarial-review --triage file:reviews/comments.json
+/adversarial-reviewing --triage file:reviews/comments.json
 
 # Review with change-impact analysis
-/adversarial-review src/ --diff
+/adversarial-reviewing src/ --diff
 
 # Combined: triage PR comments with diff context
-/adversarial-review --triage pr:42 --diff --thorough
+/adversarial-reviewing --triage pr:42 --diff --thorough
 
 # Strategy document review
-/adversarial-review artifacts/strat-tasks/ --profile strat
+/adversarial-reviewing artifacts/strat-tasks/ --profile strat
 
 # Strategy review with architecture context
-/adversarial-review artifacts/strat-tasks/ --profile strat --context architecture=https://github.com/org/repo
+/adversarial-reviewing artifacts/strat-tasks/ --profile strat --context architecture=https://github.com/org/repo
 
 # Quick security-only strategy review
-/adversarial-review artifacts/strat-tasks/ --profile strat --security --quick
+/adversarial-reviewing artifacts/strat-tasks/ --profile strat --security --quick
 ```
 
 ## Reference Modules
@@ -368,13 +368,13 @@ See `references/README.md` for the module format and authoring guidelines.
 
 ```bash
 # Check for updates
-/adversarial-review --update-references --check-only
+/adversarial-reviewing --update-references --check-only
 
 # Update interactively
-/adversarial-review --update-references
+/adversarial-reviewing --update-references
 
 # List all discovered modules
-/adversarial-review --list-references
+/adversarial-reviewing --list-references
 ```
 
 ## Guardrails
@@ -440,12 +440,12 @@ graph TD
     ROOT["adversarial-review/"] --> MP[".claude-plugin/marketplace.json"]
     ROOT --> PLUGIN["adversarial-review/"]
     ROOT --> AGENTS["AGENTS.md"]
-    ROOT --> CURSOR[".cursor/rules/adversarial-review.mdc"]
+    ROOT --> CURSOR[".cursor/rules/adversarial-reviewing.mdc"]
     ROOT --> CI[".github/workflows/test.yml"]
 
     PLUGIN --> PP[".claude-plugin/plugin.json"]
-    PLUGIN --> CMD["commands/adversarial-review.md"]
-    PLUGIN --> SKILL["skills/adversarial-review/"]
+    PLUGIN --> CMD["commands/adversarial-reviewing.md"]
+    PLUGIN --> SKILL["skills/adversarial-reviewing/"]
 
     SKILL --> SKILLMD["SKILL.md"]
     SKILL --> PROF["profiles/"]
@@ -489,7 +489,7 @@ All agent outputs are validated through bash scripts -- not just LLM judgment:
 ## Testing
 
 ```bash
-cd adversarial-review/skills/adversarial-review
+cd adversarial-review/skills/adversarial-reviewing
 bash tests/run-all-tests.sh
 ```
 

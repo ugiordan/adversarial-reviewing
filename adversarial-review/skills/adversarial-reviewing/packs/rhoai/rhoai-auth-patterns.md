@@ -3,7 +3,7 @@ name: rhoai-auth-patterns
 specialist: all
 version: "1.0.0"
 last_updated: "2026-04-04"
-source_url: "https://raw.githubusercontent.com/ugiordan/adversarial-review/main/adversarial-review/skills/adversarial-review/packs/rhoai/rhoai-auth-patterns.md"
+source_url: "https://raw.githubusercontent.com/ugiordan/adversarial-reviewing/main/adversarial-review/skills/adversarial-review/packs/rhoai/rhoai-auth-patterns.md"
 description: "Approved RHOAI authentication and authorization patterns for strategy review"
 enabled: true
 ---

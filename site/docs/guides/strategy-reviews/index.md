@@ -5,7 +5,7 @@ The strategy profile reviews design documents, RFEs, and strategy proposals from
 ## Activation
 
 ```bash
-/adversarial-review artifacts/strat-tasks/ --profile strat
+/adversarial-reviewing artifacts/strat-tasks/ --profile strat
 ```
 
 ## Specialists
@@ -23,13 +23,13 @@ The strategy profile reviews design documents, RFEs, and strategy proposals from
 
 ```bash
 # All 6 (default)
-/adversarial-review docs/strat/ --profile strat
+/adversarial-reviewing docs/strat/ --profile strat
 
 # Security only
-/adversarial-review docs/strat/ --profile strat --security
+/adversarial-reviewing docs/strat/ --profile strat --security
 
 # Feasibility + scope
-/adversarial-review docs/strat/ --profile strat --feasibility --scope
+/adversarial-reviewing docs/strat/ --profile strat --feasibility --scope
 ```
 
 ## Verdicts
@@ -83,11 +83,11 @@ Provide architecture documents for specialists to cross-reference:
 
 ```bash
 # From a git repo
-/adversarial-review docs/strat/ --profile strat \
+/adversarial-reviewing docs/strat/ --profile strat \
   --context architecture=https://github.com/org/repo
 
 # From a local directory
-/adversarial-review docs/strat/ --profile strat \
+/adversarial-reviewing docs/strat/ --profile strat \
   --context architecture=./docs/architecture
 ```
 
@@ -122,10 +122,10 @@ Track how findings evolve across multiple reviews of the same strategy:
 
 ```bash
 # Enable finding persistence
-/adversarial-review docs/strat/ --profile strat --persist
+/adversarial-reviewing docs/strat/ --profile strat --persist
 
 # Add output normalization for stability metrics
-/adversarial-review docs/strat/ --profile strat --persist --normalize
+/adversarial-reviewing docs/strat/ --profile strat --persist --normalize
 ```
 
 With `--persist`, each run classifies findings as new, recurring, resolved, or regressed. History is stored in `.adversarial-review/findings-history.jsonl`.
@@ -133,7 +133,7 @@ With `--persist`, each run classifies findings as new, recurring, resolved, or r
 ## Quick mode for strategy
 
 ```bash
-/adversarial-review docs/strat/ --profile strat --quick
+/adversarial-reviewing docs/strat/ --profile strat --quick
 ```
 
 Uses 2 specialists (SEC + FEAS), 2 iterations, 150K budget.

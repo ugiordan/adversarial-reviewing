@@ -1,19 +1,19 @@
 # Usage Examples
 
-Real-world usage patterns for adversarial-review beyond the basics in the README.
+Real-world usage patterns for adversarial-reviewing beyond the basics in the README.
 
 ## Reviewing a PR Before Merge
 
 Review only the files changed in a PR with diff-augmented input:
 
 ```
-/adversarial-review --diff --range origin/main..HEAD
+/adversarial-reviewing --diff --range origin/main..HEAD
 ```
 
 Add `--save` to keep a record:
 
 ```
-/adversarial-review --diff --range origin/main..HEAD --save
+/adversarial-reviewing --diff --range origin/main..HEAD --save
 ```
 
 ## Security Audit of Auth Code
@@ -21,7 +21,7 @@ Add `--save` to keep a record:
 Targeted security review with thorough mode for critical paths:
 
 ```
-/adversarial-review src/auth/ src/middleware/ --security --thorough --save
+/adversarial-reviewing src/auth/ src/middleware/ --security --thorough --save
 ```
 
 ## Triaging CodeRabbit Comments
@@ -29,13 +29,13 @@ Targeted security review with thorough mode for critical paths:
 Evaluate whether automated review comments are worth fixing:
 
 ```
-/adversarial-review --triage pr:42 --diff
+/adversarial-reviewing --triage pr:42 --diff
 ```
 
 With gap analysis to find what the automated reviewer missed:
 
 ```
-/adversarial-review --triage pr:42 --diff --gap-analysis
+/adversarial-reviewing --triage pr:42 --diff --gap-analysis
 ```
 
 ## Quick Smoke Check
@@ -43,7 +43,7 @@ With gap analysis to find what the automated reviewer missed:
 Fast review with 2 specialists before pushing:
 
 ```
-/adversarial-review --quick --diff
+/adversarial-reviewing --quick --diff
 ```
 
 ## Full Review with Auto-Remediation
@@ -51,13 +51,13 @@ Fast review with 2 specialists before pushing:
 Review, then generate Jira tickets and fix branches:
 
 ```
-/adversarial-review src/ --thorough --fix --save
+/adversarial-reviewing src/ --thorough --fix --save
 ```
 
 Preview what remediation would do without writing anything:
 
 ```
-/adversarial-review src/ --thorough --fix --dry-run
+/adversarial-reviewing src/ --thorough --fix --dry-run
 ```
 
 ## Reviewing a Large Codebase
@@ -65,14 +65,14 @@ Preview what remediation would do without writing anything:
 For repos with > 200 files, use `--force` with targeted scope:
 
 ```
-/adversarial-review src/api/ src/services/ --force --thorough
+/adversarial-reviewing src/api/ src/services/ --force --thorough
 ```
 
 Or break into focused reviews:
 
 ```
-/adversarial-review src/api/ --security --save
-/adversarial-review src/services/ --quality --correctness --save
+/adversarial-reviewing src/api/ --security --save
+/adversarial-reviewing src/services/ --quality --correctness --save
 ```
 
 ## Custom Reference Modules
@@ -95,7 +95,7 @@ enabled: true
 Then review — the module is automatically discovered:
 
 ```
-/adversarial-review src/auth/ --security --list-references
+/adversarial-reviewing src/auth/ --security --list-references
 ```
 
 ## Delta Reviews
@@ -103,5 +103,5 @@ Then review — the module is automatically discovered:
 After fixing issues from a previous review, re-review only what changed:
 
 ```
-/adversarial-review --delta --save
+/adversarial-reviewing --delta --save
 ```

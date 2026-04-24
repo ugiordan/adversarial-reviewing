@@ -3,7 +3,7 @@ name: k8s-security
 specialist: security
 version: "1.0.0"
 last_updated: "2026-03-26"
-source_url: "https://raw.githubusercontent.com/ugiordan/adversarial-review/main/adversarial-review/skills/adversarial-review/references/security/k8s-security.md"
+source_url: "https://raw.githubusercontent.com/ugiordan/adversarial-reviewing/main/adversarial-review/skills/adversarial-review/references/security/k8s-security.md"
 description: "Kubernetes and operator security patterns with false positive checklists"
 enabled: true
 ---
