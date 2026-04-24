@@ -18,7 +18,7 @@ jobs:
 
       - name: Run tests
         run: |
-          cd adversarial-review/skills/adversarial-review
+          cd adversarial-review/skills/adversarial-reviewing
           bash tests/run-all-tests.sh 2>&1 | tee test-output.txt
           # Assert no failures
           grep -qE '\b0 failed\b' test-output.txt
@@ -33,10 +33,10 @@ jobs:
 
       - name: Lint scripts
         run: |
-          cd adversarial-review/skills/adversarial-review
+          cd adversarial-review/skills/adversarial-reviewing
           shellcheck -x -e SC2329 -e SC2317 -e SC1091 scripts/*.sh
 
       - name: Lint test scripts
         run: |
-          cd adversarial-review/skills/adversarial-review
+          cd adversarial-review/skills/adversarial-reviewing
           shellcheck -x -e SC2317 -e SC1091 tests/test-*.sh tests/run-all-tests.sh
