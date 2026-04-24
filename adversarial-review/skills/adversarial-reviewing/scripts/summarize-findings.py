@@ -11,8 +11,24 @@ def main():
         print("Usage: summarize-findings.py <resolution_output.json>", file=sys.stderr)
         sys.exit(1)
 
-    with open(sys.argv[1]) as f:
-        data = json.load(f)
+    input_file = sys.argv[1]
+    try:
+        with open(input_file) as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        print(f"Error: file not found: {input_file}", file=sys.stderr)
+        sys.exit(1)
+    except json.JSONDecodeError as e:
+        print(f"Error: {input_file} contains invalid JSON: {e}", file=sys.stderr)
+        print(f"Expected the output from resolve-votes.py.", file=sys.stderr)
+        sys.exit(1)
+    except OSError as e:
+        print(f"Error reading {input_file}: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    if not isinstance(data, dict):
+        print(f"Error: expected a JSON object, got {type(data).__name__}", file=sys.stderr)
+        sys.exit(1)
 
     resolutions = data.get("resolutions", [])
 

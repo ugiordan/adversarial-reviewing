@@ -101,11 +101,40 @@ def main():
         print("Usage: resolve-votes.py <votes.json>", file=sys.stderr)
         sys.exit(1)
 
-    with open(sys.argv[1]) as f:
-        data = json.load(f)
+    votes_file = sys.argv[1]
+    try:
+        with open(votes_file) as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        print(f"Error: file not found: {votes_file}", file=sys.stderr)
+        sys.exit(1)
+    except json.JSONDecodeError as e:
+        print(f"Error: {votes_file} contains invalid JSON: {e}", file=sys.stderr)
+        sys.exit(1)
+    except OSError as e:
+        print(f"Error reading {votes_file}: {e}", file=sys.stderr)
+        sys.exit(1)
 
-    n_global = data["global_specialist_count"]
-    resolutions = [compute_resolution(f, n_global) for f in data["findings"]]
+    try:
+        n_global = data["global_specialist_count"]
+    except KeyError:
+        print(f"Error: input JSON is missing required key 'global_specialist_count'", file=sys.stderr)
+        sys.exit(1)
+
+    if "findings" not in data:
+        print(f"Error: input JSON is missing required key 'findings'", file=sys.stderr)
+        sys.exit(1)
+
+    if not isinstance(data["findings"], list):
+        print(f"Error: 'findings' must be a JSON array, got {type(data['findings']).__name__}", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        resolutions = [compute_resolution(f, n_global) for f in data["findings"]]
+    except KeyError as e:
+        print(f"Error: a finding object is missing required key {e}", file=sys.stderr)
+        print(f"Each finding needs at least 'id', 'votes', and 'severity' keys.", file=sys.stderr)
+        sys.exit(1)
 
     # Build summary
     summary = Counter(r["outcome"] for r in resolutions)

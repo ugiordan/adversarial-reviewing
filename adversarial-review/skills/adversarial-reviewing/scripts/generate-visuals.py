@@ -325,18 +325,56 @@ def main():
     args = parser.parse_args()
 
     if args.data:
-        with open(args.data) as f:
-            data = json.load(f)
+        try:
+            with open(args.data) as f:
+                data = json.load(f)
+        except FileNotFoundError:
+            print(f"Error: data file not found: {args.data}", file=sys.stderr)
+            sys.exit(1)
+        except json.JSONDecodeError as e:
+            print(f"Error: {args.data} contains invalid JSON: {e}", file=sys.stderr)
+            sys.exit(1)
+        except OSError as e:
+            print(f"Error reading {args.data}: {e}", file=sys.stderr)
+            sys.exit(1)
     else:
-        data = json.loads(args.inline)
+        try:
+            data = json.loads(args.inline)
+        except json.JSONDecodeError as e:
+            print(f"Error: --inline value is not valid JSON: {e}", file=sys.stderr)
+            sys.exit(1)
 
-    os.makedirs(args.output, exist_ok=True)
+    required_keys = ("topic", "date", "budget", "funnel", "severity", "specialists", "iterations")
+    missing = [k for k in required_keys if k not in data]
+    if missing:
+        print(f"Error: input JSON is missing required keys: {', '.join(missing)}", file=sys.stderr)
+        print(f"Required top-level keys: {', '.join(required_keys)}", file=sys.stderr)
+        sys.exit(1)
 
-    summary_path = generate_summary(data, args.output)
+    try:
+        os.makedirs(args.output, exist_ok=True)
+    except OSError as e:
+        print(f"Error: cannot create output directory {args.output}: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        summary_path = generate_summary(data, args.output)
+    except KeyError as e:
+        print(f"Error: missing key in input data: {e}", file=sys.stderr)
+        print(f"Check that budget, funnel, and severity objects have the expected fields.", file=sys.stderr)
+        sys.exit(1)
+    except (OSError, ValueError) as e:
+        print(f"Error generating summary chart: {e}", file=sys.stderr)
+        sys.exit(1)
+
     result = {'summary': summary_path}
 
     if args.individual:
-        individual_paths = generate_individual(data, args.output)
+        try:
+            individual_paths = generate_individual(data, args.output)
+        except (KeyError, OSError, ValueError) as e:
+            print(f"Error generating individual charts: {e}", file=sys.stderr)
+            sys.exit(1)
         result['individual'] = individual_paths
 
     print(json.dumps(result))

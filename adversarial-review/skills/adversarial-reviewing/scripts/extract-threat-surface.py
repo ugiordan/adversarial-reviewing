@@ -17,6 +17,7 @@ Exit codes:
 
 import argparse
 import json
+import os
 import re
 import sys
 
@@ -253,8 +254,23 @@ def main():
     if args.inline:
         text = args.inline
     else:
-        with open(args.strat_file, encoding="utf-8") as f:
-            text = f.read()
+        try:
+            with open(args.strat_file, encoding="utf-8") as f:
+                text = f.read()
+        except FileNotFoundError:
+            print(f"Error: file not found: {args.strat_file}", file=sys.stderr)
+            print(f"Provide a valid path to a STRAT markdown file, or use --inline.", file=sys.stderr)
+            sys.exit(1)
+        except PermissionError:
+            print(f"Error: permission denied reading {args.strat_file}", file=sys.stderr)
+            sys.exit(1)
+        except OSError as e:
+            print(f"Error reading {args.strat_file}: {e}", file=sys.stderr)
+            sys.exit(1)
+
+    if not text.strip():
+        print("Error: input text is empty. Provide a non-empty STRAT document.", file=sys.stderr)
+        sys.exit(1)
 
     keyword_matches = scan_keywords(text)
     tier = classify_tier(keyword_matches)
@@ -272,8 +288,11 @@ def main():
         "acceptance_criteria": acceptance_criteria,
     }
 
-    json.dump(result, sys.stdout, indent=2)
-    print()
+    try:
+        json.dump(result, sys.stdout, indent=2)
+        print()
+    except (BrokenPipeError, IOError):
+        sys.exit(1)
 
 
 if __name__ == "__main__":

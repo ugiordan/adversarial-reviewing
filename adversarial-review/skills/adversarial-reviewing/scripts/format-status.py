@@ -104,8 +104,32 @@ def main():
     parser.add_argument("--budget-limit", type=int, default=800000, help="Budget limit in tokens")
     args = parser.parse_args()
 
-    agents = json.loads(args.agents)
-    budget = json.loads(args.budget_json)
+    try:
+        agents = json.loads(args.agents)
+    except json.JSONDecodeError as e:
+        print(f"Error: --agents is not valid JSON: {e}", file=sys.stderr)
+        print(f"Expected a JSON array like: '[{{\"name\":\"SEC\",\"status\":\"DONE\",\"findings\":\"3\"}}]'", file=sys.stderr)
+        sys.exit(1)
+
+    if not isinstance(agents, list):
+        print(f"Error: --agents must be a JSON array, got {type(agents).__name__}", file=sys.stderr)
+        sys.exit(1)
+
+    for i, agent in enumerate(agents):
+        if not isinstance(agent, dict):
+            print(f"Error: agent at index {i} is not an object: {agent!r}", file=sys.stderr)
+            sys.exit(1)
+        for required_key in ("name", "status"):
+            if required_key not in agent:
+                print(f"Error: agent at index {i} is missing required key '{required_key}'", file=sys.stderr)
+                print(f"Each agent object needs at least 'name' and 'status' keys.", file=sys.stderr)
+                sys.exit(1)
+
+    try:
+        budget = json.loads(args.budget_json)
+    except json.JSONDecodeError as e:
+        print(f"Error: --budget-json is not valid JSON: {e}", file=sys.stderr)
+        sys.exit(1)
 
     budget_line = build_budget_line(budget, args.budget_limit)
     block = build_block(args.topic, args.phase, args.progress, agents, budget_line)

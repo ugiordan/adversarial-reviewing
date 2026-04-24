@@ -123,9 +123,9 @@ else
     echo ""
     echo "  1. Run adversarial-review against the target:"
     if [[ "$INPUT_MODE" == "files" ]]; then
-        echo "     /adversarial-review --security --quick --save $REPO"
+        echo "     /adversarial-reviewing --security --quick --save $REPO"
     else
-        echo "     /adversarial-review --security --quick --save --context $IR_FILE $REPO"
+        echo "     /adversarial-reviewing --security --quick --save --context $IR_FILE $REPO"
     fi
     echo ""
     echo "  2. Convert findings to JSON:"
