@@ -3,7 +3,7 @@ name: rhoai-platform-constraints
 specialist: all
 version: "1.0.0"
 last_updated: "2026-04-04"
-source_url: "https://raw.githubusercontent.com/ugiordan/adversarial-reviewing/main/adversarial-review/skills/adversarial-review/packs/rhoai/rhoai-platform-constraints.md"
+source_url: "https://raw.githubusercontent.com/ugiordan/adversarial-reviewing/main/adversarial-review/skills/adversarial-reviewing/packs/rhoai/rhoai-platform-constraints.md"
 description: "RHOAI platform constraints and assumptions for strategy feasibility review"
 enabled: true
 ---

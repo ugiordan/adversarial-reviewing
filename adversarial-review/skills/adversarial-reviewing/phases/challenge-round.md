@@ -283,7 +283,7 @@ The rebuttal prompt appended to iteration 3 is profile-dependent:
 
 When only 1 specialist is active:
 - No cross-agent debate is possible
-- Instead, run a **devil's advocate pass** using `agents/devils-advocate.md`
+- Instead, run a **devil's advocate pass** using `profiles/<profile>/agents/devils-advocate.md`
 - The devil's advocate reviews the specialist's findings and challenges them
 - The originator then responds once
 - Proceed to Phase 3 with reduced-confidence flag

@@ -368,4 +368,4 @@ Phase 3 reads deduplicated findings from `{CACHE_DIR}/findings/`. No cache write
 - `templates/report-template.md` — report sections that resolution maps findings into
 - `protocols/convergence-detection.md` — iteration bounds that feed into persistent disagreement detection
 - `phases/challenge-round.md` — domain affinity tables (advisory routing, pool metadata)
-- `agents/devils-advocate.md` — single-specialist devil's advocate role
+- `profiles/<profile>/agents/devils-advocate.md` — single-specialist devil's advocate role

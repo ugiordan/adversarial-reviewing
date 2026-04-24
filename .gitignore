@@ -35,7 +35,7 @@ __pycache__/
 
 # Build artifacts
 site/site/
-adversarial-review/skills/adversarial-review/output/
+adversarial-review/skills/adversarial-reviewing/output/
 
 # Working documents (not project artifacts)
 docs/reviews/

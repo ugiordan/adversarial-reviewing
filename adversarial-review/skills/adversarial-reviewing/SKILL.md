@@ -11,6 +11,26 @@ metadata:
 
 # Adversarial Review
 
+## Contents
+
+- [Overview](#overview)
+- [When to Use](#when-to-use)
+- [Checklist](#checklist)
+- [Step 1: Invocation Parsing](#step-1-invocation-parsing)
+- [Step 1b: Document Pipeline](#step-1b-document-pipeline-stratrfe-profile)
+- [Step 2: Scope Resolution](#step-2-scope-resolution)
+- [Step 3: Initialize Cache](#step-3-initialize-cache)
+- [Step 4: Phase 1 — Self-Refinement](#step-4-phase-1--self-refinement)
+- [Step 5: Phase 2 — Challenge Round](#step-5-phase-2--challenge-round)
+- [Step 6: Phase 3 — Resolution](#step-6-phase-3--resolution)
+- [Step 7: Phase 4 — Report](#step-7-phase-4--report)
+- [Single-Specialist Mode](#single-specialist-mode)
+- [Step 8: Phase 5 — Remediation](#step-8-phase-5--remediation)
+- [Error Handling](#error-handling)
+- [Operational Protocols](#operational-protocols)
+- [Platform Notes](#platform-notes)
+- [Git Operations Policy](#git-operations-policy)
+
 ## Overview
 
 This skill spawns multiple specialist sub-agents in fully isolated environments to review code, documentation, or designs from different perspectives. Agents self-refine their findings through internal iteration. The orchestrator mediates all cross-agent communication with programmatic validation via shell scripts — agents never see each other's raw output. Findings are resolved through evidence-based debate with transparent agreement labeling — the report clearly shows whether findings achieved full consensus, majority agreement, or remain disputed.
@@ -390,6 +410,7 @@ All files the orchestrator reads during a review. Each is one hop from SKILL.md:
 | [protocols/principles.md](protocols/principles.md) | Design principles YAML injection |
 | [protocols/idempotency.md](protocols/idempotency.md) | Duplicate detection for Jira/PR creation |
 | [protocols/progress-display.md](protocols/progress-display.md) | Status block format, budget bar |
+| [protocols/audit-log.md](protocols/audit-log.md) | External action logging for --fix and --triage modes |
 
 ---
 

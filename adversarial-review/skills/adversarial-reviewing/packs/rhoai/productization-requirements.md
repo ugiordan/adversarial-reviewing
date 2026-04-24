@@ -3,7 +3,7 @@ name: productization-requirements
 specialist: all
 version: "1.0.0"
 last_updated: "2026-04-04"
-source_url: "https://raw.githubusercontent.com/ugiordan/adversarial-reviewing/main/adversarial-review/skills/adversarial-review/packs/rhoai/productization-requirements.md"
+source_url: "https://raw.githubusercontent.com/ugiordan/adversarial-reviewing/main/adversarial-review/skills/adversarial-reviewing/packs/rhoai/productization-requirements.md"
 description: "Red Hat productization requirements checklist for strategy completeness review"
 enabled: true
 ---

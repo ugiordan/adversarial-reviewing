@@ -3,7 +3,7 @@ name: agentic-ai-security
 specialist: security
 version: "1.0.0"
 last_updated: "2026-03-26"
-source_url: "https://raw.githubusercontent.com/ugiordan/adversarial-reviewing/main/adversarial-review/skills/adversarial-review/references/security/agentic-ai-security.md"
+source_url: "https://raw.githubusercontent.com/ugiordan/adversarial-reviewing/main/adversarial-review/skills/adversarial-reviewing/references/security/agentic-ai-security.md"
 description: "OWASP Agentic AI risks ASI01-ASI10 with verification patterns"
 enabled: true
 ---

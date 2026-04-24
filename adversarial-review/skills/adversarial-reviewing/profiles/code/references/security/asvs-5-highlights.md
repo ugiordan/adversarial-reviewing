@@ -3,7 +3,7 @@ name: asvs-5-highlights
 specialist: security
 version: "1.0.0"
 last_updated: "2026-03-26"
-source_url: "https://raw.githubusercontent.com/ugiordan/adversarial-reviewing/main/adversarial-review/skills/adversarial-review/references/security/asvs-5-highlights.md"
+source_url: "https://raw.githubusercontent.com/ugiordan/adversarial-reviewing/main/adversarial-review/skills/adversarial-reviewing/references/security/asvs-5-highlights.md"
 description: "ASVS 5.0 most commonly violated requirements by verification level"
 enabled: true
 ---

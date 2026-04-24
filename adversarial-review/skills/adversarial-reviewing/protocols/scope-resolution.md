@@ -27,18 +27,26 @@ Write the list of in-scope files (one repo-relative path per line) to a temporar
 
 ## Scope Confirmation (MANDATORY)
 
-Generate the scope confirmation display using the formatting script:
+**Do NOT construct the scope table manually.** Always generate it from the formatting script. The script includes cost estimation, file counts, and budget warnings that manual tables omit.
+
+Step 1: Run the budget estimator to get the cost JSON:
+
+```bash
+ESTIMATE_JSON=$(${CLAUDE_SKILL_DIR}/scripts/track-budget.sh estimate <num_agents> <estimated_code_tokens> <configured_iterations>)
+```
+
+Step 2: Pass the estimate to the formatting script:
 
 ```bash
 python3 ${CLAUDE_SKILL_DIR}/scripts/format-scope.py <scope_file> \
   --source-dir <repo_root> \
   --specialists "<comma_separated_prefixes>" \
   --budget-limit <budget> \
-  --budget-estimate '<track-budget.sh estimate JSON output>' \
+  --budget-estimate "$ESTIMATE_JSON" \
   [--sensitive "<excluded_files>"]
 ```
 
-Display the script output to the user verbatim. **Wait for explicit user approval.** Do not proceed without it.
+Step 3: Display the script output to the user **verbatim**. Do not reformat, summarize, or reconstruct the table. **Wait for explicit user approval.** Do not proceed without it.
 
 ## Scope Immutability
 
