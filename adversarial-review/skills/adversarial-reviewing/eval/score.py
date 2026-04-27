@@ -37,6 +37,8 @@ def load_ground_truth(path):
     """Load and validate ground truth YAML."""
     with open(path, encoding="utf-8") as f:
         data = yaml.safe_load(f)
+    if not data:
+        return {}, []
     findings = data.get("findings", [])
     for gt in findings:
         if "detection_signals" not in gt:
@@ -66,13 +68,21 @@ def match_file(finding_file, gt_file):
         return False
     f_norm = normalize_path(finding_file)
     gt_norm = normalize_path(gt_file)
-    # Exact match
     if f_norm == gt_norm:
         return True
-    # Suffix match (finding might have full path, GT has repo-relative)
-    if f_norm.endswith(gt_norm) or gt_norm.endswith(f_norm):
+    if gt_norm.endswith("/") and f_norm.startswith(gt_norm):
+        return True
+    if f_norm.endswith(gt_norm) and _at_path_boundary(f_norm, gt_norm):
+        return True
+    if gt_norm.endswith(f_norm) and _at_path_boundary(gt_norm, f_norm):
         return True
     return False
+
+
+def _at_path_boundary(haystack, needle):
+    """True if needle sits at a / boundary inside haystack."""
+    pos = len(haystack) - len(needle)
+    return pos == 0 or haystack[pos - 1] == "/"
 
 
 def match_signals(text, signals):
@@ -91,7 +101,6 @@ def match_finding_to_gt(finding, gt_list):
     f_file = finding.get("file", "") or ""
     f_title = finding.get("title", "") or ""
     f_evidence = finding.get("evidence", "") or ""
-    f_text = f"{f_title} {f_evidence}"
 
     for gt in gt_list:
         score = 0
@@ -133,6 +142,7 @@ def compute_metrics(findings, gt_list, token_count=None):
 
     matched_gt = {}  # gt_id -> (finding, score)
     false_positives = []
+    duplicate_detections = []
     severity_correct = 0
     severity_total = 0
     source_trust_correct = 0
@@ -142,9 +152,13 @@ def compute_metrics(findings, gt_list, token_count=None):
         gt_match, score = match_finding_to_gt(finding, gt_active)
         if gt_match:
             gt_id = gt_match["id"]
-            # Keep best match per GT entry
             if gt_id not in matched_gt or score > matched_gt[gt_id][1]:
+                if gt_id in matched_gt:
+                    displaced = matched_gt[gt_id][0]
+                    duplicate_detections.append(displaced)
                 matched_gt[gt_id] = (finding, score)
+            else:
+                duplicate_detections.append(finding)
         else:
             false_positives.append({
                 "finding_id": finding.get("finding_id", "unknown"),
@@ -196,8 +210,11 @@ def compute_metrics(findings, gt_list, token_count=None):
         "source_trust_accuracy": source_trust_correct / source_trust_total if source_trust_total > 0 else 0.0,
         "source_trust_correct": source_trust_correct,
         "source_trust_total": source_trust_total,
+        "duplicate_detections": len(duplicate_detections),
         "detected": sorted(detected_ids),
-        "missed": [{"id": m["id"], "severity": m["severity"], "category": m["category"], "title": m["title"]} for m in missed],
+        "missed": [{"id": m["id"], "severity": m.get("severity", ""),
+                     "category": m.get("category", ""), "title": m.get("title", "")}
+                    for m in missed],
         "false_positive_details": false_positives,
     }
 

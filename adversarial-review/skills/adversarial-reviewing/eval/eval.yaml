@@ -1,0 +1,132 @@
+# Adversarial-Reviewing Evaluation Configuration
+# Requires: agent-eval-harness (https://github.com/opendatahub-io/agent-eval-harness)
+#
+# Run with:
+#   /eval-run --model opus --case odh-operator-security
+#   /eval-run --model sonnet --case odh-operator-security
+
+name: adversarial-reviewing-eval
+description: |
+  Evaluate adversarial-reviewing security detection accuracy against
+  a ground truth corpus of verified vulnerabilities.
+
+skill: adversarial-reviewing
+arguments: "--security --quick --save {prompt}"
+runner: claude-code
+
+permissions:
+  allow: []
+  deny:
+    - "mcp__*"
+
+runner_options:
+  settings: ""
+  max_budget_usd: 20.0
+
+mlflow_experiment: adversarial-reviewing-eval
+
+dataset:
+  path: eval/dataset/cases
+  schema: |
+    Each case directory contains:
+    - input.yaml: The 'prompt' field contains the skill invocation
+      arguments (target repo path and flags).
+    - reference.yaml: Ground truth corpus with verified security
+      findings, detection signals, and severity classifications.
+
+inputs:
+  tools:
+    - match: |
+        Scope confirmation questions from adversarial-reviewing.
+        The skill asks the user to approve the review scope before
+        dispatching specialists.
+      prompt: |
+        Auto-approve all scope confirmation prompts. Answer "yes"
+        for confirmations. If asked about budget escalation, approve.
+
+outputs:
+  - path: artifacts
+    schema: |
+      The adversarial-reviewing skill saves its report as a markdown
+      file via --save. The report contains structured findings with
+      Finding ID, Severity, Confidence, Source Trust, File, Lines,
+      Title, Evidence, and Recommended fix fields.
+
+traces:
+  stdout: true
+  stderr: true
+  events: false
+  metrics: true
+
+judges:
+  - name: has_findings
+    description: Check that the review produced findings
+    check: |
+      content = outputs.get("artifacts_content", "")
+      if not content:
+        for k, v in outputs.get("files", {}).items():
+          if v and len(v) > 100:
+            content = v
+            break
+      if not content or len(content.strip()) < 200:
+        return False, f"No substantial output ({len(content)} chars)"
+      if "Finding ID:" not in content and "SEC-" not in content:
+        return False, "Output exists but contains no structured findings"
+      return True, f"Output has {len(content)} chars with structured findings"
+
+  - name: detection_rate
+    description: |
+      Score detection accuracy against ground truth corpus.
+      Uses keyword matching and file path matching to map findings
+      to known vulnerabilities. Returns detection rate (0.0-1.0).
+    module: eval.judges.detection_judge
+    function: score_detection
+
+  - name: false_positive_rate
+    description: |
+      Check that false positive rate stays under 30%.
+      A finding is a false positive if it cannot be matched to any
+      ground truth entry via file path or detection signal keywords.
+    module: eval.judges.detection_judge
+    function: score_false_positive_rate
+
+  - name: severity_accuracy
+    description: |
+      Score severity classification accuracy for matched findings.
+      Compares the severity assigned by the skill (Critical/Important/Minor)
+      against the ground truth severity.
+    module: eval.judges.detection_judge
+    function: score_severity_accuracy
+
+  - name: output_quality
+    description: |
+      LLM judge evaluating overall review quality: structure,
+      evidence depth, actionability of recommendations.
+    prompt: |
+      Evaluate this adversarial security review report. Score 1-5:
+
+      1 = No useful findings, generic observations
+      2 = Some findings but weak evidence, missing file/line references
+      3 = Decent findings with evidence but gaps in coverage
+      4 = Strong findings with specific code references, good severity calibration
+      5 = Excellent: comprehensive coverage, precise evidence, actionable fixes
+
+      Consider: Are findings specific (file:line) or vague? Is evidence
+      cited from actual code? Are severities justified? Are recommendations
+      concrete and implementable?
+
+      {{ outputs }}
+
+  - name: cost_reasonable
+    description: Verify cost stays under $20 per case
+    check: |
+      cost = outputs.get("cost_usd", 0)
+      if cost and cost > 20.0:
+        return False, f"Cost ${cost:.2f} exceeds $20 limit"
+      return True, f"Cost ${cost:.2f}" if cost else "Cost not tracked"
+
+thresholds:
+  detection_rate:
+    min_mean: 0.35
+  output_quality:
+    min_mean: 3.0

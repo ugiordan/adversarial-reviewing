@@ -1,0 +1,333 @@
+# Ground Truth: opendatahub-operator confirmed security vulnerabilities
+# Source: manual security audit by Ugo Giordano, validated via adversarial-review
+# Repo: opendatahub-io/opendatahub-operator
+# Commit: pre-fix state (before 4b79091c4)
+#
+# Usage: eval/score.py compares adversarial-review findings against this corpus
+# to compute detection rate, false positive rate, and severity accuracy.
+
+metadata:
+  repo: opendatahub-io/opendatahub-operator
+  corpus_version: "1.0"
+  total_findings: 18
+  categories:
+    rbac: 3
+    webhook: 2
+    crypto: 3
+    input_validation: 3
+    secret_management: 1
+    info_disclosure: 1
+    data_flow: 2
+    bounds_check: 1
+    randomness: 2
+
+findings:
+  # --- Batch 1: Fixed (commit 4b79091c4) ---
+
+  - id: SEC-001
+    jira: RHOAIENG-56110
+    severity: Critical
+    category: rbac
+    source_trust: Authenticated
+    file: internal/controller/services/auth/auth_controller_actions.go
+    lines: 63-65
+    title: "RBAC operator precedence bug in auth group filter"
+    description: >
+      Operator precedence in boolean condition allows system:authenticated
+      through for roles other than data-science-admingroup-role. The condition
+      groups incorrectly, bypassing the group filter for all admin role bindings.
+    detection_signals:
+      - "system:authenticated"
+      - "operator precedence"
+      - "bindRole"
+      - "group filter"
+
+  - id: SEC-002
+    severity: Important
+    category: crypto
+    source_trust: N/A
+    file: pkg/cluster/cert.go
+    lines: 106-118
+    title: "Server certificate marked as CA with unnecessary capabilities"
+    description: >
+      Self-signed server certificate set with IsCA=true and KeyUsageCertSign.
+      Server certs should never be CAs. Also adds unconditional localhost SAN.
+    detection_signals:
+      - "IsCA"
+      - "KeyUsageCertSign"
+      - "x509.Certificate"
+      - "localhost"
+
+  - id: SEC-003
+    severity: Important
+    category: crypto
+    source_trust: N/A
+    file: pkg/controller/actions/dependency/certmanager/bootstrap.go
+    lines: 40-40
+    title: "100-year CA validity without renewal strategy"
+    description: >
+      Root CA certificate validity set to 876000 hours (100 years).
+      Excessively long validity violates certificate rotation best practices.
+    detection_signals:
+      - "876000"
+      - "caRootDuration"
+      - "Duration"
+
+  - id: SEC-006
+    severity: Important
+    category: randomness
+    source_trust: N/A
+    file: pkg/cluster/cert.go
+    lines: 91-91
+    title: "Weak certificate serial number entropy"
+    description: >
+      Certificate serial number uses time-dependent upper bound
+      (time.Now().UnixNano()) providing only ~60 bits of entropy
+      instead of 128-bit standard.
+    detection_signals:
+      - "UnixNano"
+      - "rand.Int"
+      - "SerialNumber"
+
+  - id: SEC-008
+    jira: RHOAIENG-56113
+    severity: Important
+    category: webhook
+    source_trust: N/A
+    file: internal/webhook/notebook/mutating.go
+    lines: 86-119
+    title: "Zero-value admission response on webhook fall-through"
+    description: >
+      Notebook mutating webhook does not return explicit Allowed response
+      on the default path. Returns zero-value admission.Response which
+      may be misinterpreted.
+    detection_signals:
+      - "admission.Response"
+      - "Handle"
+      - "fall-through"
+      - "Allowed"
+
+  - id: SEC-009
+    jira: RHOAIENG-56111
+    severity: Important
+    category: bounds_check
+    source_trust: N/A
+    file: pkg/cluster/cluster_config.go
+    lines: 190-192
+    title: "Panic on empty ClusterVersion history"
+    description: >
+      Unprotected array access on clusterVersion.Status.History without
+      bounds check. Empty History during cluster bootstrap causes panic.
+    detection_signals:
+      - "History[0]"
+      - "ClusterVersion"
+      - "getOCPVersion"
+      - "bounds"
+
+  # --- Batch 2-3: Jiras filed, not yet fixed ---
+
+  - id: B2-OIDC-URL
+    jira: RHOAIENG-56115
+    severity: Important
+    category: input_validation
+    source_trust: Authenticated
+    file: api/services/v1alpha1/gateway_types.go
+    lines: 148-150
+    title: "OIDC IssuerURL accepts invalid URLs without format validation"
+    description: >
+      IssuerURL field in OIDCConfig lacks URL format validation.
+      Accepts any string, causing runtime errors in OIDC provider communication.
+    detection_signals:
+      - "IssuerURL"
+      - "OIDCConfig"
+      - "validation"
+
+  - id: B2-SECRET-NS
+    jira: RHOAIENG-56116
+    severity: Important
+    category: data_flow
+    source_trust: Authenticated
+    file: internal/controller/services/gateway/gateway_support.go
+    lines: null
+    title: "SecretNamespace allows cross-namespace secret read"
+    description: >
+      User-specified SecretNamespace field allows reading OIDC client secrets
+      from arbitrary namespaces. Controller uses its elevated SA identity to
+      read secrets from the user-specified namespace (confused deputy).
+    detection_signals:
+      - "SecretNamespace"
+      - "secretNamespace"
+      - "cross-namespace"
+      - "OIDCConfig"
+
+  - id: B2-DSCI-WEBHOOK
+    jira: RHOAIENG-56117
+    severity: Important
+    category: webhook
+    source_trust: Authenticated
+    file: api/dscinitialization/v2/
+    lines: null
+    title: "DSCI webhook skips UPDATE validation"
+    description: >
+      DSCI webhook only validates CREATE operations. Users can modify DSCI
+      after creation without validation, bypassing security controls.
+    detection_signals:
+      - "ValidatingWebhook"
+      - "CREATE"
+      - "UPDATE"
+      - "DSCI"
+
+  - id: B2-RBAC-SUB
+    jira: RHOAIENG-56118
+    severity: Important
+    category: rbac
+    source_trust: N/A
+    file: config/rbac/
+    lines: null
+    title: "Overprivileged RBAC on subresources"
+    description: >
+      RBAC rules grant overly broad permissions on subresources
+      without proper scoping. Violates principle of least privilege.
+    detection_signals:
+      - "ClusterRole"
+      - "subresources"
+      - "rbac"
+      - "overprivileged"
+
+  - id: B2-MON-SECRET
+    jira: RHOAIENG-56119
+    severity: Important
+    category: secret_management
+    source_trust: N/A
+    file: internal/controller/dscinitialization/monitoring.go
+    lines: null
+    title: "Monitoring secrets stored in plaintext on disk"
+    description: >
+      Monitoring configuration secrets generated and stored without
+      encryption or proper key management.
+    detection_signals:
+      - "SessionSecret"
+      - "monitoring"
+      - "plaintext"
+      - "GenerateRandomHex"
+
+  - id: B2-CERT-NAME
+    jira: RHOAIENG-56121
+    severity: Minor
+    category: input_validation
+    source_trust: Authenticated
+    file: api/infrastructure/v1/certificate_types.go
+    lines: null
+    title: "CertificateSpec.SecretName no format validation"
+    description: >
+      SecretName field accepts any string without DNS-1123 subdomain
+      validation. Invalid names cause runtime errors.
+    detection_signals:
+      - "SecretName"
+      - "CertificateSpec"
+      - "validation"
+
+  - id: B2-ENTROPY
+    jira: RHOAIENG-56120
+    severity: Minor
+    category: randomness
+    source_trust: N/A
+    file: internal/controller/dscinitialization/utils.go
+    lines: 262-275
+    title: "GenerateRandomHex returns half the expected entropy"
+    description: >
+      GenerateRandomHex(32) generates 16 random bytes (128 bits) but
+      returns 32 hex characters, suggesting 256-bit intent. The
+      numBytes := length / 2 halves the entropy.
+    detection_signals:
+      - "GenerateRandomHex"
+      - "numBytes"
+      - "length / 2"
+      - "hex.EncodeToString"
+
+  - id: B2-ERR-EXPOSE
+    jira: RHOAIENG-56122
+    severity: Minor
+    category: info_disclosure
+    source_trust: N/A
+    file: null
+    lines: null
+    title: "Error messages expose internal implementation details"
+    description: >
+      Error messages returned to users expose internal paths,
+      configuration, or stack traces aiding reconnaissance.
+    detection_signals:
+      - "fmt.Errorf"
+      - "internal"
+      - "error message"
+
+  - id: B2-CERT-ISCA
+    jira: RHOAIENG-56114
+    severity: Important
+    category: crypto
+    source_trust: N/A
+    file: pkg/cluster/cert.go
+    lines: 106-107
+    title: "Self-signed cert IsCA=true"
+    description: >
+      Duplicate of SEC-002. Self-signed certificates should not be
+      marked as certificate authorities.
+    duplicate_of: SEC-002
+    detection_signals:
+      - "IsCA"
+      - "BasicConstraints"
+
+  # --- Cross-component findings (confused deputy pattern) ---
+
+  - id: SSRF-ISVC
+    severity: Important
+    category: data_flow
+    source_trust: Authenticated
+    file: internal/controller/services/kserve/
+    lines: null
+    title: "SSRF via InferenceService storageUri"
+    description: >
+      InferenceService CRD storageUri field flows from user input through
+      controller reconcile to HTTP client without URL validation. Controller
+      uses its SA token for the fetch, making this a confused deputy.
+    detection_signals:
+      - "storageUri"
+      - "InferenceService"
+      - "http.Get"
+      - "confused deputy"
+
+  - id: RBAC-AGGREGATE
+    severity: Important
+    category: rbac
+    source_trust: N/A
+    file: config/rbac/
+    lines: null
+    title: "aggregate-to-edit labels grant implicit CRD access"
+    description: >
+      CRDs with aggregate-to-edit labels implicitly grant edit
+      permissions to all users with the edit ClusterRole, expanding
+      the attack surface without explicit RBAC review.
+    detection_signals:
+      - "aggregate-to-edit"
+      - "rbac.authorization.k8s.io/aggregate-to-edit"
+      - "labels"
+
+  # --- Cache OOM findings (from architecture analyzer) ---
+
+  - id: CACHE-OOM
+    severity: Important
+    category: input_validation
+    source_trust: Internal
+    file: internal/controller/
+    lines: null
+    title: "Unfiltered informer cache types cause OOM risk"
+    description: >
+      Controller watches 34 resource types but only filters 6 in the
+      cache configuration. 27 unfiltered types load full objects into
+      memory, creating OOM risk on clusters with many resources.
+    detection_signals:
+      - "cache"
+      - "informer"
+      - "DefaultTransform"
+      - "GOMEMLIMIT"
+      - "unfiltered"

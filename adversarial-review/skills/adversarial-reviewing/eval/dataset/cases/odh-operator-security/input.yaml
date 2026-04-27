@@ -1,0 +1,9 @@
+prompt: "/path/to/opendatahub-operator"
+context: |
+  Review the opendatahub-operator codebase for security vulnerabilities.
+  Focus on: RBAC, webhooks, crypto/certificate handling, input validation,
+  secret management, data flow, and bounds checking.
+  The codebase is a Kubernetes operator written in Go.
+expected_specialists:
+  - SEC
+expected_finding_count_range: [10, 25]
