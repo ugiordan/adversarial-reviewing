@@ -9,6 +9,7 @@ last_modified: "2026-04-20"
 - [Focus Areas](#focus-areas)
 - [Inoculation Instructions](#inoculation-instructions)
 - [Finding Template](#finding-template)
+- [Recommended Fix Quality](#recommended-fix-quality)
 - [Self-Refinement Instructions](#self-refinement-instructions)
 - [Evidence Requirements](#evidence-requirements)
 - [Upstream Context Verification](#upstream-context-verification)
@@ -56,6 +57,14 @@ Evidence: [max 2000 chars]
 Impact chain: [max 500 chars]
 Recommended fix: [max 1000 chars]
 ```
+
+## Recommended Fix Quality
+
+Before writing a recommended fix, verify it doesn't break other consumers:
+
+- **Shared resources**: If recommending removal or restriction of a namespace-wide resource (NetworkPolicy, ClusterRole, ConfigMap), check whether other components in the review scope depend on it. A NetworkPolicy with `podSelector: {}` may exist because multiple components need the same ports open.
+- **Never recommend "remove X" without checking dependents.** If the resource is shared, the fix is scoping (per-component policies) or defense-in-depth (application-layer bind address), not blanket removal.
+- If you cannot determine whether other components depend on the resource from within the review scope, state this explicitly: "Impact on other components unknown. Verify before applying."
 
 ## Self-Refinement Instructions
 
