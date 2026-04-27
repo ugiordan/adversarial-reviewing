@@ -7,7 +7,8 @@
 #   update-limit <new_limit>     — change budget limit without resetting consumed (for auto-escalation)
 #   status                       — show remaining budget
 #   cleanup                      — remove state file
-# State stored via mktemp; caller must capture state_file from init output and set BUDGET_STATE_FILE
+# State stored in CACHE_DIR/.budget-state (preferred) or via mktemp fallback.
+# Resolution order: BUDGET_STATE_FILE env > CACHE_DIR/.budget-state > mktemp (init only)
 
 set -euo pipefail
 
@@ -19,14 +20,26 @@ COST_PER_1M_TOKENS_BLENDED="${COST_PER_1M_TOKENS:-7.80}"
 # Agent budget multiplier (matches guardrails.md AGENT_BUDGET_MULTIPLIER)
 AGENT_BUDGET_MULTIPLIER=1.5
 
+resolve_state_file() {
+    if [[ -n "${BUDGET_STATE_FILE:-}" ]]; then
+        echo "$BUDGET_STATE_FILE"
+    elif [[ -n "${CACHE_DIR:-}" ]]; then
+        echo "$CACHE_DIR/.budget-state"
+    else
+        echo ""
+    fi
+}
+
 if [[ -n "${BUDGET_STATE_FILE:-}" ]]; then
     STATE_FILE="$BUDGET_STATE_FILE"
+elif [[ -n "${CACHE_DIR:-}" ]]; then
+    STATE_FILE="$CACHE_DIR/.budget-state"
 elif [[ "$ACTION" == "init" ]]; then
     STATE_FILE=$(mktemp "${TMPDIR:-/tmp}/adversarial-review-budget-XXXXXXXXXX")
 elif [[ "$ACTION" == "estimate" ]]; then
-    STATE_FILE=""  # estimate is a pure calculation, no state needed
+    STATE_FILE=""
 else
-    echo '{"error": "BUDGET_STATE_FILE not set. Run init first and set BUDGET_STATE_FILE to the state_file value from init output."}' >&2
+    echo '{"error": "BUDGET_STATE_FILE or CACHE_DIR not set. Run init first, or set CACHE_DIR to auto-discover budget state."}' >&2
     exit 1
 fi
 

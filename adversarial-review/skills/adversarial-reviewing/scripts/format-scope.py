@@ -133,7 +133,8 @@ def main():
             est_tokens = est.get("estimated_tokens", 0)
             est_cost = est.get("estimated_cost_usd", 0)
             limit = args.budget_limit
-            print(f"\nBudget: ~{est_tokens // 1000}K / {limit // 1000}K tokens (~${est_cost:.2f})")
+            limit_cost = est_cost * limit / est_tokens if est_tokens > 0 else 0
+            print(f"\nBudget: ~{est_tokens // 1000}K / {limit // 1000}K tokens (~${est_cost:.2f} / ${limit_cost:.2f})")
         except (json.JSONDecodeError, KeyError):
             pass
 

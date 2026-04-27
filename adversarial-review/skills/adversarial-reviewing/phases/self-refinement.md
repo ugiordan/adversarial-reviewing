@@ -23,16 +23,21 @@ Each specialist independently reviews the code and iteratively refines their fin
 
 ### Step 1: Agent Prompt Composition
 
-For each active specialist, compose a minimal prompt (~2,825 tokens) containing:
+For each active specialist, compose a prompt containing:
 
-| Content | Source | ~Tokens |
-|---------|--------|---------|
-| Role definition (includes inoculation) | `profiles/<profile>/agents/<specialist>.md` | ~2,000 |
-| Delimiter values | Session-wide hex from cache initialization (Step 3) | ~125 |
-| Finding template | `profiles/<profile>/templates/finding-template.md` inline | ~500 |
-| Cache navigation block | See below | ~200 |
-| Project principles (conditional) | `--principles` flag, formatted per `protocols/principles.md` | ~100-500 |
-| Constraints (conditional) | `--constraints` flag | variable |
+| Order | Content | Source | ~Tokens |
+|-------|---------|--------|---------|
+| 1 | Specialist definition (role, focus, inoculation, context-doc safety, template, unique sections, triage inoculation) | `profiles/<profile>/agents/<specialist>.md` | ~900-1,500 |
+| 2 | Common review instructions (code profile only) | `profiles/code/shared/common-review-instructions.md` | ~800 |
+| 3 | Finding template | `profiles/<profile>/templates/finding-template.md` inline | ~500 |
+| 4 | Delimiter values | Session-wide hex from cache initialization (Step 3) | ~125 |
+| 5 | Cache navigation block | See below | ~200 |
+| 6 | Project principles (conditional) | `--principles` flag, formatted per `protocols/principles.md` | ~100-500 |
+| 7 | Constraints (conditional) | `--constraints` flag | variable |
+
+**Ordering requirement**: Specialist-specific content (row 1, including security-critical inoculation sections) MUST appear before shared instructions (row 2). This ensures agent identity and injection resistance are established before operational constraints.
+
+**Row 2 applies to code profile only.** Strat and rfe profiles do not have a `common-review-instructions.md` aggregator file; their agents are self-contained. They do use canonical snippet files in `shared/canonical/` for drift detection of security-critical and shared sections.
 
 Agent and template paths are resolved from the active profile directory (`profiles/code/`, `profiles/strat/`, or `profiles/rfe/`).
 

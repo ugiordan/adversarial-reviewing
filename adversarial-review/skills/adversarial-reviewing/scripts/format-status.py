@@ -23,11 +23,12 @@ import sys
 def build_budget_line(budget_json: dict, limit: int) -> str:
     consumed = budget_json.get("consumed", 0)
     cost = budget_json.get("consumed_cost_usd", 0)
+    limit_cost = cost * limit / consumed if consumed > 0 else 0
     pct = (consumed / limit * 100) if limit > 0 else 0
     filled = round(pct / 100 * 14)
     empty = 14 - filled
     bar = "\u2588" * filled + "\u2591" * empty
-    return f" Budget: {bar}  {consumed // 1000}K / {limit // 1000}K ({int(pct)}%)  ~${cost:.2f} "
+    return f" Budget: {bar}  {consumed // 1000}K / {limit // 1000}K ({int(pct)}%)  ~${cost:.2f} / ${limit_cost:.2f} "
 
 
 def build_block(topic: str, phase: str, progress: str,

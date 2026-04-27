@@ -1,0 +1,12 @@
+shared_sections:
+  - "## Self-Refinement Instructions"
+  - "## Evidence Requirements"
+  - "## Unverified External References"
+  - "## No Findings"
+  - "## Diff-Aware Review Instructions"
+  - "## Triage Mode Instructions"
+
+per_agent_security_sections:
+  - "## Inoculation Instructions"
+  - "## Context Document Safety"
+  - "## Triage Mode Inoculation"

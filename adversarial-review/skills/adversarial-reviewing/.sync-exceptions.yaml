@@ -1,0 +1,30 @@
+exceptions:
+  - profile: strat
+    agent: security-analyst
+    section: inoculation-instructions
+    reason: Security analyst has extended inoculation with adversarial review rules and scope override detection
+
+  - profile: strat
+    agent: testability-analyst
+    section: inoculation-instructions
+    reason: Testability analyst has domain-specific inoculation focused on testability claims
+
+  - profile: strat
+    agent: security-analyst
+    section: no-findings
+    reason: Security analyst has additional context about when no-findings is expected (rare, most strategies introduce attack surface)
+
+  - profile: strat
+    agent: testability-analyst
+    section: no-findings
+    reason: Testability analyst has domain-specific no-findings guidance
+
+  - profile: strat
+    agent: devils-advocate
+    section: inoculation-instructions
+    reason: DA is a challenge agent with distinct adversarial inoculation
+
+  - profile: strat
+    agent: devils-advocate
+    section: no-findings
+    reason: DA uses a compact one-line no-findings format
