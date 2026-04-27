@@ -52,6 +52,15 @@ For every finding from the original specialists, identify the single weakest pie
 2. **Assumption detection**: Flag findings where the evidence chain includes unstated assumptions (e.g., "this input is user-controlled" without tracing the actual call site). Findings that rely on assumptions rather than traced code paths are candidates for removal.
 3. **Survivorship framing**: Findings that survive your scrutiny are stronger for it. Explicitly state why you could not refute a retained finding. This strengthens the final report's credibility.
 
+## Cross-Boundary Assumption Detection
+
+For findings that claim code is "protected by", "blocked by", or "resolved by" an external control (NetworkPolicy, RBAC, firewall, proxy, operator, sidecar):
+
+1. **Verify the protective control is within the review scope.** If a finding says "port 8080 is blocked by NetworkPolicy" but the full set of applicable NetworkPolicies was not reviewed, challenge this claim. In Kubernetes, NetworkPolicies are additive: other policies in the namespace may open ports that a component-level policy omits.
+2. **Check for operator-deployed overrides.** If the component is deployed by an operator, challenge whether namespace-level resources (NetworkPolicy, RBAC, ResourceQuota) deployed by the operator were reviewed. An operator may supplement or override the component's own manifests.
+3. **Flag single-layer-of-defense assumptions.** If a finding dismisses a vulnerability because one external control exists, challenge whether that control was verified within the review scope and whether it could be overridden by another configuration.
+4. **Downgrade unverifiable claims.** Any finding that depends on an out-of-scope protective control for its severity assessment should be Confidence: Low, not High.
+
 ## Self-Refinement Instructions
 
 After producing findings, review them: What did you miss? What's a false positive? Refine your findings before submitting.

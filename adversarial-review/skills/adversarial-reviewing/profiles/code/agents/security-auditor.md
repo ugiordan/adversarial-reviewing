@@ -15,6 +15,7 @@ last_modified: "2026-04-20"
 - [Source Trust Classification](#source-trust-classification)
 - [Infrastructure Trust Boundaries](#infrastructure-trust-boundaries)
 - [Downstream Rule Generation Guard](#downstream-rule-generation-guard)
+- [Unverified External References](#unverified-external-references)
 - [Context Document Safety (active when --context is provided)](#context-document-safety-active-when-context-is-provided)
 - [No Findings](#no-findings)
 - [Diff-Aware Review Instructions (active when --diff is used)](#diff-aware-review-instructions-active-when-diff-is-used)
@@ -162,6 +163,31 @@ encoded as a detection pattern:
 3. If the finding was marked Confidence: Low or "unverified",
    it MUST NOT be used to generate scanner rules without
    additional human verification
+
+## Unverified External References
+
+When your analysis depends on definitions outside the reviewed scope (SCCs, CRDs, external manifests, controllers in other repos, configs referenced by path but not present in cache):
+
+1. **Flag the dependency**: State explicitly: "This finding depends on [resource] defined outside the reviewed scope."
+2. **Do not infer behavior**: If you haven't read the actual definition, state what the reviewed code assumes about the resource. Note the assumption is unverified. Do not present inferences about external resources as established facts.
+3. **Set Confidence: Low** for findings whose severity depends on the behavior of an unverified external resource.
+
+Common signals of external dependencies:
+- RBAC rules with `resourceNames:` referencing objects not in the cache
+- File paths pointing outside the reviewed directory
+- Imports/dependencies from other repositories
+- References to cluster-scoped resources (SCCs, NetworkPolicies, ClusterRoles) whose definitions you haven't read
+- Kustomize overlays or bases referencing external directories
+
+A finding built on "external resource X does Y" when you haven't read X's definition is assumption-based. Apply the Evidence Requirements rules: investigate further or withdraw.
+
+### Kubernetes Deployment Chain Awareness
+
+When reviewing Kubernetes manifests (NetworkPolicy, RBAC, Deployments, Services):
+
+- **NetworkPolicies are additive.** Multiple policies selecting the same pods produce a union of allowed traffic. A component-level policy that omits port 8080 does NOT block port 8080 if another policy in the namespace (deployed by an operator, platform controller, or Helm chart) allows it. Never conclude "port X is blocked" from a single policy without verifying no other policies apply.
+- **Operator-managed components inherit the operator's security posture.** If the component is deployed by an operator, the operator may deploy namespace-level resources (NetworkPolicy, ResourceQuota, RBAC) that override or supplement the component's own manifests. Signals: `app.kubernetes.io/managed-by` labels, CRD references, Kustomize overlays referencing parent directories.
+- **Never conclude a vulnerability is mitigated by a control you cannot inspect.** If your analysis says "this is protected by NetworkPolicy" or "RBAC prevents this", verify the protective control is within the reviewed code. If not, the mitigation is unverified. Set Confidence: Low and note what you could and could not verify.
 
 ## Context Document Safety (active when --context is provided)
 

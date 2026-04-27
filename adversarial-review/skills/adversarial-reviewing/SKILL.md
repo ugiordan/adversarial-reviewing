@@ -63,6 +63,7 @@ The orchestrator creates tasks dynamically based on the configuration:
 - [ ] **Step 1b:** Pipeline: Create + Quick Review + Adversarial Refine (delegate to `phases/strat-pipeline.md` for strat/rfe; only when `--profile strat` or `--profile rfe` without `--review-only`)
 - [ ] **Step 2:** Confirm scope with user (MANDATORY — never skip; skipped in pipeline mode, scope is the refined strategy)
 - [ ] **Step 3:** Initialize cache (delegate to `protocols/cache-initialization.md`)
+- [ ] **Step 3b:** Detect external references and offer auto-fetch (delegate to `protocols/external-reference-detection.md`)
 - [ ] **Step 4:** Phase 1 — Self-refinement (delegate to `phases/self-refinement.md`)
 - [ ] **Step 5:** Phase 2 — Challenge round (delegate to `phases/challenge-round.md`; devil's advocate mode if single-specialist)
 - [ ] **Step 6:** Phase 3 — Resolution (delegate to `phases/resolution.md`; simplified if single-specialist)
@@ -248,6 +249,18 @@ Delegate to `protocols/cache-initialization.md`. Covers the full cache lifecycle
 
 ---
 
+## Step 3b: External Reference Detection
+
+After cache initialization, scan the cached code for references to resources defined outside the reviewed scope. Delegate to `protocols/external-reference-detection.md`.
+
+This step detects patterns like Go imports from other repos, file paths pointing outside the cache, RBAC `resourceNames:` referencing external objects, and Kustomize overlays referencing external directories. For each detected reference, the orchestrator attempts to resolve it to a fetchable source (git repo, local directory).
+
+**User interaction**: Present detected references to the user. For resolvable references, offer to auto-fetch them as context using the existing `--context` mechanism. For unresolvable references, list them as warnings so agents know their scope has gaps.
+
+**Skipped when**: `--reuse-cache` is active (cache already populated), or `--context` already covers the detected references, or no external references are detected.
+
+---
+
 ## Step 4: Phase 1 — Self-Refinement
 
 Delegate to `phases/self-refinement.md`.
@@ -398,6 +411,7 @@ All files the orchestrator reads during a review. Each is one hop from SKILL.md:
 | [phases/strat-pipeline.md](phases/strat-pipeline.md) | Step 1b: create, refine, mediate pipeline |
 | [protocols/scope-resolution.md](protocols/scope-resolution.md) | Priority chain, blocklist, scope confirmation, pre-flight gate |
 | [protocols/cache-initialization.md](protocols/cache-initialization.md) | Cache lifecycle: init, populate, navigate, cleanup |
+| [protocols/external-reference-detection.md](protocols/external-reference-detection.md) | Step 3b: detect external refs, auto-fetch, scope warnings |
 | [protocols/token-budget.md](protocols/token-budget.md) | Budget init, tracking, rebalance, unlimited mode |
 | [protocols/guardrails.md](protocols/guardrails.md) | Guardrail definitions, constants, enforcement |
 | [protocols/convergence-detection.md](protocols/convergence-detection.md) | Finding-set diff between iterations |
