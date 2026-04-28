@@ -57,7 +57,8 @@ def normalize_path(path):
     """Normalize file path for comparison."""
     if not path:
         return ""
-    # Strip leading ./ or /
+    path = re.sub(r"\s*\(lines?\s+\d+[-–]\d+\)$", "", path)
+    path = re.sub(r":\d+[-–]\d+$|:\d+$", "", path)
     path = re.sub(r"^[./]+", "", path)
     return path.lower()
 

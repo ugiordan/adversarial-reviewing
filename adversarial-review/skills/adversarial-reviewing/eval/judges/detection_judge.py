@@ -191,14 +191,33 @@ _SEVERITY_MAP = {
 }
 
 
+def _find_dismissed_ranges(text):
+    """Find character ranges for Dismissed Findings sections.
+
+    Returns a list of (start, end) tuples. A finding whose header falls
+    within any range is considered dismissed. The range ends at the next
+    ## heading or end of text, so findings in subsequent sections (e.g.
+    Challenge Round) are NOT dismissed.
+    """
+    ranges = []
+    section_pattern = re.compile(r'^##\s+', re.MULTILINE)
+    dismissed_pattern = re.compile(
+        r'^##\s+Dismissed\s+Findings', re.MULTILINE | re.IGNORECASE)
+    for m in dismissed_pattern.finditer(text):
+        start = m.start()
+        next_section = section_pattern.search(text, m.end())
+        end = next_section.start() if next_section else len(text)
+        ranges.append((start, end))
+    return ranges
+
+
 def _parse_markdown_format(text):
     """Parse findings from markdown report with ### F-NNN: Title headers.
 
     Skips findings under a "Dismissed Findings" section or with
     DISMISSED/WITHDRAWN in the title.
     """
-    dismissed_start = re.search(r'^##\s+Dismissed\s+Findings', text, re.MULTILINE | re.IGNORECASE)
-    dismissed_offset = dismissed_start.start() if dismissed_start else len(text)
+    dismissed_ranges = _find_dismissed_ranges(text)
 
     findings = []
     header_pattern = re.compile(
@@ -207,7 +226,7 @@ def _parse_markdown_format(text):
     )
     headers = list(header_pattern.finditer(text))
     for i, match in enumerate(headers):
-        if match.start() >= dismissed_offset:
+        if any(start <= match.start() < end for start, end in dismissed_ranges):
             continue
         finding_id = match.group(1).strip()
         title = match.group(2).strip()
@@ -223,6 +242,7 @@ def _parse_markdown_format(text):
         file_match = re.search(r'\*\*File:\*\*\s*`?([^`\n]+)`?', body)
         file_path = file_match.group(1).strip() if file_match else ""
         file_path = re.sub(r':\d+[-–]\d+$|:\d+$', '', file_path)
+        file_path = re.sub(r'\s*\(lines?\s+\d+[-–]\d+\)$', '', file_path)
 
         source_match = re.search(r'\*\*Source:\*\*\s*(\S+)', body)
         source = source_match.group(1).strip() if source_match else ""
