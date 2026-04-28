@@ -12,20 +12,20 @@
 
 metadata:
   repo: opendatahub-io/opendatahub-operator
-  corpus_version: "2.0"
-  total_findings: 22
+  corpus_version: "2.1"
+  total_findings: 28
   categories:
-    rbac: 3
+    rbac: 5
     webhook: 2
     crypto: 3
     input_validation: 3
     secret_management: 2
     info_disclosure: 1
-    data_flow: 1
+    data_flow: 2
     bounds_check: 1
     randomness: 2
     supply_chain: 2
-    access_control: 2
+    access_control: 5
 
 findings:
   # --- Batch 1: Fixed (commit 4b79091c4) ---
@@ -228,6 +228,10 @@ findings:
       - "htpasswd"
       - "prometheus"
       - "alertmanager"
+      - "plaintext"
+      - "manifest"
+      - "ReplaceStringsInFile"
+      - "secrets"
 
   - id: B2-CERT-NAME
     jira: RHOAIENG-56121
@@ -444,3 +448,112 @@ findings:
       - "ubi9"
       - ":latest"
       - "Dockerfile"
+
+  # --- Findings discovered by eval runs (added v2.1) ---
+
+  - id: RBAC-WILDCARD-VERB
+    severity: Important
+    category: rbac
+    source_trust: N/A
+    file: internal/controller/datasciencecluster/kubebuilder_rbac.go
+    lines: null
+    title: "Wildcard RBAC verbs on RBAC resources grant escalate and bind capabilities"
+    description: >
+      verbs=* on roles, rolebindings, clusterroles, clusterrolebindings
+      includes the escalate and bind verbs, bypassing Kubernetes privilege
+      escalation prevention.
+    detection_signals:
+      - "verbs=*"
+      - "escalate"
+      - "bind"
+      - "rbac.authorization.k8s.io"
+      - "clusterroles"
+      - "kubebuilder_rbac"
+      - "wildcard"
+
+  - id: PODS-EXEC
+    severity: Important
+    category: rbac
+    source_trust: N/A
+    file: internal/controller/datasciencecluster/kubebuilder_rbac.go
+    lines: null
+    title: "Operator SA granted pods/exec create permission enables lateral movement"
+    description: >
+      pods/exec create permission on cluster-wide scope allows the operator
+      SA to exec into any running pod, enabling lateral movement if the
+      SA is compromised.
+    detection_signals:
+      - "pods/exec"
+      - "exec"
+      - "lateral"
+      - "kubebuilder_rbac"
+
+  - id: OAUTH-AUTO-GRANT
+    severity: Minor
+    category: access_control
+    source_trust: N/A
+    file: internal/controller/services/gateway/gateway_support.go
+    lines: null
+    title: "OAuth client uses GrantHandlerAuto bypassing user consent"
+    description: >
+      OAuthClient created with GrantHandlerAuto automatically approves
+      authorization requests without user consent prompts.
+    detection_signals:
+      - "GrantHandlerAuto"
+      - "GrantHandler"
+      - "OAuthClient"
+      - "consent"
+
+  - id: FILE-MODE-ZERO
+    severity: Minor
+    category: access_control
+    source_trust: N/A
+    file: pkg/common/common.go
+    lines: null
+    title: "os.WriteFile uses file mode 0 instead of restrictive permissions"
+    description: >
+      ReplaceStringsInFile and MatchLineInFile call os.WriteFile with
+      mode 0, relying on running as root. Will break when operator runs
+      as non-root.
+    detection_signals:
+      - "WriteFile"
+      - "file mode"
+      - "permissions"
+      - "ReplaceStringsInFile"
+      - "common.go"
+
+  - id: WEBHOOK-SA-ORPHAN
+    severity: Minor
+    category: data_flow
+    source_trust: N/A
+    file: pkg/webhook/utils.go
+    lines: null
+    title: "ServiceAccount creation in webhook without ownership tracking"
+    description: >
+      CreateSA creates ServiceAccounts during webhook admission without
+      owner references, causing orphaned resources when the parent
+      InferenceService is deleted.
+    detection_signals:
+      - "CreateSA"
+      - "ServiceAccount"
+      - "owner"
+      - "orphan"
+      - "webhook"
+
+  - id: AUTH-CR-SILENT
+    severity: Minor
+    category: access_control
+    source_trust: N/A
+    file: internal/controller/dscinitialization/auth.go
+    lines: null
+    title: "CreateAuth silently accepts existing Auth CR without validation"
+    description: >
+      CreateAuth returns nil if Auth CR exists without validating its
+      configuration. A manually modified Auth CR with weakened groups
+      persists indefinitely.
+    detection_signals:
+      - "CreateAuth"
+      - "Auth CR"
+      - "exists"
+      - "validation"
+      - "dscinitialization"

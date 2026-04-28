@@ -236,15 +236,25 @@ def _parse_markdown_format(text):
         body = text[match.end():end]
 
         sev_match = re.search(r'\*\*Severity:\*\*\s*(\w+)', body)
+        if not sev_match:
+            sev_match = re.search(
+                r'\|\s*Severity\s*\|\s*\*{0,2}(Critical|Important|High|Medium|Minor|Low)\*{0,2}',
+                body, re.IGNORECASE)
         severity_raw = sev_match.group(1).strip() if sev_match else "Minor"
         severity = _SEVERITY_MAP.get(severity_raw.lower(), severity_raw)
 
         file_match = re.search(r'\*\*File:\*\*\s*`?([^`\n]+)`?', body)
+        if not file_match:
+            file_match = re.search(
+                r'\|\s*File\s*\|\s*`?([^`|\n]+)`?\s*\|', body)
         file_path = file_match.group(1).strip() if file_match else ""
         file_path = re.sub(r':\d+[-–]\d+$|:\d+$', '', file_path)
         file_path = re.sub(r'\s*\(lines?\s+\d+[-–]\d+\)$', '', file_path)
 
         source_match = re.search(r'\*\*Source:\*\*\s*(\S+)', body)
+        if not source_match:
+            source_match = re.search(
+                r'\|\s*Source\s+Trust\s*\|\s*(\S+)', body)
         source = source_match.group(1).strip() if source_match else ""
 
         evidence = body.strip()[:2000]
