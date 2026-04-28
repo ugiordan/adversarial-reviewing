@@ -1,125 +1,104 @@
-# Eval variant: --quick + architecture-context repo
-# Tests how pre-generated structured architecture docs affect detection.
-#
-# Prerequisites:
-#   git clone https://github.com/opendatahub-io/architecture-context.git \
-#     /Users/ugogiordano/workdir/rhoai/opendatahub-io/architecture-context
-#
-# Run: /eval-run --model opus eval/eval-ctx-architecture.yaml --run-id ctx-architecture
-
 name: adversarial-reviewing-ctx-architecture
-description: |
-  Quick mode with architecture-context repo as external context.
+description: 'Quick mode with architecture-context repo as external context.
+
   Provides structured per-component docs (RBAC tables, network topology,
+
   security sections, data flows, CRDs) from opendatahub-io/architecture-context.
+
   Compare against quick baseline to measure context impact.
 
+  '
 skill: adversarial-reviewing:adversarial-reviewing
-
 execution:
   mode: case
-  arguments: "--security --quick --save --context architecture=/Users/ugogiordano/workdir/rhoai/opendatahub-io/architecture-context/architecture/rhoai-3.4 {prompt}"
+  arguments: --security --quick --save --context architecture=/Users/ugogiordano/workdir/rhoai/opendatahub-io/architecture-context/architecture/rhoai-3.4
+    {prompt}
   max_budget_usd: 25.0
-
 runner:
   type: claude-code
-  system_prompt: |
-    When the adversarial-reviewing skill presents a review scope and asks
+  system_prompt: 'When the adversarial-reviewing skill presents a review scope and asks
+
     for confirmation ("Shall I proceed?"), always approve immediately.
+
     Do not ask the user for confirmation. Proceed with the review.
+
     When asked about budget escalation, approve the escalation.
+
     When the skill finishes and produces a report, write the full report
+
     to the artifacts/ directory as a markdown file.
+
+    '
   settings:
     permissions:
       allow:
-        - "Write(/var/folders/**)"
-        - "Write(/private/var/folders/**)"
-        - "Edit(/var/folders/**)"
-        - "Edit(/private/var/folders/**)"
+      - Write(/var/folders/**)
+      - Write(/private/var/folders/**)
+      - Edit(/var/folders/**)
+      - Edit(/private/var/folders/**)
       additionalDirectories:
-        - "/Users/ugogiordano/workdir/rhoai/opendatahub-io/opendatahub-operator"
-        - "/Users/ugogiordano/workdir/rhoai/opendatahub-io/architecture-context"
-
+      - /Users/ugogiordano/workdir/rhoai/opendatahub-io/opendatahub-operator
+      - /Users/ugogiordano/workdir/rhoai/opendatahub-io/architecture-context
 models:
   skill: claude-opus-4-6
   judge: claude-opus-4-6
-
 permissions:
-  allow:
-    - "Write"
-    - "Edit"
+  allow: []
   deny:
-    - "mcp__*"
-
+  - mcp__*
 mlflow:
   experiment: adversarial-reviewing-eval
-
 dataset:
   path: eval/dataset/cases
-  schema: |
-    Each case directory contains:
-    - input.yaml: The 'prompt' field contains the skill invocation
-      arguments (target repo path and flags).
-    - reference.yaml: Ground truth corpus with verified security
-      findings, detection signals, and severity classifications.
-
+  schema: "Each case directory contains:\n- input.yaml: The 'prompt' field contains the skill invocation\n  arguments (target\
+    \ repo path and flags).\n- reference.yaml: Ground truth corpus with verified security\n  findings, detection signals,\
+    \ and severity classifications.\n"
 outputs:
-  - path: artifacts
-    schema: |
-      The adversarial-reviewing skill saves its report as a markdown
-      file via --save. The report contains structured findings with
-      Finding ID, Severity, Confidence, Source Trust, File, Lines,
-      Title, Evidence, and Recommended fix fields.
+- path: artifacts
+  schema: 'The adversarial-reviewing skill saves its report as a markdown
 
+    file via --save. The report contains structured findings with
+
+    Finding ID, Severity, Confidence, Source Trust, File, Lines,
+
+    Title, Evidence, and Recommended fix fields.
+
+    '
 traces:
   stdout: true
   stderr: true
   events: false
   metrics: true
-
 judges:
-  - name: has_findings
-    description: Check that the review produced findings
-    check: |
-      content = outputs.get("artifacts_content", "")
-      if not content:
-        for k, v in outputs.get("files", {}).items():
-          if v and len(v) > 100:
-            content = v
-            break
-      if not content or len(content.strip()) < 200:
-        return False, f"No substantial output ({len(content)} chars)"
-      if "Finding ID:" not in content and "SEC-" not in content:
-        return False, "Output exists but contains no structured findings"
-      return True, f"Output has {len(content)} chars with structured findings"
+- name: has_findings
+  description: Check that the review produced findings
+  check: "content = outputs.get(\"artifacts_content\", \"\")\nif not content:\n  for k, v in outputs.get(\"files\", {}).items():\n\
+    \    if v and len(v) > 100:\n      content = v\n      break\nif not content or len(content.strip()) < 200:\n  return False,\
+    \ f\"No substantial output ({len(content)} chars)\"\nif \"Finding ID:\" not in content and \"SEC-\" not in content:\n\
+    \  return False, \"Output exists but contains no structured findings\"\nreturn True, f\"Output has {len(content)} chars\
+    \ with structured findings\"\n"
+- name: detection_rate
+  description: 'Score detection accuracy against ground truth corpus.
 
-  - name: detection_rate
-    description: |
-      Score detection accuracy against ground truth corpus.
-    module: eval.judges.detection_judge
-    function: score_detection
+    '
+  module: eval.judges.detection_judge
+  function: score_detection
+- name: false_positive_rate
+  description: 'Check that false positive rate stays under 30%.
 
-  - name: false_positive_rate
-    description: |
-      Check that false positive rate stays under 30%.
-    module: eval.judges.detection_judge
-    function: score_false_positive_rate
+    '
+  module: eval.judges.detection_judge
+  function: score_false_positive_rate
+- name: severity_accuracy
+  description: 'Score severity classification accuracy for matched findings.
 
-  - name: severity_accuracy
-    description: |
-      Score severity classification accuracy for matched findings.
-    module: eval.judges.detection_judge
-    function: score_severity_accuracy
-
-  - name: cost_reasonable
-    description: Verify cost stays under budget
-    check: |
-      cost = outputs.get("cost_usd", 0)
-      if cost and cost > 25.0:
-        return False, f"Cost ${cost:.2f} exceeds $25 limit"
-      return True, f"Cost ${cost:.2f}" if cost else "Cost not tracked"
-
+    '
+  module: eval.judges.detection_judge
+  function: score_severity_accuracy
+- name: cost_reasonable
+  description: Verify cost stays under budget
+  check: "cost = outputs.get(\"cost_usd\", 0)\nif cost and cost > 25.0:\n  return False, f\"Cost ${cost:.2f} exceeds $25 limit\"\
+    \nreturn True, f\"Cost ${cost:.2f}\" if cost else \"Cost not tracked\"\n"
 thresholds:
   detection_rate:
-    min_mean: 0.40
+    min_mean: 0.4

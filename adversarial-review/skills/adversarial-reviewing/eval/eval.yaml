@@ -40,9 +40,7 @@ models:
   judge: claude-opus-4-6
 
 permissions:
-  allow:
-    - "Write"
-    - "Edit"
+  allow: []
   deny:
     - "mcp__*"
 
