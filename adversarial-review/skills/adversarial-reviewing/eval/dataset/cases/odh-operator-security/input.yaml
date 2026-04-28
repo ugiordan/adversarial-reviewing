@@ -1,4 +1,4 @@
-prompt: "/path/to/opendatahub-operator"
+prompt: "/Users/ugogiordano/workdir/rhoai/opendatahub-io/opendatahub-operator"
 context: |
   Review the opendatahub-operator codebase for security vulnerabilities.
   Focus on: RBAC, webhooks, crypto/certificate handling, input validation,

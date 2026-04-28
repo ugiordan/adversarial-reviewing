@@ -1,0 +1,125 @@
+# Eval variant: --quick + platform-architecture-context-pipeline
+# Tests how jctanner's pipeline context affects detection.
+#
+# Prerequisites:
+#   1. Clone: git clone https://github.com/jctanner/platform-architecture-context-pipeline.git
+#      /Users/ugogiordano/workdir/rhoai/platform-architecture-context-pipeline
+#   2. Run the pipeline against opendatahub-operator to generate output
+#   3. Update the --context path below to point at the generated output dir
+#
+# Run: /eval-run --model opus eval/eval-ctx-pipeline.yaml --run-id ctx-pipeline
+
+name: adversarial-reviewing-ctx-pipeline
+description: |
+  Quick mode with platform-architecture-context-pipeline output as context.
+  Compare against quick baseline and other context sources.
+
+skill: adversarial-reviewing:adversarial-reviewing
+
+execution:
+  mode: case
+  arguments: "--security --quick --save --context architecture=/Users/ugogiordano/workdir/rhoai/platform-architecture-context-pipeline/output/opendatahub-operator {prompt}"
+  max_budget_usd: 25.0
+
+runner:
+  type: claude-code
+  system_prompt: |
+    When the adversarial-reviewing skill presents a review scope and asks
+    for confirmation ("Shall I proceed?"), always approve immediately.
+    Do not ask the user for confirmation. Proceed with the review.
+    When asked about budget escalation, approve the escalation.
+    When the skill finishes and produces a report, write the full report
+    to the artifacts/ directory as a markdown file.
+  settings:
+    permissions:
+      allow:
+        - "Write(/var/folders/**)"
+        - "Write(/private/var/folders/**)"
+        - "Edit(/var/folders/**)"
+        - "Edit(/private/var/folders/**)"
+      additionalDirectories:
+        - "/Users/ugogiordano/workdir/rhoai/opendatahub-io/opendatahub-operator"
+        - "/Users/ugogiordano/workdir/rhoai/platform-architecture-context-pipeline"
+
+models:
+  skill: claude-opus-4-6
+  judge: claude-opus-4-6
+
+permissions:
+  allow:
+    - "Write"
+    - "Edit"
+  deny:
+    - "mcp__*"
+
+mlflow:
+  experiment: adversarial-reviewing-eval
+
+dataset:
+  path: eval/dataset/cases
+  schema: |
+    Each case directory contains:
+    - input.yaml: The 'prompt' field contains the skill invocation
+      arguments (target repo path and flags).
+    - reference.yaml: Ground truth corpus with verified security
+      findings, detection signals, and severity classifications.
+
+outputs:
+  - path: artifacts
+    schema: |
+      The adversarial-reviewing skill saves its report as a markdown
+      file via --save. The report contains structured findings with
+      Finding ID, Severity, Confidence, Source Trust, File, Lines,
+      Title, Evidence, and Recommended fix fields.
+
+traces:
+  stdout: true
+  stderr: true
+  events: false
+  metrics: true
+
+judges:
+  - name: has_findings
+    description: Check that the review produced findings
+    check: |
+      content = outputs.get("artifacts_content", "")
+      if not content:
+        for k, v in outputs.get("files", {}).items():
+          if v and len(v) > 100:
+            content = v
+            break
+      if not content or len(content.strip()) < 200:
+        return False, f"No substantial output ({len(content)} chars)"
+      if "Finding ID:" not in content and "SEC-" not in content:
+        return False, "Output exists but contains no structured findings"
+      return True, f"Output has {len(content)} chars with structured findings"
+
+  - name: detection_rate
+    description: |
+      Score detection accuracy against ground truth corpus.
+    module: eval.judges.detection_judge
+    function: score_detection
+
+  - name: false_positive_rate
+    description: |
+      Check that false positive rate stays under 30%.
+    module: eval.judges.detection_judge
+    function: score_false_positive_rate
+
+  - name: severity_accuracy
+    description: |
+      Score severity classification accuracy for matched findings.
+    module: eval.judges.detection_judge
+    function: score_severity_accuracy
+
+  - name: cost_reasonable
+    description: Verify cost stays under budget
+    check: |
+      cost = outputs.get("cost_usd", 0)
+      if cost and cost > 25.0:
+        return False, f"Cost ${cost:.2f} exceeds $25 limit"
+      return True, f"Cost ${cost:.2f}" if cost else "Cost not tracked"
+
+thresholds:
+  detection_rate:
+    min_mean: 0.40
