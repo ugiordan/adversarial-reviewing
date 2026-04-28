@@ -21,6 +21,21 @@ The following patterns are excluded by default:
 
 If any files matching these patterns appear in scope, they require **explicit separate confirmation** from the user before inclusion. Do not bundle this confirmation with the general scope confirmation.
 
+## Boilerplate Exclusions
+
+The following patterns are low-signal for security review and should be excluded from scope unless explicitly requested:
+
+```
+zz_generated.deepcopy.go, zz_generated.defaults.go, *_generated.go
+groupversion_info.go, doc.go
+*_test.go (exclude from security scope; include for correctness scope)
+*.pb.go (protobuf generated)
+vendor/, third_party/
+testdata/, test/, tests/
+```
+
+These files inflate scope without contributing findings. When the scope agent generates the file list, apply these exclusions before writing the scope file.
+
 ## Scope File Generation
 
 Write the list of in-scope files (one repo-relative path per line) to a temporary file. Pass this file to `validate-output.sh --scope <file>` during all subsequent validation calls. In `--diff` mode, only changed files are in scope — impact graph files are context-only and do not appear in the scope file.

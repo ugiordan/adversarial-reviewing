@@ -799,6 +799,71 @@ def cmd_build_summary(args):
     manifest_add_file(cache_dir, "findings/cross-agent-summary.md", summary_file)
 
 
+_SECURITY_PATTERNS = [
+    # Auth / access control
+    b"Secret", b"Password", b"Token", b"Auth", b"RBAC",
+    b"ClusterRole", b"RoleBinding", b"ServiceAccount",
+    b"webhook", b"Webhook", b"admission",
+    # Crypto
+    b"cert", b"tls", b"x509", b"IsCA", b"KeyUsage",
+    b"crypto", b"rand.", b"entropy",
+    # Dangerous operations
+    b"panic(", b"exec.Command", b"os.Exec",
+    b"http.Get", b"http.Post", b"httputil",
+    b"os.Getenv", b"Setenv",
+    # Input handling
+    b"Decode(", b"Unmarshal", b"ParseForm",
+    b"sql.Open", b"Query(",
+    # K8s security surface
+    b"NetworkPolicy", b"PodSecurityPolicy",
+    b"SecurityContext", b"Privileged",
+    b"storageUri", b"InferenceService",
+    # Server / API exposure
+    b"ServeStdio", b"Serve(", b"ListenAndServe",
+    b"rest.Config", b"kubeConfig", b"client.New",
+    b"GenerateRandomHex", b"htpasswd",
+    # Supply chain
+    b":latest", b"FROM ", b"COPY --from",
+]
+
+
+def _security_relevance_score(filepath, rel_path):
+    """Score a file's security relevance by counting pattern hits in its content.
+
+    Returns an integer score: higher means more security-relevant.
+    Path-based bonus for files in known security-critical directories.
+    """
+    score = 0
+    rel_lower = rel_path.lower()
+
+    # Path-based signals
+    path_signals = ["auth", "rbac", "webhook", "cert", "secret",
+                    "crypto", "security", "admission", "gateway", "tls",
+                    "server", "mcp", "monitoring"]
+    for sig in path_signals:
+        if sig in rel_lower:
+            score += 2
+
+    # Penalize boilerplate
+    boilerplate = ["groupversion_info", "zz_generated", "deepcopy",
+                   "doc.go", "_test.go"]
+    for bp in boilerplate:
+        if bp in rel_lower:
+            score -= 3
+
+    # Content-based signals (fast binary scan)
+    try:
+        with open(filepath, "rb") as f:
+            content = f.read()
+        for pattern in _SECURITY_PATTERNS:
+            if pattern in content:
+                score += 1
+    except (OSError, IOError):
+        pass
+
+    return max(score, 0)
+
+
 def cmd_generate_navigation(args):
     iteration = args.iteration
     phase = args.phase
@@ -838,18 +903,25 @@ def cmd_generate_navigation(args):
     findings_dir = os.path.join(cache_dir, "findings")
     context_dir = os.path.join(cache_dir, "context")
 
-    # Code files
+    # Code files (sorted by security relevance)
     if os.path.isdir(code_dir):
-        lines.append("## Code Files (read before making claims)")
-        lines.append("| File | Tokens (est.) |")
-        lines.append("|------|---------------|")
+        file_entries = []
         for root, dirs, files in sorted(os.walk(code_dir)):
             for fname in sorted(files):
                 full = os.path.join(root, fname)
                 rel = os.path.relpath(full, cache_dir)
                 size = os.path.getsize(full)
                 tokens = size // 4
-                lines.append(f"| {rel} | {tokens:,} |")
+                score = _security_relevance_score(full, rel)
+                file_entries.append((rel, tokens, score))
+        file_entries.sort(key=lambda x: (-x[2], x[0]))
+
+        lines.append("## Code Files (read before making claims)")
+        lines.append("| File | Tokens (est.) | Priority |")
+        lines.append("|------|---------------|----------|")
+        for rel, tokens, score in file_entries:
+            priority = "High" if score >= 5 else "Medium" if score >= 2 else "Low"
+            lines.append(f"| {rel} | {tokens:,} | {priority} |")
         lines.append("")
 
     # References
@@ -956,40 +1028,41 @@ def cmd_generate_navigation(args):
             if fname.endswith(".md"):
                 total_tokens += os.path.getsize(os.path.join(ref_dir, fname)) // 4
     if total_tokens > CONTEXT_CAP:
-        lines.append(f"> **Warning:** Total estimated tokens ({total_tokens:,}) exceed the {CONTEXT_CAP:,} per-iteration context limits.")
+        lines.append(f"> **Warning:** Total estimated tokens ({total_tokens:,}) exceed the {CONTEXT_CAP:,} per-iteration context cap.")
         lines.append(">")
-        # Build file list sorted by size descending
-        file_entries = []
+        # Build file list sorted by security relevance (high-signal first)
+        cap_entries = []
         if os.path.isdir(code_dir):
             for root, dirs, files in sorted(os.walk(code_dir)):
                 for fname in sorted(files):
                     full = os.path.join(root, fname)
                     rel = os.path.relpath(full, cache_dir)
                     tokens = os.path.getsize(full) // 4
-                    file_entries.append((rel, tokens))
-        file_entries.sort(key=lambda x: x[1], reverse=True)
+                    score = _security_relevance_score(full, rel)
+                    cap_entries.append((rel, tokens, score))
+        cap_entries.sort(key=lambda x: (-x[2], x[1]))
         running = 0
         included = []
         omitted = []
-        for rel, tokens in file_entries:
+        for rel, tokens, score in cap_entries:
             if running + tokens <= CONTEXT_CAP:
-                included.append((rel, tokens))
+                included.append((rel, tokens, score))
                 running += tokens
             else:
-                omitted.append((rel, tokens))
+                omitted.append((rel, tokens, score))
         if omitted and included:
-            lines.append(f"> {len(omitted)} file(s) omitted to stay within budget. Read these first:")
-            for rel, tokens in included:
+            lines.append(f"> {len(omitted)} file(s) omitted to stay within budget. Read these first (ranked by security relevance):")
+            for rel, tokens, score in included:
                 lines.append(f">   - {rel} ({tokens:,} tokens)")
-            omitted_names = [r for r, _ in omitted]
+            omitted_names = [r for r, _ , _s in omitted]
             omitted_str = ", ".join(omitted_names)
             lines.append(f"> Omitted (read only if needed): {omitted_str}")
         elif omitted and not included:
             lines.append("> All files exceed the per-iteration budget. Read the smallest file first:")
-            smallest = min(file_entries, key=lambda x: x[1])
+            smallest = min(cap_entries, key=lambda x: x[1])
             lines.append(f">   - {smallest[0]} ({smallest[1]:,} tokens)")
         else:
-            lines.append("> Prioritize reading Critical and Important findings first.")
+            lines.append("> Prioritize reading High-priority files from the table above first.")
         lines.append("")
 
     # Phase instructions

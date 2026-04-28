@@ -97,8 +97,32 @@ def _run_metrics(outputs):
     if not findings:
         return None, f"No findings extracted from output. Ground truth has {len(gt_active)} entries."
 
-    metrics = compute_metrics(findings, gt_list)
+    quick_mode = _detect_quick_mode(outputs)
+    metrics = compute_metrics(findings, gt_list, quick_mode=quick_mode)
     return metrics, None
+
+
+def _detect_quick_mode(outputs):
+    """Check if the run used --quick mode by inspecting the run metadata."""
+    eval_params = outputs.get("eval_params", {})
+    skill_args = eval_params.get("skill_args", "")
+    if "--quick" in skill_args:
+        return True
+
+    case_dir = outputs.get("case_dir", "")
+    if not case_dir:
+        return False
+    input_path = Path(case_dir) / "input.yaml"
+    if not input_path.exists():
+        return False
+    try:
+        import yaml
+        with open(input_path) as f:
+            data = yaml.safe_load(f) or {}
+        prompt = data.get("prompt", "")
+        return "--quick" in prompt
+    except Exception:
+        return False
 
 
 def _extract_findings(outputs):
@@ -122,9 +146,21 @@ def _extract_findings(outputs):
 
 
 def _parse_findings_from_text(text):
-    """Parse structured findings from review report text."""
-    findings = []
+    """Parse structured findings from review report text.
 
+    Supports two formats:
+    1. Structured fields: Finding ID: X / Severity: Y / Title: Z / Evidence: W
+    2. Markdown headers: ### F-001: Title / **Severity:** High / **File:** path
+    """
+    findings = _parse_structured_format(text)
+    if not findings:
+        findings = _parse_markdown_format(text)
+    return findings
+
+
+def _parse_structured_format(text):
+    """Parse findings with explicit Finding ID / Severity / Title / Evidence fields."""
+    findings = []
     finding_pattern = re.compile(
         r'Finding\s+ID:\s*(\S+).*?'
         r'Severity:\s*(Critical|Important|Minor).*?'
@@ -134,7 +170,6 @@ def _parse_findings_from_text(text):
         r'Evidence:\s*(.+?)(?=\nRecommend|\nVerdict|\nFinding\s+ID:|\Z)',
         re.DOTALL | re.IGNORECASE
     )
-
     for match in finding_pattern.finditer(text):
         findings.append({
             "finding_id": match.group(1).strip(),
@@ -144,5 +179,62 @@ def _parse_findings_from_text(text):
             "title": match.group(5).strip(),
             "evidence": match.group(6).strip()[:2000],
         })
+    return findings
 
+
+_SEVERITY_MAP = {
+    "critical": "Critical",
+    "high": "Important",
+    "medium": "Minor",
+    "low": "Minor",
+    "informational": "Minor",
+}
+
+
+def _parse_markdown_format(text):
+    """Parse findings from markdown report with ### F-NNN: Title headers.
+
+    Skips findings under a "Dismissed Findings" section or with
+    DISMISSED/WITHDRAWN in the title.
+    """
+    dismissed_start = re.search(r'^##\s+Dismissed\s+Findings', text, re.MULTILINE | re.IGNORECASE)
+    dismissed_offset = dismissed_start.start() if dismissed_start else len(text)
+
+    findings = []
+    header_pattern = re.compile(
+        r'^###\s+(F-\d+|SEC-\d+):\s*(.+?)$',
+        re.MULTILINE
+    )
+    headers = list(header_pattern.finditer(text))
+    for i, match in enumerate(headers):
+        if match.start() >= dismissed_offset:
+            continue
+        finding_id = match.group(1).strip()
+        title = match.group(2).strip()
+        if re.search(r'\b(DISMISSED|WITHDRAWN)\b', title):
+            continue
+        end = headers[i + 1].start() if i + 1 < len(headers) else len(text)
+        body = text[match.end():end]
+
+        sev_match = re.search(r'\*\*Severity:\*\*\s*(\w+)', body)
+        severity_raw = sev_match.group(1).strip() if sev_match else "Minor"
+        severity = _SEVERITY_MAP.get(severity_raw.lower(), severity_raw)
+
+        file_match = re.search(r'\*\*File:\*\*\s*`?([^`\n]+)`?', body)
+        file_path = file_match.group(1).strip() if file_match else ""
+        file_path = re.sub(r':\d+[-–]\d+$|:\d+$', '', file_path)
+
+        source_match = re.search(r'\*\*Source:\*\*\s*(\S+)', body)
+        source = source_match.group(1).strip() if source_match else ""
+
+        evidence = body.strip()[:2000]
+
+        findings.append({
+            "finding_id": finding_id,
+            "severity": severity,
+            "source_trust": source,
+            "file": file_path,
+            "title": title,
+            "evidence": evidence,
+        })
     return findings

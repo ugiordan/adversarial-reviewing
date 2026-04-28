@@ -5,21 +5,27 @@
 #
 # Usage: eval/score.py compares adversarial-review findings against this corpus
 # to compute detection rate, false positive rate, and severity accuracy.
+#
+# scope_note: marks GT entries whose files are outside the --quick scope.
+# These are expected misses in quick mode and should not count against
+# detection rate when evaluating --quick runs.
 
 metadata:
   repo: opendatahub-io/opendatahub-operator
-  corpus_version: "1.0"
-  total_findings: 18
+  corpus_version: "2.0"
+  total_findings: 22
   categories:
     rbac: 3
     webhook: 2
     crypto: 3
     input_validation: 3
-    secret_management: 1
+    secret_management: 2
     info_disclosure: 1
-    data_flow: 2
+    data_flow: 1
     bounds_check: 1
     randomness: 2
+    supply_chain: 2
+    access_control: 2
 
 findings:
   # --- Batch 1: Fixed (commit 4b79091c4) ---
@@ -65,6 +71,7 @@ findings:
     file: pkg/controller/actions/dependency/certmanager/bootstrap.go
     lines: 40-40
     title: "100-year CA validity without renewal strategy"
+    scope_note: "File outside --quick scope"
     description: >
       Root CA certificate validity set to 876000 hours (100 years).
       Excessively long validity violates certificate rotation best practices.
@@ -88,6 +95,9 @@ findings:
       - "UnixNano"
       - "rand.Int"
       - "SerialNumber"
+      - "serial number"
+      - "entropy"
+      - "cert.go"
 
   - id: SEC-008
     jira: RHOAIENG-56113
@@ -97,6 +107,7 @@ findings:
     file: internal/webhook/notebook/mutating.go
     lines: 86-119
     title: "Zero-value admission response on webhook fall-through"
+    scope_note: "File outside --quick scope"
     description: >
       Notebook mutating webhook does not return explicit Allowed response
       on the default path. Returns zero-value admission.Response which
@@ -123,6 +134,8 @@ findings:
       - "ClusterVersion"
       - "getOCPVersion"
       - "bounds"
+      - "panic"
+      - "cluster_config"
 
   # --- Batch 2-3: Jiras filed, not yet fixed ---
 
@@ -140,7 +153,9 @@ findings:
     detection_signals:
       - "IssuerURL"
       - "OIDCConfig"
-      - "validation"
+      - "URL validation"
+      - "format validation"
+      - "gateway_types"
 
   - id: B2-SECRET-NS
     jira: RHOAIENG-56116
@@ -168,6 +183,7 @@ findings:
     file: api/dscinitialization/v2/
     lines: null
     title: "DSCI webhook skips UPDATE validation"
+    scope_note: "Directory outside --quick scope"
     description: >
       DSCI webhook only validates CREATE operations. Users can modify DSCI
       after creation without validation, bypassing security controls.
@@ -207,9 +223,11 @@ findings:
       encryption or proper key management.
     detection_signals:
       - "SessionSecret"
-      - "monitoring"
-      - "plaintext"
+      - "monitoring.go"
       - "GenerateRandomHex"
+      - "htpasswd"
+      - "prometheus"
+      - "alertmanager"
 
   - id: B2-CERT-NAME
     jira: RHOAIENG-56121
@@ -219,6 +237,7 @@ findings:
     file: api/infrastructure/v1/certificate_types.go
     lines: null
     title: "CertificateSpec.SecretName no format validation"
+    scope_note: "File outside --quick scope"
     description: >
       SecretName field accepts any string without DNS-1123 subdomain
       validation. Invalid names cause runtime errors.
@@ -244,6 +263,8 @@ findings:
       - "numBytes"
       - "length / 2"
       - "hex.EncodeToString"
+      - "entropy"
+      - "random"
 
   - id: B2-ERR-EXPOSE
     jira: RHOAIENG-56122
@@ -277,24 +298,8 @@ findings:
       - "IsCA"
       - "BasicConstraints"
 
-  # --- Cross-component findings (confused deputy pattern) ---
-
-  - id: SSRF-ISVC
-    severity: Important
-    category: data_flow
-    source_trust: Authenticated
-    file: internal/controller/services/kserve/
-    lines: null
-    title: "SSRF via InferenceService storageUri"
-    description: >
-      InferenceService CRD storageUri field flows from user input through
-      controller reconcile to HTTP client without URL validation. Controller
-      uses its SA token for the fetch, making this a confused deputy.
-    detection_signals:
-      - "storageUri"
-      - "InferenceService"
-      - "http.Get"
-      - "confused deputy"
+  # --- Cross-component findings ---
+  # SSRF-ISVC removed: kserve directory does not exist in this repo
 
   - id: RBAC-AGGREGATE
     severity: Important
@@ -310,7 +315,8 @@ findings:
     detection_signals:
       - "aggregate-to-edit"
       - "rbac.authorization.k8s.io/aggregate-to-edit"
-      - "labels"
+      - "aggregationRule"
+      - "edit ClusterRole"
 
   # --- Cache OOM findings (from architecture analyzer) ---
 
@@ -318,7 +324,7 @@ findings:
     severity: Important
     category: input_validation
     source_trust: Internal
-    file: internal/controller/
+    file: cmd/main.go
     lines: null
     title: "Unfiltered informer cache types cause OOM risk"
     description: >
@@ -326,8 +332,115 @@ findings:
       cache configuration. 27 unfiltered types load full objects into
       memory, creating OOM risk on clusters with many resources.
     detection_signals:
-      - "cache"
+      - "NewCache"
       - "informer"
       - "DefaultTransform"
       - "GOMEMLIMIT"
-      - "unfiltered"
+      - "cache.Options"
+
+  # --- Findings consistently discovered by model (added v2.0) ---
+
+  - id: SEGMENT-KEY
+    severity: Important
+    category: secret_management
+    source_trust: N/A
+    file: config/monitoring/segment/segment-key-secret.yaml
+    lines: null
+    title: "Segment.io analytics API key committed to source in plaintext"
+    description: >
+      Base64-encoded Segment.io write key committed to git. While write
+      keys cannot read data, they allow injection of arbitrary telemetry
+      events into the analytics workspace (data poisoning).
+    detection_signals:
+      - "segmentKey"
+      - "Segment"
+      - "analytics"
+      - "base64"
+      - "write key"
+
+  - id: MCP-UNAUTH
+    severity: Important
+    category: access_control
+    source_trust: Privileged
+    file: cmd/mcp-server/main.go
+    lines: null
+    title: "MCP server exposes cluster-wide read access without authentication"
+    description: >
+      MCP server registers tools (describe_resource, pod_logs, etc.) that
+      read arbitrary Kubernetes resources using the operator's privileged
+      service account. No authentication or authorization at MCP protocol
+      layer. Serves over stdio with no access control.
+    detection_signals:
+      - "MCP"
+      - "mcp-server"
+      - "ServeStdio"
+      - "describe_resource"
+      - "pod_logs"
+
+  - id: UNPINNED-AUTH-IMG
+    severity: Minor
+    category: supply_chain
+    source_trust: N/A
+    file: internal/controller/services/gateway/gateway_support.go
+    lines: null
+    title: "Security-critical auth proxy images use unpinned :latest tags"
+    description: >
+      Fallback container images for kube-auth-proxy and nginx redirect
+      use :latest tags. Production images are set via RELATED_IMAGE env
+      vars but no runtime guard ensures the fallback is never used in
+      production.
+    detection_signals:
+      - "getKubeAuthProxyImage"
+      - "getDashboardRedirectImage"
+      - ":latest"
+      - "RELATED_IMAGE"
+
+  - id: SSL-SKIP-VERIFY
+    severity: Minor
+    category: access_control
+    source_trust: N/A
+    file: internal/controller/services/gateway/resources/kube-auth-proxy-oauth-deployment.tmpl.yaml
+    lines: null
+    title: "OAuth2 proxy ssl-insecure-skip-verify controlled by API field without admission guard"
+    description: >
+      ssl-insecure-skip-verify is templated from user-facing
+      GatewayConfig.Spec.VerifyProviderCertificate field. Defaults to true
+      but no webhook prevents disabling TLS verification in production.
+    detection_signals:
+      - "ssl-insecure-skip-verify"
+      - "InsecureSkipVerify"
+      - "VerifyProviderCertificate"
+
+  - id: AUTH-DEFAULT
+    severity: Minor
+    category: access_control
+    source_trust: N/A
+    file: internal/controller/dscinitialization/auth.go
+    lines: null
+    title: "Default Auth CR grants platform access to all authenticated users"
+    description: >
+      BuildDefaultAuth() creates default Auth CR with
+      AllowedGroups: ["system:authenticated"]. Administrators may not realize
+      the default grants platform access to every cluster user.
+    detection_signals:
+      - "BuildDefaultAuth"
+      - "AllowedGroups"
+      - "system:authenticated"
+      - "default"
+
+  - id: UNPINNED-UBI
+    severity: Minor
+    category: supply_chain
+    source_trust: N/A
+    file: Dockerfiles/Dockerfile
+    lines: null
+    title: "Final container image uses unpinned UBI minimal :latest tag"
+    description: >
+      Final build stage FROM uses ubi9/ubi-minimal:latest without digest
+      pinning. Builder stage pins Go version but runtime base is not pinned,
+      making builds non-reproducible.
+    detection_signals:
+      - "ubi-minimal"
+      - "ubi9"
+      - ":latest"
+      - "Dockerfile"

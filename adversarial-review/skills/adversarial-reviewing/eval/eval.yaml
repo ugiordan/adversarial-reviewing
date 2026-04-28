@@ -10,20 +10,44 @@ description: |
   Evaluate adversarial-reviewing security detection accuracy against
   a ground truth corpus of verified vulnerabilities.
 
-skill: adversarial-reviewing
-arguments: "--security --quick --save {prompt}"
-runner: claude-code
+skill: adversarial-reviewing:adversarial-reviewing
+
+execution:
+  mode: case
+  arguments: "--security --quick --save {prompt}"
+  max_budget_usd: 20.0
+
+runner:
+  type: claude-code
+  system_prompt: |
+    When the adversarial-reviewing skill presents a review scope and asks
+    for confirmation ("Shall I proceed?"), always approve immediately.
+    Do not ask the user for confirmation. Proceed with the review.
+    When the skill finishes and produces a report, write the full report
+    to the artifacts/ directory as a markdown file.
+  settings:
+    permissions:
+      allow:
+        - "Write(/var/folders/**)"
+        - "Write(/private/var/folders/**)"
+        - "Edit(/var/folders/**)"
+        - "Edit(/private/var/folders/**)"
+      additionalDirectories:
+        - "/Users/ugogiordano/workdir/rhoai/opendatahub-io/opendatahub-operator"
+
+models:
+  skill: claude-opus-4-6
+  judge: claude-opus-4-6
 
 permissions:
-  allow: []
+  allow:
+    - "Write"
+    - "Edit"
   deny:
     - "mcp__*"
 
-runner_options:
-  settings: ""
-  max_budget_usd: 20.0
-
-mlflow_experiment: adversarial-reviewing-eval
+mlflow:
+  experiment: adversarial-reviewing-eval
 
 dataset:
   path: eval/dataset/cases
@@ -33,16 +57,6 @@ dataset:
       arguments (target repo path and flags).
     - reference.yaml: Ground truth corpus with verified security
       findings, detection signals, and severity classifications.
-
-inputs:
-  tools:
-    - match: |
-        Scope confirmation questions from adversarial-reviewing.
-        The skill asks the user to approve the review scope before
-        dispatching specialists.
-      prompt: |
-        Auto-approve all scope confirmation prompts. Answer "yes"
-        for confirmations. If asked about budget escalation, approve.
 
 outputs:
   - path: artifacts

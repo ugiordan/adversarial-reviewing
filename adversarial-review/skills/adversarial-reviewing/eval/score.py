@@ -63,20 +63,26 @@ def normalize_path(path):
 
 
 def match_file(finding_file, gt_file):
-    """Check if finding file matches ground truth file."""
+    """Check if finding file matches ground truth file.
+
+    Returns a match type string or None:
+      "exact"     - specific file match (same file or suffix match)
+      "directory" - GT is a directory prefix and finding is under it
+      None        - no match
+    """
     if not finding_file or not gt_file:
-        return False
+        return None
     f_norm = normalize_path(finding_file)
     gt_norm = normalize_path(gt_file)
     if f_norm == gt_norm:
-        return True
+        return "exact"
     if gt_norm.endswith("/") and f_norm.startswith(gt_norm):
-        return True
+        return "directory"
     if f_norm.endswith(gt_norm) and _at_path_boundary(f_norm, gt_norm):
-        return True
+        return "exact"
     if gt_norm.endswith(f_norm) and _at_path_boundary(gt_norm, f_norm):
-        return True
-    return False
+        return "exact"
+    return None
 
 
 def _at_path_boundary(haystack, needle):
@@ -94,7 +100,19 @@ def match_signals(text, signals):
 
 
 def match_finding_to_gt(finding, gt_list):
-    """Try to match a finding to a ground truth entry. Returns (gt_entry, score) or (None, 0)."""
+    """Try to match a finding to a ground truth entry. Returns (gt_entry, score) or (None, 0).
+
+    Scoring:
+      - Exact file match: +3
+      - Directory prefix match: +1 (broad, needs signal confirmation)
+      - Title signal hit: +2 per keyword
+      - Evidence signal hits: +1 per keyword, only counted if >= 2 hits
+        (single keyword in long evidence text is noise)
+
+    A match requires score >= 4 AND at least one signal hit (title or
+    evidence). File match alone is insufficient because different
+    findings can exist in the same file.
+    """
     best_match = None
     best_score = 0
 
@@ -107,37 +125,37 @@ def match_finding_to_gt(finding, gt_list):
         gt_file = gt.get("file", "") or ""
         gt_signals = gt.get("detection_signals", [])
 
-        # File match: strong signal
-        if match_file(f_file, gt_file):
+        file_type = match_file(f_file, gt_file)
+        if file_type == "exact":
             score += 3
+        elif file_type == "directory":
+            score += 1
 
-        # Title signal match
         title_hits = match_signals(f_title, gt_signals)
         score += title_hits * 2
 
-        # Evidence signal match
         evidence_hits = match_signals(f_evidence, gt_signals)
-        score += evidence_hits
+        if evidence_hits >= 2:
+            score += evidence_hits
 
-        # Category match (if finding has category info)
-        f_category = finding.get("category", "").lower()
-        gt_category = gt.get("category", "").lower()
-        if f_category and gt_category and f_category == gt_category:
-            score += 1
-
-        # Threshold: need at least score 3 to consider a match
-        # (file match alone, or 2+ signal hits)
-        if score >= 3 and score > best_score:
+        has_signal = title_hits > 0 or evidence_hits >= 2
+        if score >= 4 and has_signal and score > best_score:
             best_score = score
             best_match = gt
 
     return best_match, best_score
 
 
-def compute_metrics(findings, gt_list, token_count=None):
-    """Compute all evaluation metrics."""
-    # Skip duplicates in GT
+def compute_metrics(findings, gt_list, token_count=None, quick_mode=False):
+    """Compute all evaluation metrics.
+
+    If quick_mode is True, GT entries with a scope_note field are excluded
+    from the active set (they reference files outside the --quick scope
+    and are expected misses).
+    """
     gt_active = [g for g in gt_list if not g.get("duplicate_of")]
+    if quick_mode:
+        gt_active = [g for g in gt_active if not g.get("scope_note")]
     gt_ids = {g["id"] for g in gt_active}
 
     matched_gt = {}  # gt_id -> (finding, score)
