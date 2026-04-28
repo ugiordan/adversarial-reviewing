@@ -1,7 +1,7 @@
 name: adversarial-reviewing-default
-description: 'Default mode: all 5 agents (SEC, ARCH, LOGIC, PERF, API),
+description: 'Default mode: SEC agent, default budget (no --quick).
 
-  350K token budget. No external context.
+  Full scope review without iteration limit. No external context.
 
   '
 skill: adversarial-reviewing:adversarial-reviewing

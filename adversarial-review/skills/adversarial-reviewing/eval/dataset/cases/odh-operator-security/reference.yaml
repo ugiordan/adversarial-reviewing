@@ -12,12 +12,12 @@
 
 metadata:
   repo: opendatahub-io/opendatahub-operator
-  corpus_version: "2.1"
-  total_findings: 28
+  corpus_version: "2.2"
+  total_findings: 25
   categories:
-    rbac: 5
+    rbac: 4
     webhook: 2
-    crypto: 3
+    crypto: 1
     input_validation: 3
     secret_management: 2
     info_disclosure: 1
@@ -64,21 +64,8 @@ findings:
       - "x509.Certificate"
       - "localhost"
 
-  - id: SEC-003
-    severity: Important
-    category: crypto
-    source_trust: N/A
-    file: pkg/controller/actions/dependency/certmanager/bootstrap.go
-    lines: 40-40
-    title: "100-year CA validity without renewal strategy"
-    scope_note: "File outside --quick scope"
-    description: >
-      Root CA certificate validity set to 876000 hours (100 years).
-      Excessively long validity violates certificate rotation best practices.
-    detection_signals:
-      - "876000"
-      - "caRootDuration"
-      - "Duration"
+  # SEC-003 REMOVED: file pkg/controller/actions/dependency/certmanager/bootstrap.go
+  # does not exist in this repo. The 876000h/caRootDuration code was never here.
 
   - id: SEC-006
     severity: Important
@@ -107,7 +94,6 @@ findings:
     file: internal/webhook/notebook/mutating.go
     lines: 86-119
     title: "Zero-value admission response on webhook fall-through"
-    scope_note: "File outside --quick scope"
     description: >
       Notebook mutating webhook does not return explicit Allowed response
       on the default path. Returns zero-value admission.Response which
@@ -180,7 +166,7 @@ findings:
     severity: Important
     category: webhook
     source_trust: Authenticated
-    file: api/dscinitialization/v2/
+    file: internal/webhook/dscinitialization/v2/validating.go
     lines: null
     title: "DSCI webhook skips UPDATE validation"
     scope_note: "Directory outside --quick scope"
@@ -193,22 +179,9 @@ findings:
       - "UPDATE"
       - "DSCI"
 
-  - id: B2-RBAC-SUB
-    jira: RHOAIENG-56118
-    severity: Important
-    category: rbac
-    source_trust: N/A
-    file: config/rbac/
-    lines: null
-    title: "Overprivileged RBAC on subresources"
-    description: >
-      RBAC rules grant overly broad permissions on subresources
-      without proper scoping. Violates principle of least privilege.
-    detection_signals:
-      - "ClusterRole"
-      - "subresources"
-      - "rbac"
-      - "overprivileged"
+  # B2-RBAC-SUB REMOVED: No evidence of overprivileged subresource access
+  # in config/rbac/. The actual RBAC issues are wildcard verbs (RBAC-WILDCARD-VERB)
+  # and wildcard API groups (in kubebuilder_rbac.go), which are separate entries.
 
   - id: B2-MON-SECRET
     jira: RHOAIENG-56119
@@ -219,8 +192,9 @@ findings:
     lines: null
     title: "Monitoring secrets stored in plaintext on disk"
     description: >
-      Monitoring configuration secrets generated and stored without
-      encryption or proper key management.
+      AlertManager secrets (PagerDuty key, SMTP password, snitch URL)
+      injected into YAML manifest files on disk via ReplaceStringsInFile.
+      Secrets persist in plaintext on the container filesystem.
     detection_signals:
       - "SessionSecret"
       - "monitoring.go"
@@ -238,10 +212,9 @@ findings:
     severity: Minor
     category: input_validation
     source_trust: Authenticated
-    file: api/infrastructure/v1/certificate_types.go
+    file: api/infrastructure/v1/cert_types.go
     lines: null
     title: "CertificateSpec.SecretName no format validation"
-    scope_note: "File outside --quick scope"
     description: >
       SecretName field accepts any string without DNS-1123 subdomain
       validation. Invalid names cause runtime errors.
@@ -309,7 +282,7 @@ findings:
     severity: Important
     category: rbac
     source_trust: N/A
-    file: config/rbac/
+    file: opt/manifests/
     lines: null
     title: "aggregate-to-edit labels grant implicit CRD access"
     description: >
@@ -330,11 +303,11 @@ findings:
     source_trust: Internal
     file: cmd/main.go
     lines: null
-    title: "Unfiltered informer cache types cause OOM risk"
+    title: "Informer cache missing label selectors on high-volume types"
     description: >
-      Controller watches 34 resource types but only filters 6 in the
-      cache configuration. 27 unfiltered types load full objects into
-      memory, creating OOM risk on clusters with many resources.
+      Cache uses namespace-scoped ByObject configs but some high-volume
+      types (Secrets, ConfigMaps) lack label selectors, caching all
+      objects within watched namespaces. OOM risk on large clusters.
     detection_signals:
       - "NewCache"
       - "informer"
@@ -362,24 +335,7 @@ findings:
       - "base64"
       - "write key"
 
-  - id: MCP-UNAUTH
-    severity: Important
-    category: access_control
-    source_trust: Privileged
-    file: cmd/mcp-server/main.go
-    lines: null
-    title: "MCP server exposes cluster-wide read access without authentication"
-    description: >
-      MCP server registers tools (describe_resource, pod_logs, etc.) that
-      read arbitrary Kubernetes resources using the operator's privileged
-      service account. No authentication or authorization at MCP protocol
-      layer. Serves over stdio with no access control.
-    detection_signals:
-      - "MCP"
-      - "mcp-server"
-      - "ServeStdio"
-      - "describe_resource"
-      - "pod_logs"
+  # MCP-UNAUTH REMOVED: cmd/mcp-server/main.go does not exist in this repo.
 
   - id: UNPINNED-AUTH-IMG
     severity: Minor
