@@ -13,13 +13,15 @@ Resolve scope using the first matching strategy:
 
 ## Sensitive File Blocklist
 
-The following patterns are excluded by default:
+The following patterns are excluded by default (they may contain real credentials that should not be loaded into the review cache):
 
 ```
-.env, *.key, *.pem, *secret*, *credential*, .git/, *password*, *.pfx, *.p12
+.env, .env.*, *.key, *.pem, .git/, *.pfx, *.p12
 ```
 
 If any files matching these patterns appear in scope, they require **explicit separate confirmation** from the user before inclusion. Do not bundle this confirmation with the general scope confirmation.
+
+**Not blocklisted** (these are review targets, not credentials): Kubernetes Secret manifests (`*-secret.yaml`, `*_secret.yaml`), credential configuration files, and password/token handling code. The security auditor should review these for committed secrets, weak defaults, and misconfiguration.
 
 ## Boilerplate Exclusions
 

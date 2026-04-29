@@ -824,6 +824,15 @@ _SECURITY_PATTERNS = [
     b"GenerateRandomHex", b"htpasswd",
     # Supply chain
     b":latest", b"FROM ", b"COPY --from",
+    # YAML/config security patterns
+    b"aggregate-to-edit", b"aggregate-to-admin",
+    b"aggregate-to-view", b"verbs:", b"ssl-insecure",
+    b"insecure-skip-verify", b"base64", b"segmentKey",
+    # Bounds / nil safety
+    b"[0]", b"History[", b"Items[",
+    # Kubernetes admission
+    b"verbs=", b"ValidatingWebhook", b"MutatingWebhook",
+    b"failurePolicy",
 ]
 
 
@@ -844,12 +853,31 @@ def _security_relevance_score(filepath, rel_path):
         if sig in rel_lower:
             score += 2
 
+    # Infrastructure artifact signals
+    infra_signals = ["dockerfile", "config/rbac", "config/monitoring",
+                     "opt/manifests", "deploy/", "manifests/rbac",
+                     "clusterrole", "role_", "editor_role", "aggregate"]
+    for sig in infra_signals:
+        if sig in rel_lower:
+            score += 2
+
+    # Template files with security-relevant content
+    if rel_lower.endswith((".tmpl.yaml", ".tmpl.yml", ".tmpl")):
+        score += 1
+
     # Penalize boilerplate
     boilerplate = ["groupversion_info", "zz_generated", "deepcopy",
                    "doc.go", "_test.go"]
     for bp in boilerplate:
         if bp in rel_lower:
             score -= 3
+
+    # Penalize test fixtures (lower than boilerplate but still deprioritize)
+    test_fixtures = ["testdata/", "test/", "tests/", "/fixtures/",
+                     "/testutil/", "mock_", "_mock.go", "fake_"]
+    for tf in test_fixtures:
+        if tf in rel_lower:
+            score -= 2
 
     # Content-based signals (fast binary scan)
     try:
