@@ -85,8 +85,15 @@ Beyond OWASP Top 10, check for these specific patterns that are common in Kubern
 **RBAC over-privilege:**
 - `verbs=*` on RBAC resources (roles, clusterroles, rolebindings) implicitly grants `escalate` and `bind` verbs, bypassing K8s privilege escalation prevention.
 - `groups="*"` on resource definitions matches any API group, not just the intended one.
-- `aggregate-to-edit` or `aggregate-to-admin` labels on ClusterRoles silently expand what the built-in `edit`/`admin` roles can do.
-- `pods/exec` create permission without namespace scoping enables lateral movement.
+- `aggregate-to-edit` or `aggregate-to-admin` labels on ClusterRoles silently expand what the built-in `edit`/`admin` roles can do. Produce a finding for EACH component that uses these labels, not just a summary. Scan `opt/manifests/**/rbac/` and `config/rbac/` YAML files explicitly.
+- Flag these sub-resources as INDIVIDUAL high-severity findings, never grouped into a general "overly broad RBAC" finding: `pods/exec`, `pods/attach`, `secrets` with wildcard namespace, `nodes/proxy`, `serviceaccounts/token`. Each enables lateral movement or privilege escalation and warrants separate tracking.
+
+**Cross-namespace data flow (confused deputy):**
+- When a user-controllable API field (from a CR spec) is used as a namespace parameter in `client.Get`, `client.List`, or similar K8s API calls, flag it as a cross-namespace data access risk. The operator's elevated SA reads secrets from a namespace the user chooses, acting as a confused deputy.
+- Check whether admission webhooks or CEL validation rules restrict the allowed namespace values.
+
+**TLS verification bypass:**
+- For any template variable or configuration value that controls TLS verification (`ssl-insecure-skip-verify`, `InsecureSkipVerify`, `tls.insecure`), trace the value back to its source. If it comes from a user-settable API field, verify that an admission webhook prevents disabling TLS in production.
 
 **Committed secrets and keys:**
 - Base64-encoded values in Kubernetes Secret YAML files committed to git. `data:` section in Secret manifests with literal values (not references).

@@ -12,15 +12,14 @@
 
 metadata:
   repo: opendatahub-io/opendatahub-operator
-  corpus_version: "2.2"
-  total_findings: 25
+  corpus_version: "2.3"
+  total_findings: 24
   categories:
     rbac: 4
     webhook: 2
     crypto: 1
     input_validation: 3
     secret_management: 2
-    info_disclosure: 1
     data_flow: 2
     bounds_check: 1
     randomness: 2
@@ -243,21 +242,9 @@ findings:
       - "entropy"
       - "random"
 
-  - id: B2-ERR-EXPOSE
-    jira: RHOAIENG-56122
-    severity: Minor
-    category: info_disclosure
-    source_trust: N/A
-    file: null
-    lines: null
-    title: "Error messages expose internal implementation details"
-    description: >
-      Error messages returned to users expose internal paths,
-      configuration, or stack traces aiding reconnaissance.
-    detection_signals:
-      - "fmt.Errorf"
-      - "internal"
-      - "error message"
+  # B2-ERR-EXPOSE REMOVED: No specific file attribution. Generic observation
+  # with signals too broad for reliable scoring. Error info disclosure is a
+  # valid concern but needs a specific file:line to be a testable GT entry.
 
   - id: B2-CERT-ISCA
     jira: RHOAIENG-56114
