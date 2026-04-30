@@ -8,29 +8,41 @@ skill: adversarial-reviewing:adversarial-reviewing
 execution:
   mode: case
   arguments: --security --quick --save {prompt}
-  max_budget_usd: 20.0
+  max_budget_usd: 25.0
 runner:
   type: claude-code
-  system_prompt: 'When the adversarial-reviewing skill presents a review scope and asks
-
-    for confirmation ("Shall I proceed?"), always approve immediately.
-
-    Do not ask the user for confirmation. Proceed with the review.
-
-    When the skill finishes and produces a report, write the full report
-
-    to the artifacts/ directory as a markdown file.
+  plugin_dirs:
+  - /Users/ugogiordano/workdir/rhoai/adversarial-review/.claude/worktrees/fsm-orchestrator/adversarial-review
+  system_prompt: 'CRITICAL: When the adversarial-reviewing skill is invoked, you MUST
+    read its SKILL.md and follow the orchestrator protocol exactly. Your first
+    action after reading SKILL.md must be running the orchestrator init command.
+    Do NOT perform your own code review. Do NOT spawn your own agents. The
+    orchestrator drives all agent dispatch. When the orchestrator asks for scope
+    confirmation, approve immediately. When asked about budget escalation,
+    approve. When the skill finishes, copy the report to artifacts/.
 
     '
   settings:
     permissions:
       allow:
+      - Bash(python3*)
+      - Bash(cd*)
+      - Bash(cat*)
+      - Bash(cp*)
+      - Bash(mkdir*)
+      - Bash(ls*)
+      - Bash(grep*)
+      - Bash(wc*)
       - Write(/var/folders/**)
       - Write(/private/var/folders/**)
+      - Read(/tmp/**)
+      - Write(/tmp/**)
       - Edit(/var/folders/**)
       - Edit(/private/var/folders/**)
+      - Edit(/tmp/**)
       additionalDirectories:
       - /Users/ugogiordano/workdir/rhoai/opendatahub-io/opendatahub-operator
+      - /tmp
 models:
   skill: claude-opus-4-6
   judge: claude-opus-4-6
@@ -62,6 +74,12 @@ traces:
   events: false
   metrics: true
 judges:
+- name: fsm_executed
+  description: Verify the FSM orchestrator was actually invoked (not ad-hoc review)
+  check: "stdout = outputs.get(\"stdout\", \"\")\nconfirm_ran = \"orchestrator confirm\" in stdout or \"orchestrator next\"\
+    \ in stdout\ninit_ran = \"orchestrator init\" in stdout\nif not init_ran:\n  return False, \"orchestrator init was never\
+    \ called - skill did not execute\"\nif not confirm_ran:\n  return False, \"orchestrator confirm/next never called - FSM\
+    \ protocol not followed (relay may have improvised)\"\nreturn True, \"FSM orchestrator protocol was followed\"\n"
 - name: has_findings
   description: Check that the review produced findings
   check: "content = outputs.get(\"artifacts_content\", \"\")\nif not content:\n  for k, v in outputs.get(\"files\", {}).items():\n\
@@ -93,7 +111,7 @@ judges:
   function: score_severity_accuracy
 - name: cost_reasonable
   description: Verify cost stays under budget
-  check: "cost = outputs.get(\"cost_usd\", 0)\nif cost and cost > 20.0:\n  return False, f\"Cost ${cost:.2f} exceeds $20 limit\"\
+  check: "cost = outputs.get(\"cost_usd\", 0)\nif cost and cost > 25.0:\n  return False, f\"Cost ${cost:.2f} exceeds $25 limit\"\
     \nreturn True, f\"Cost ${cost:.2f}\" if cost else \"Cost not tracked\"\n"
 thresholds:
   detection_rate:

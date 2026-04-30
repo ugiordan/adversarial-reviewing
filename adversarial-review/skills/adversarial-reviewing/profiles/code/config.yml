@@ -7,14 +7,29 @@ phase5_enabled: true
 agents:
   - prefix: SEC
     file: security-auditor.md
+    tools: [Read]
+    effort: high
+    maxTurns: 20
   - prefix: PERF
     file: performance-analyst.md
+    tools: [Read]
+    effort: high
+    maxTurns: 12
   - prefix: QUAL
     file: code-quality-reviewer.md
+    tools: [Read]
+    effort: medium
+    maxTurns: 12
   - prefix: CORR
     file: correctness-verifier.md
+    tools: [Read]
+    effort: medium
+    maxTurns: 15
   - prefix: ARCH
     file: architecture-reviewer.md
+    tools: [Read]
+    effort: high
+    maxTurns: 15
 
 quick_specialists: [SEC, CORR]
 default_specialists: all
