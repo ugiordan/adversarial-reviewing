@@ -12,8 +12,8 @@
 
 metadata:
   repo: opendatahub-io/opendatahub-operator
-  corpus_version: "3.2"
-  total_findings: 35
+  corpus_version: "3.3"
+  total_findings: 37
   categories:
     rbac: 4
     webhook: 2
@@ -729,3 +729,56 @@ findings:
       - "ByObject"
       - "selector"
       - "namespace"
+
+  - id: PERF-N1-HARDWARE
+    severity: Minor
+    category: input_validation
+    source_trust: Internal
+    file: internal/controller/components/dashboard/dashboard_controller_actions.go
+    lines: null
+    title: "N+1 API call pattern in hardware profile reconciliation"
+    description: >
+      Dashboard reconciler issues individual API calls per hardware
+      profile instead of batch listing. Scales poorly with profile count.
+    detection_signals:
+      - "HardwareProfile"
+      - "hardwareprofile"
+      - "reconcile"
+      - "N+1"
+      - "dashboard"
+
+  - id: PERF-DEEPCOPY-HASH
+    severity: Minor
+    category: input_validation
+    source_trust: Internal
+    file: pkg/resources/resources.go
+    lines: null
+    title: "DeepCopy and spew.Fprintf in hash function on every deploy check"
+    description: >
+      Hash computation performs DeepCopy of the entire object then
+      spew.Fprintf with SortKeys. Expensive for large objects on
+      every reconcile cache check.
+    detection_signals:
+      - "DeepCopy"
+      - "spew"
+      - "hash"
+      - "resources.go"
+      - "SortKeys"
+
+  - id: ARCH-HARDCODED-COMPONENTS
+    severity: Minor
+    category: input_validation
+    source_trust: Internal
+    file: cmd/main.go
+    lines: null
+    title: "Hardcoded component registration list requires code changes"
+    description: >
+      Components and services are registered via hardcoded lists in
+      main.go. Adding a new component requires modifying main.go
+      and recompiling the operator.
+    detection_signals:
+      - "existingComponents"
+      - "existingServices"
+      - "hardcoded"
+      - "registration"
+      - "main.go"

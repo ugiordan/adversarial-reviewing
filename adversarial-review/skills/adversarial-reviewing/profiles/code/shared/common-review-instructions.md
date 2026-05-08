@@ -23,9 +23,12 @@ Use these definitions precisely. Do not default to "Important" for everything.
   unpinned container images, annotation typos, missing file permissions,
   OAuth auto-grant on internal services.
 
-When in doubt between two levels, pick the LOWER one. False upgrades
-(marking Minor as Important) waste triage time. False downgrades get
-caught in challenge rounds.
+When classifying severity:
+- If it affects authentication, authorization, or data access: Important minimum
+- If it's exploitable without authentication: Critical
+- If it only affects code quality, naming, or style: Minor
+- RBAC, webhook, crypto, and input validation issues are typically Important
+- Supply chain, configuration, and operational issues are typically Minor
 
 ## Discovery Phase
 
