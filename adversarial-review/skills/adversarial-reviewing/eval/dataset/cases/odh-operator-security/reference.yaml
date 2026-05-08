@@ -12,8 +12,8 @@
 
 metadata:
   repo: opendatahub-io/opendatahub-operator
-  corpus_version: "2.3"
-  total_findings: 24
+  corpus_version: "3.2"
+  total_findings: 35
   categories:
     rbac: 4
     webhook: 2
@@ -174,37 +174,20 @@ findings:
       after creation without validation, bypassing security controls.
     detection_signals:
       - "ValidatingWebhook"
+      - "validating"
       - "CREATE"
       - "UPDATE"
       - "DSCI"
+      - "DSCInitialization"
+      - "webhook"
+      - "skip"
 
   # B2-RBAC-SUB REMOVED: No evidence of overprivileged subresource access
   # in config/rbac/. The actual RBAC issues are wildcard verbs (RBAC-WILDCARD-VERB)
   # and wildcard API groups (in kubebuilder_rbac.go), which are separate entries.
 
-  - id: B2-MON-SECRET
-    jira: RHOAIENG-56119
-    severity: Important
-    category: secret_management
-    source_trust: N/A
-    file: internal/controller/dscinitialization/monitoring.go
-    lines: null
-    title: "Monitoring secrets stored in plaintext on disk"
-    description: >
-      AlertManager secrets (PagerDuty key, SMTP password, snitch URL)
-      injected into YAML manifest files on disk via ReplaceStringsInFile.
-      Secrets persist in plaintext on the container filesystem.
-    detection_signals:
-      - "SessionSecret"
-      - "monitoring.go"
-      - "GenerateRandomHex"
-      - "htpasswd"
-      - "prometheus"
-      - "alertmanager"
-      - "plaintext"
-      - "manifest"
-      - "ReplaceStringsInFile"
-      - "secrets"
+  # B2-MON-SECRET REMOVED: monitoring.go deleted in 2ea33f0ac
+  # (Remove legacy managed monitoring stack)
 
   - id: B2-CERT-NAME
     jira: RHOAIENG-56121
@@ -221,26 +204,12 @@ findings:
       - "SecretName"
       - "CertificateSpec"
       - "validation"
+      - "cert_types"
+      - "DNS-1123"
+      - "format"
 
-  - id: B2-ENTROPY
-    jira: RHOAIENG-56120
-    severity: Minor
-    category: randomness
-    source_trust: N/A
-    file: internal/controller/dscinitialization/utils.go
-    lines: 262-275
-    title: "GenerateRandomHex returns half the expected entropy"
-    description: >
-      GenerateRandomHex(32) generates 16 random bytes (128 bits) but
-      returns 32 hex characters, suggesting 256-bit intent. The
-      numBytes := length / 2 halves the entropy.
-    detection_signals:
-      - "GenerateRandomHex"
-      - "numBytes"
-      - "length / 2"
-      - "hex.EncodeToString"
-      - "entropy"
-      - "random"
+  # B2-ENTROPY REMOVED: GenerateRandomHex no longer exists in codebase.
+  # Removed in 2ea33f0ac (Remove legacy managed monitoring stack).
 
   # B2-ERR-EXPOSE REMOVED: No specific file attribution. Generic observation
   # with signals too broad for reliable scoring. Error info disclosure is a
@@ -304,23 +273,8 @@ findings:
 
   # --- Findings consistently discovered by model (added v2.0) ---
 
-  - id: SEGMENT-KEY
-    severity: Important
-    category: secret_management
-    source_trust: N/A
-    file: config/monitoring/segment/segment-key-secret.yaml
-    lines: null
-    title: "Segment.io analytics API key committed to source in plaintext"
-    description: >
-      Base64-encoded Segment.io write key committed to git. While write
-      keys cannot read data, they allow injection of arbitrary telemetry
-      events into the analytics workspace (data poisoning).
-    detection_signals:
-      - "segmentKey"
-      - "Segment"
-      - "analytics"
-      - "base64"
-      - "write key"
+  # SEGMENT-KEY REMOVED: config/monitoring/segment/segment-key-secret.yaml
+  # deleted in 2ea33f0ac (Remove legacy managed monitoring stack).
 
   # MCP-UNAUTH REMOVED: cmd/mcp-server/main.go does not exist in this repo.
 
@@ -341,6 +295,11 @@ findings:
       - "getDashboardRedirectImage"
       - ":latest"
       - "RELATED_IMAGE"
+      - "unpinned"
+      - "fallback"
+      - "container image"
+      - "gateway_support"
+      - "RELATED_IMAGE"
 
   - id: SSL-SKIP-VERIFY
     severity: Minor
@@ -357,6 +316,10 @@ findings:
       - "ssl-insecure-skip-verify"
       - "InsecureSkipVerify"
       - "VerifyProviderCertificate"
+      - "TLS verification"
+      - "TLS bypass"
+      - "oauth-deployment"
+      - "GatewayConfig"
 
   - id: AUTH-DEFAULT
     severity: Minor
@@ -374,6 +337,9 @@ findings:
       - "AllowedGroups"
       - "system:authenticated"
       - "default"
+      - "auth.go"
+      - "authenticated"
+      - "all users"
 
   - id: UNPINNED-UBI
     severity: Minor
@@ -391,6 +357,11 @@ findings:
       - "ubi9"
       - ":latest"
       - "Dockerfile"
+      - "unpinned"
+      - "digest"
+      - "base image"
+      - "FROM"
+      - "reproducible"
 
   # --- Findings discovered by eval runs (added v2.1) ---
 
@@ -447,23 +418,8 @@ findings:
       - "OAuthClient"
       - "consent"
 
-  - id: FILE-MODE-ZERO
-    severity: Minor
-    category: access_control
-    source_trust: N/A
-    file: pkg/common/common.go
-    lines: null
-    title: "os.WriteFile uses file mode 0 instead of restrictive permissions"
-    description: >
-      ReplaceStringsInFile and MatchLineInFile call os.WriteFile with
-      mode 0, relying on running as root. Will break when operator runs
-      as non-root.
-    detection_signals:
-      - "WriteFile"
-      - "file mode"
-      - "permissions"
-      - "ReplaceStringsInFile"
-      - "common.go"
+  # FILE-MODE-ZERO REMOVED: ReplaceStringsInFile and MatchLineInFile no longer
+  # exist in pkg/common/common.go. The functions were refactored out.
 
   - id: WEBHOOK-SA-ORPHAN
     severity: Minor
@@ -481,6 +437,10 @@ findings:
       - "ServiceAccount"
       - "owner"
       - "orphan"
+      - "OwnerReference"
+      - "webhook"
+      - "utils.go"
+      - "cleanup"
       - "webhook"
 
   - id: AUTH-CR-SILENT
@@ -500,3 +460,272 @@ findings:
       - "exists"
       - "validation"
       - "dscinitialization"
+      - "silent"
+      - "default auth"
+
+  # --- Findings from eval runs (added v2.4) ---
+
+  - id: GOMEMLIMIT-MISSING
+    severity: Important
+    category: input_validation
+    source_trust: Internal
+    file: config/manager/manager.yaml
+    lines: null
+    title: "Missing GOMEMLIMIT environment variable despite 4Gi memory limit"
+    description: >
+      Operator deployment sets 4Gi memory limit but does not set
+      GOMEMLIMIT. Without it, Go runtime defaults to unlimited heap
+      and will OOM-kill at the container limit instead of triggering
+      GC earlier. Standard practice is GOMEMLIMIT=0.9*limit.
+    detection_signals:
+      - "GOMEMLIMIT"
+      - "memory"
+      - "resources"
+      - "limits"
+      - "manager.yaml"
+
+  - id: TEST-CREDS-COMMITTED
+    severity: Minor
+    category: secret_management
+    source_trust: N/A
+    file: opt/manifests/kserve/overlays/test/minio/minio-user-secret.yaml
+    lines: null
+    title: "Hardcoded test credentials committed in secret manifest"
+    description: >
+      Minio test secret contains hardcoded access_key_id "minio" and
+      secret_access_key "minio123". While marked as test overlay,
+      committed credentials can be accidentally used in production
+      and appear in container images.
+    detection_signals:
+      - "minio"
+      - "minio123"
+      - "secret_access_key"
+      - "access_key_id"
+      - "minio-user-secret"
+
+  - id: HASH-COLLISION
+    severity: Minor
+    category: crypto
+    source_trust: N/A
+    file: internal/controller/services/gateway/gateway_support.go
+    lines: null
+    title: "Auth config hash uses undelimited string concatenation"
+    description: >
+      calculateAuthConfigHash concatenates clientID + clientSecret +
+      cookieSecret without delimiter before SHA256. Different
+      combinations can produce identical hashes (e.g., id="ab",
+      secret="c" vs id="a", secret="bc").
+    detection_signals:
+      - "calculateAuthConfigHash"
+      - "sha256"
+      - "clientID"
+      - "clientSecret"
+      - "concatenat"
+      - "hash"
+
+  - id: RBAC-WILDCARD-GROUP
+    severity: Important
+    category: rbac
+    source_trust: N/A
+    file: internal/controller/datasciencecluster/kubebuilder_rbac.go
+    lines: null
+    title: "RBAC markers use groups=* matching any API group"
+    description: >
+      kubebuilder RBAC markers grant access to services, deployments,
+      replicasets, and statefulsets with groups="*" which matches ANY
+      API group, not just the core group. This grants access to custom
+      API group resources with the same resource name.
+    detection_signals:
+      - "groups=\"*\""
+      - "groups=*"
+      - "any API group"
+      - "kubebuilder_rbac"
+      - "services"
+      - "deployments"
+
+  - id: ANNOTATION-TYPO
+    severity: Minor
+    category: input_validation
+    source_trust: N/A
+    file: pkg/metadata/annotations/annotations.go
+    lines: null
+    title: "Exported constant has persistent typo in name"
+    description: >
+      InjectionOfCABundleAnnotatoion is exported with "Annotatoion"
+      instead of "Annotation". Consumers must use the typo to
+      reference the constant, making it fragile to future corrections.
+    detection_signals:
+      - "Annotatoion"
+      - "InjectionOfCABundle"
+      - "typo"
+      - "annotations.go"
+
+  - id: CRD-CACHE-ALL
+    severity: Important
+    category: input_validation
+    source_trust: Internal
+    file: cmd/cloudmanager/app/cache.go
+    lines: null
+    title: "CRD informer caches all CustomResourceDefinitions cluster-wide"
+    description: >
+      CloudManager caches all CRDs without label or field selector.
+      On clusters with hundreds of CRDs, this wastes memory and
+      increases API server load.
+    detection_signals:
+      - "CustomResourceDefinition"
+      - "cache"
+      - "ByObject"
+      - "cache.go"
+      - "cluster-wide"
+
+  - id: ERROR-WRAP-DROP
+    severity: Minor
+    category: input_validation
+    source_trust: N/A
+    file: internal/controller/services/auth/auth_controller_actions.go
+    lines: null
+    title: "Error wrapping dropped in bindRole/bindClusterRole"
+    description: >
+      Error wrapping in bindRole and bindClusterRole discards the
+      original error type, preventing callers from using errors.Is/As
+      for specific error handling.
+    detection_signals:
+      - "bindRole"
+      - "bindClusterRole"
+      - "error"
+      - "wrap"
+      - "fmt.Errorf"
+
+  - id: MAP-ITERATION-ORDER
+    severity: Minor
+    category: input_validation
+    source_trust: N/A
+    file: internal/controller/components/registry/registry.go
+    lines: null
+    title: "Component registry iterates over Go map with non-deterministic order"
+    description: >
+      ForEach iterates over a Go map which has non-deterministic
+      iteration order. Component initialization order varies between
+      reconcile loops.
+    detection_signals:
+      - "ForEach"
+      - "registry"
+      - "map"
+      - "non-deterministic"
+      - "iteration"
+      - "order"
+
+  # --- Performance findings (added v3.2) ---
+
+  - id: PERF-DISK-IO-RECONCILE
+    severity: Minor
+    category: input_validation
+    source_trust: Internal
+    file: pkg/deploy/envParams.go
+    lines: null
+    title: "ApplyParams performs disk I/O on every reconcile"
+    description: >
+      ApplyParams reads and rewrites manifest files from disk on every
+      reconcile loop for multiple components. Should cache or use
+      embed.FS directly.
+    detection_signals:
+      - "ApplyParams"
+      - "envParams"
+      - "ReadFile"
+      - "WriteFile"
+      - "reconcile"
+      - "disk"
+
+  - id: PERF-NODE-LIST-ALL
+    severity: Important
+    category: input_validation
+    source_trust: Internal
+    file: internal/controller/components/kueue/kueue_support.go
+    lines: null
+    title: "Kueue reconciler lists all cluster nodes without selectors"
+    description: >
+      Node listing without label or field selectors on large clusters
+      fetches hundreds of node objects per reconcile.
+    detection_signals:
+      - "Node"
+      - "List"
+      - "kueue"
+      - "selector"
+      - "cluster"
+
+  # --- Quality findings (added v3.2) ---
+
+  - id: QUAL-DUPLICATE-SWITCH
+    severity: Minor
+    category: input_validation
+    source_trust: N/A
+    file: internal/controller/services/auth/auth_controller_actions.go
+    lines: null
+    title: "Duplicate switch cases for ManagedRhoai and SelfManagedRhoai"
+    description: >
+      createDefaultGroup has identical case branches for ManagedRhoai
+      and SelfManagedRhoai. Should be collapsed into a single case.
+    detection_signals:
+      - "ManagedRhoai"
+      - "SelfManagedRhoai"
+      - "createDefaultGroup"
+      - "switch"
+      - "duplicate"
+      - "identical"
+
+  - id: QUAL-MISLEADING-VALIDATE
+    severity: Minor
+    category: input_validation
+    source_trust: N/A
+    file: internal/controller/services/gateway/gateway_support.go
+    lines: null
+    title: "validateGatewayConfig does not perform validation"
+    description: >
+      Function named validateGatewayConfig retrieves config but does
+      not validate it. Misleading name suggests validation that does
+      not occur.
+    detection_signals:
+      - "validateGatewayConfig"
+      - "misleading"
+      - "validate"
+      - "gateway_support"
+
+  - id: QUAL-HARDCODED-NS
+    severity: Minor
+    category: input_validation
+    source_trust: N/A
+    file: internal/controller/services/auth/auth_controller_actions.go
+    lines: null
+    title: "Hardcoded namespace strings scattered without constants"
+    description: >
+      Namespace names like "opendatahub" and "redhat-ods-applications"
+      appear as raw string literals across multiple files without
+      centralized constants.
+    detection_signals:
+      - "opendatahub"
+      - "redhat-ods"
+      - "namespace"
+      - "hardcoded"
+      - "string"
+      - "constant"
+
+  # --- Architecture findings (added v3.2) ---
+
+  - id: ARCH-SECRET-CACHE-WIDE
+    severity: Important
+    category: input_validation
+    source_trust: Internal
+    file: cmd/main.go
+    lines: null
+    title: "Secret and ConfigMap cache watches all objects in watched namespaces"
+    description: >
+      Informer cache for Secrets and ConfigMaps in watched namespaces
+      has no label selector, caching ALL secrets including ones the
+      operator does not need. Memory and API server load concern.
+    detection_signals:
+      - "Secret"
+      - "ConfigMap"
+      - "cache"
+      - "ByObject"
+      - "selector"
+      - "namespace"

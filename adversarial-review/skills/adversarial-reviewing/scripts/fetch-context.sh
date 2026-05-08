@@ -93,9 +93,14 @@ if [[ "$source" == *"://"* ]] || [[ "$source" == *".git" ]]; then
       git -C "$output" fetch --quiet --tags
     fi
   fi
-  # Checkout specific ref if provided (-- prevents option injection from refs starting with -)
+  # Checkout specific ref if provided
   if [[ -n "$ref" ]]; then
-    git -C "$output" checkout --quiet -- "$ref"
+    # SEC-002: Reject refs that look like options to prevent option injection
+    if [[ "$ref" == -* ]]; then
+      echo "{\"error\": \"Invalid ref: must not start with a dash\"}" >&2
+      exit 1
+    fi
+    git -C "$output" checkout --quiet "$ref" --
   fi
 elif [[ -d "$source" ]]; then
   # Local directory - use directly

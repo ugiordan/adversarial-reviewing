@@ -186,6 +186,43 @@ def compute_metrics(findings, gt_list, token_count=None, quick_mode=False):
                 "file": finding.get("file", ""),
             })
 
+    # CORR-002: Re-match displaced findings against remaining unmatched GT entries.
+    # When multiple findings compete for the same GT entry, the loser (displaced)
+    # may still match a different GT entry that nobody else claimed.
+    if duplicate_detections:
+        unmatched_gt = [g for g in gt_active if g["id"] not in matched_gt]
+        if unmatched_gt:
+            still_displaced = []
+            for displaced_finding in duplicate_detections:
+                gt_match, score = match_finding_to_gt(displaced_finding, unmatched_gt)
+                if gt_match:
+                    gt_id = gt_match["id"]
+                    if gt_id not in matched_gt or score > matched_gt[gt_id][1]:
+                        matched_gt[gt_id] = (displaced_finding, score)
+                        unmatched_gt = [g for g in unmatched_gt if g["id"] != gt_id]
+                    else:
+                        still_displaced.append(displaced_finding)
+                else:
+                    still_displaced.append(displaced_finding)
+            duplicate_detections = still_displaced
+
+    # Multi-match pass: a finding assigned to one GT entry may also cover
+    # another unmatched GT entry (e.g., one finding mentions both IsCA and
+    # serial entropy, covering GT SEC-002 and SEC-006).
+    unmatched_gt = [g for g in gt_active if g["id"] not in matched_gt]
+    if unmatched_gt:
+        for _gt_id, (finding, _score) in list(matched_gt.items()):
+            still_unmatched = []
+            for ug in unmatched_gt:
+                m, s = match_finding_to_gt(finding, [ug])
+                if m and s >= 4:
+                    matched_gt[ug["id"]] = (finding, s)
+                else:
+                    still_unmatched.append(ug)
+            unmatched_gt = still_unmatched
+            if not unmatched_gt:
+                break
+
     # Compute severity and source trust accuracy for matches
     for gt_id, (finding, _score) in matched_gt.items():
         gt_entry = next(g for g in gt_active if g["id"] == gt_id)

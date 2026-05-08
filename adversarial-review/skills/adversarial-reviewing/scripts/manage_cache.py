@@ -55,7 +55,8 @@ def manifest_add_file(cache_dir, rel_path, abs_path):
     manifest_path = os.path.join(cache_dir, "manifest.json")
     with open(manifest_path) as f:
         manifest = json.load(f)
-    sha = hashlib.sha256(open(abs_path, "rb").read()).hexdigest()
+    with open(abs_path, "rb") as hf:
+        sha = hashlib.sha256(hf.read()).hexdigest()
     manifest.setdefault("files", []).append({"path": rel_path, "sha256": sha})
     fd, tmp_path = tempfile.mkstemp(dir=cache_dir, suffix=".json")
     with os.fdopen(fd, "w") as f:
@@ -103,7 +104,11 @@ def cleanup_stale():
         except OSError:
             continue
         if age > 86400:
-            # F-003: Re-check PID and symlink before deletion to close TOCTOU window
+            # F-003: Re-check PID and symlink before deletion to narrow TOCTOU window.
+            # SEC-007 accepted risk: a narrow TOCTOU window remains between the
+            # re-checks below and the shutil.rmtree call. This is same-user, same-session
+            # and the attack surface requires the adversary to already have local access
+            # to the temp directory. The mitigation (double-check) is proportionate.
             try:
                 os.kill(pid, 0)
                 continue
@@ -396,16 +401,24 @@ def cmd_populate_context(args):
     if not re.fullmatch(r"[a-zA-Z0-9_-]+", context_label):
         err_json("Invalid CONTEXT_LABEL: must be alphanumeric, underscore, or hyphen")
         sys.exit(2)
+    # SEC-002: Reject shell metacharacters in context source paths
+    _shell_meta = set(";|&$`\\!()")
+    if any(ch in _shell_meta for ch in context_source):
+        err_json("Invalid CONTEXT_SOURCE: contains shell metacharacters")
+        sys.exit(2)
 
     context_dir = os.path.join(cache_dir, "context", context_label)
     os.makedirs(context_dir, exist_ok=True)
 
     # Fetch context using fetch-context.sh (keep as subprocess)
+    # SEC-008: Pass explicit filtered env to prevent env variable leakage.
+    ALLOWED_ENV_KEYS = {"HOME", "PATH", "TMPDIR", "LANG", "SHELL", "USER", "LOGNAME"}
+    filtered_env = {k: v for k, v in os.environ.items() if k in ALLOWED_ENV_KEYS}
     fetch_script = os.path.join(SCRIPT_DIR, "fetch-context.sh")
     result = subprocess.run(
         [fetch_script, "--label", context_label, "--source", context_source,
          "--output", f".context/{context_label}"],
-        capture_output=True, text=True
+        capture_output=True, text=True, env=filtered_env,
     )
     fetch_output = result.stdout.strip()
 
@@ -648,7 +661,8 @@ def cmd_populate_findings(args):
         content = f.read()
 
     # F-002: Apply sanitized document template using line-by-line parser (no regex backtracking)
-    blocks = re.split(r"(?=^Finding ID: [A-Z]+-\d+)", content, flags=re.MULTILINE)
+    # SEC-003: Limit finding ID digits to 1-3 to prevent unbounded-length IDs from agent output
+    blocks = re.split(r"(?=^Finding ID: [A-Z]+-\d{1,3}(?:\s|$))", content, flags=re.MULTILINE)
     summary_rows = []
     sanitized_blocks = []
     specialist_name = agent.replace("-", "_").title()
@@ -657,7 +671,7 @@ def cmd_populate_findings(args):
         block = block.strip()
         if not block:
             continue
-        m = re.match(r"^Finding ID: ([A-Z]+-\d+)", block)
+        m = re.match(r"^Finding ID: ([A-Z]+-\d{1,3})(?:\s|$)", block)
         if not m:
             continue
         fid = m.group(1)
@@ -822,12 +836,16 @@ _SECURITY_PATTERNS = [
     b"ServeStdio", b"Serve(", b"ListenAndServe",
     b"rest.Config", b"kubeConfig", b"client.New",
     b"GenerateRandomHex", b"htpasswd",
+    # OAuth / consent bypass
+    b"GrantHandlerAuto", b"GrantHandler", b"OAuthClient",
     # Supply chain
     b":latest", b"FROM ", b"COPY --from",
     # YAML/config security patterns
     b"aggregate-to-edit", b"aggregate-to-admin",
     b"aggregate-to-view", b"verbs:", b"ssl-insecure",
     b"insecure-skip-verify", b"base64", b"segmentKey",
+    # Cache / resource sizing
+    b"NewCache", b"cache.Options", b"GOMEMLIMIT", b"DefaultTransform",
     # Bounds / nil safety
     b"[0]", b"History[", b"Items[",
     # Kubernetes admission
@@ -856,7 +874,8 @@ def _security_relevance_score(filepath, rel_path):
     # Infrastructure artifact signals
     infra_signals = ["dockerfile", "config/rbac", "config/monitoring",
                      "opt/manifests", "deploy/", "manifests/rbac",
-                     "clusterrole", "role_", "editor_role", "aggregate"]
+                     "clusterrole", "role_", "editor_role", "aggregate",
+                     "pkg/webhook", "internal/webhook"]
     for sig in infra_signals:
         if sig in rel_lower:
             score += 2
@@ -1147,7 +1166,8 @@ def cmd_validate_cache(args):
     for entry in manifest.get("files", []):
         file_path = os.path.join(validate_path, entry["path"])
         try:
-            actual_sha = hashlib.sha256(open(file_path, "rb").read()).hexdigest()
+            with open(file_path, "rb") as hf:
+                actual_sha = hashlib.sha256(hf.read()).hexdigest()
             if actual_sha != entry["sha256"]:
                 mismatches.append({
                     "type": "file_hash",

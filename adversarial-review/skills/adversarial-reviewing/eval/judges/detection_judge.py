@@ -58,8 +58,8 @@ def score_false_positive_rate(outputs=None, **kwargs):
     fp = metrics["false_positives"]
     total = metrics["total_findings"]
 
-    passed = fpr < 0.30
-    rationale = f"FP rate: {fpr:.0%} ({fp}/{total}). {'PASS' if passed else 'FAIL: >30%'}"
+    passed = fpr < 0.20
+    rationale = f"FP rate: {fpr:.0%} ({fp}/{total}). {'PASS' if passed else 'FAIL: >20%'}"
     return (passed, rationale)
 
 
@@ -77,6 +77,76 @@ def score_severity_accuracy(outputs=None, **kwargs):
     total = metrics["severity_total"]
 
     return (sa, f"Severity accuracy: {sa:.0%} ({correct}/{total})")
+
+
+def score_evidence_quality(outputs=None, **kwargs):
+    """Judge: verify findings cite real file paths that exist in the source.
+
+    Returns (float, str) where float is percentage of findings with valid citations.
+    """
+    outputs = outputs or {}
+    findings = _extract_findings(outputs)
+    if not findings:
+        return (1.0, "No findings to check")
+
+    case_dir = outputs.get("case_dir", "")
+    eval_params = outputs.get("eval_params", {})
+    skill_args = eval_params.get("skill_args", "")
+
+    source_root = ""
+    for arg in skill_args.split():
+        if os.path.isdir(arg):
+            source_root = arg
+            break
+
+    if not source_root:
+        return (1.0, "Cannot verify: source root not found in args")
+
+    valid = 0
+    invalid = []
+    for f in findings:
+        file_path = f.get("file", "")
+        if not file_path:
+            invalid.append(f.get("finding_id", "?") + ": no file cited")
+            continue
+
+        full = os.path.join(source_root, file_path)
+        if os.path.isfile(full) or os.path.isdir(full.rstrip("/")):
+            valid += 1
+        else:
+            if os.path.isfile(file_path):
+                valid += 1
+            else:
+                invalid.append(f.get("finding_id", "?") + f": {file_path}")
+
+    rate = valid / len(findings) if findings else 1.0
+    detail = f"Evidence quality: {rate:.0%} ({valid}/{len(findings)} valid paths)"
+    if invalid:
+        detail += f". Invalid: {', '.join(invalid[:5])}"
+    return (rate, detail)
+
+
+def score_cost_efficiency(outputs=None, **kwargs):
+    """Judge: cost per detected finding.
+
+    Returns (float, str) where float is cost per finding (lower is better).
+    """
+    metrics, err = _run_metrics(outputs)
+    outputs = outputs or {}
+    cost = outputs.get("cost_usd", 0)
+    if not cost:
+        return (0.0, "Cost not tracked")
+
+    if err or not metrics:
+        return (cost, f"Total cost: ${cost:.2f}, no findings to divide by")
+
+    tp = metrics.get("true_positives", 0)
+    if tp == 0:
+        return (cost, f"Total cost: ${cost:.2f}, 0 detections")
+
+    cost_per = cost / tp
+    total = metrics.get("total_findings", 0)
+    return (cost_per, f"${cost_per:.2f}/finding ({tp} detections, ${cost:.2f} total, {total} raw findings)")
 
 
 def _run_metrics(outputs):
@@ -126,15 +196,19 @@ def _detect_quick_mode(outputs):
 
 
 def _extract_findings(outputs):
-    """Extract structured findings from the skill's output artifacts."""
+    """Extract structured findings from ALL output artifacts."""
     files = outputs.get("files", {})
+    all_findings = []
 
     for _path, content in sorted(files.items()):
         if not content or not isinstance(content, str):
             continue
         parsed = _parse_findings_from_text(content)
         if parsed:
-            return parsed
+            all_findings.extend(parsed)
+
+    if all_findings:
+        return all_findings
 
     stdout = outputs.get("stdout", "")
     if stdout:
@@ -148,36 +222,61 @@ def _extract_findings(outputs):
 def _parse_findings_from_text(text):
     """Parse structured findings from review report text.
 
-    Supports two formats:
+    Supports four formats:
     1. Structured fields: Finding ID: X / Severity: Y / Title: Z / Evidence: W
     2. Markdown headers: ### F-001: Title / **Severity:** High / **File:** path
+    3. Narrative consensus: ### N. Title (Severity) [AGENT-NNN + ...] / **File:** path
+    4. Table rows: | SEC-001 | Medium | `path` | description |
+    Tries all parsers and returns the one that found the most findings.
     """
-    findings = _parse_structured_format(text)
-    if not findings:
-        findings = _parse_markdown_format(text)
-    return findings
+    results = []
+    for parser in [_parse_structured_format, _parse_markdown_format,
+                   _parse_narrative_format, _parse_table_format]:
+        parsed = parser(text)
+        if parsed:
+            results.append(parsed)
+    if not results:
+        return []
+    return max(results, key=len)
 
 
 def _parse_structured_format(text):
-    """Parse findings with explicit Finding ID / Severity / Title / Evidence fields."""
+    """Parse findings with explicit Finding ID / Severity / Title / Evidence fields.
+
+    CORR-003: Uses a per-block field extraction approach instead of a single
+    monolithic regex, so optional fields (Source Trust, File) are captured
+    regardless of their presence or ordering relative to each other.
+    """
     findings = []
-    finding_pattern = re.compile(
-        r'Finding\s+ID:\s*(\S+).*?'
-        r'Severity:\s*(Critical|Important|Minor).*?'
-        r'(?:Source\s+Trust:\s*(\S+).*?)?'
-        r'(?:File:\s*(.+?)(?:\n|$).*?)?'
-        r'Title:\s*(.+?)(?:\n|$).*?'
-        r'Evidence:\s*(.+?)(?=\nRecommend|\nVerdict|\nFinding\s+ID:|\Z)',
-        re.DOTALL | re.IGNORECASE
-    )
-    for match in finding_pattern.finditer(text):
+    text = re.sub(r'\*\*([A-Za-z ]+):\*\*', r'\1:', text)
+    text = re.sub(r'\*\*([A-Za-z ]+)\*\*:', r'\1:', text)
+    blocks = re.split(r'(?=Finding\s+ID:)', text)
+    for block in blocks:
+        block = block.strip()
+        if not block:
+            continue
+        fid_m = re.match(r'Finding\s+ID:\s*(\S+)', block)
+        if not fid_m:
+            continue
+        sev_m = re.search(r'Severity:\s*(Critical|Important|Minor)', block, re.IGNORECASE)
+        if not sev_m:
+            continue
+        st_m = re.search(r'Source\s+Trust:\s*(\S+)', block)
+        file_m = re.search(r'File:\s*(.+?)(?:\n|$)', block)
+        title_m = re.search(r'Title:\s*(.+?)(?:\n|$)', block)
+        evidence_m = re.search(
+            r'Evidence:\s*(.+?)(?=\nRecommend|\nVerdict|\nFinding\s+ID:|\Z)',
+            block, re.DOTALL,
+        )
+        if not title_m:
+            continue
         findings.append({
-            "finding_id": match.group(1).strip(),
-            "severity": match.group(2).strip(),
-            "source_trust": (match.group(3) or "").strip(),
-            "file": (match.group(4) or "").strip(),
-            "title": match.group(5).strip(),
-            "evidence": match.group(6).strip()[:2000],
+            "finding_id": fid_m.group(1).strip(),
+            "severity": sev_m.group(1).strip(),
+            "source_trust": (st_m.group(1).strip() if st_m else ""),
+            "file": (file_m.group(1).strip() if file_m else ""),
+            "title": title_m.group(1).strip(),
+            "evidence": (evidence_m.group(1).strip()[:2000] if evidence_m else ""),
         })
     return findings
 
@@ -235,7 +334,7 @@ def _parse_markdown_format(text):
         end = headers[i + 1].start() if i + 1 < len(headers) else len(text)
         body = text[match.end():end]
 
-        sev_match = re.search(r'\*\*Severity:\*\*\s*(\w+)', body)
+        sev_match = re.search(r'\*\*Severity(?::\*\*|\*\*:)\s*(\w+)', body)
         if not sev_match:
             sev_match = re.search(
                 r'\|\s*Severity\s*\|\s*\*{0,2}(Critical|Important|High|Medium|Minor|Low)\*{0,2}',
@@ -243,7 +342,7 @@ def _parse_markdown_format(text):
         severity_raw = sev_match.group(1).strip() if sev_match else "Minor"
         severity = _SEVERITY_MAP.get(severity_raw.lower(), severity_raw)
 
-        file_match = re.search(r'\*\*File:\*\*\s*`?([^`\n]+)`?', body)
+        file_match = re.search(r'\*\*File(?::\*\*|\*\*:)\s*`?([^`\n]+)`?', body)
         if not file_match:
             file_match = re.search(
                 r'\|\s*File\s*\|\s*`?([^`|\n]+)`?\s*\|', body)
@@ -251,7 +350,7 @@ def _parse_markdown_format(text):
         file_path = re.sub(r':\d+[-–]\d+$|:\d+$', '', file_path)
         file_path = re.sub(r'\s*\(lines?\s+\d+[-–]\d+\)$', '', file_path)
 
-        source_match = re.search(r'\*\*Source:\*\*\s*(\S+)', body)
+        source_match = re.search(r'\*\*Source(?::\*\*|\*\*:)\s*(\S+)', body)
         if not source_match:
             source_match = re.search(
                 r'\|\s*Source\s+Trust\s*\|\s*(\S+)', body)
@@ -266,5 +365,117 @@ def _parse_markdown_format(text):
             "file": file_path,
             "title": title,
             "evidence": evidence,
+        })
+    return findings
+
+
+def _parse_narrative_format(text):
+    """Parse findings from narrative consensus reports.
+
+    Handles formats like:
+      ### 1. Title (Severity) [AGENT-NNN + ...]
+      ### Title (Severity) [AGENT-NNN]
+      **File:** `path/to/file.go`:123
+      **Description:** ...
+    """
+    dismissed_ranges = _find_dismissed_ranges(text)
+
+    findings = []
+    header_pattern = re.compile(
+        r'^###\s+(?:\d+\.\s+)?(.+?)\s*'
+        r'\((\w+(?:/\w+)?)\)\s*'
+        r'\[([A-Z]+-\d+(?:\s*\+\s*[A-Z]+-?\d*(?:\s*\([^)]*\))?)*)\]',
+        re.MULTILINE
+    )
+    headers = list(header_pattern.finditer(text))
+    if not headers:
+        header_pattern = re.compile(
+            r'^###\s+(?:\d+\.\s+)?(.+?)\s*'
+            r'\((\w+(?:/\w+)?)\)',
+            re.MULTILINE
+        )
+        headers = list(header_pattern.finditer(text))
+
+    for i, match in enumerate(headers):
+        if any(start <= match.start() < end for start, end in dismissed_ranges):
+            continue
+        title = match.group(1).strip()
+        if re.search(r'\b(DISMISSED|WITHDRAWN)\b', title):
+            continue
+
+        severity_raw = match.group(2).strip()
+        severity = _SEVERITY_MAP.get(severity_raw.lower(), severity_raw)
+        if severity not in ("Critical", "Important", "Minor"):
+            severity = _SEVERITY_MAP.get(severity_raw.split("/")[0].lower(), "Minor")
+
+        agent_refs = match.group(3).strip() if match.lastindex >= 3 else ""
+        finding_ids = re.findall(r'([A-Z]+-\d+)', agent_refs)
+        finding_id = finding_ids[0] if finding_ids else f"N-{i+1:03d}"
+
+        end_pos = headers[i + 1].start() if i + 1 < len(headers) else len(text)
+        body = text[match.end():end_pos]
+
+        file_match = re.search(r'\*\*File(?:s?|:\*\*|\*\*:)\s*`?([^`\n,]+)`?', body)
+        if not file_match:
+            file_match = re.search(r'`([a-zA-Z][\w/.-]+\.\w+)`(?::\d+)?', body)
+        file_path = file_match.group(1).strip() if file_match else ""
+        file_path = re.sub(r':\d+[-–]\d+$|:\d+$', '', file_path)
+
+        source_match = re.search(r'\*\*Source\s*Trust(?::\*\*|\*\*:)\s*(\S+)', body)
+        source = source_match.group(1).strip() if source_match else ""
+
+        evidence = body.strip()[:2000]
+
+        findings.append({
+            "finding_id": finding_id,
+            "severity": severity,
+            "source_trust": source,
+            "file": file_path,
+            "title": title,
+            "evidence": evidence,
+        })
+    return findings
+
+
+def _parse_table_format(text):
+    """Parse findings from markdown table rows.
+
+    Handles: | SEC-001 | Medium | `path/to/file.go`:123 | Description |
+    """
+    dismissed_ranges = _find_dismissed_ranges(text)
+
+    findings = []
+    row_pattern = re.compile(
+        r'^\|\s*([A-Z]+-\d+)\s*\|'
+        r'\s*(\w+)\s*\|'
+        r'\s*(.+?)\s*\|'
+        r'\s*(.+?)\s*\|',
+        re.MULTILINE
+    )
+
+    for match in row_pattern.finditer(text):
+        if any(start <= match.start() < end for start, end in dismissed_ranges):
+            continue
+
+        finding_id = match.group(1).strip()
+        severity_raw = match.group(2).strip()
+        if severity_raw.lower() in ("id", "severity", "---"):
+            continue
+        severity = _SEVERITY_MAP.get(severity_raw.lower(), severity_raw)
+        if severity not in ("Critical", "Important", "Minor"):
+            severity = _SEVERITY_MAP.get(severity_raw.split("/")[0].lower(), "Minor")
+
+        file_path = match.group(3).strip().strip('`')
+        file_path = re.sub(r':\d+[-,]\d+[-,\d]*$|:\d+$', '', file_path)
+
+        description = match.group(4).strip()
+
+        findings.append({
+            "finding_id": finding_id,
+            "severity": severity,
+            "source_trust": "",
+            "file": file_path,
+            "title": description[:200],
+            "evidence": description[:2000],
         })
     return findings

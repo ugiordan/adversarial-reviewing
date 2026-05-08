@@ -152,6 +152,46 @@ flowchart LR
 
 Every step requires explicit user confirmation. The orchestrator never pushes, force-pushes, or targets main/master directly.
 
+## Architecture: FSM Orchestrator
+
+The review pipeline is driven by a deterministic Python FSM orchestrator (`scripts/orchestrator/`). The SKILL.md relay is thin (~80 lines): it runs orchestrator commands and dispatches agents. All orchestration decisions (phase transitions, convergence, budget) are made by Python, not the LLM.
+
+### Dispatch v3.0: Custom Subagents
+
+Agents are dispatched as custom subagents via the Agent tool with restricted tool access (`Read`, `Grep`, `Glob`, `Write` only). Each agent receives a prepared dispatch directory containing:
+- `dispatch-config.yaml`: phase, iteration, agent ID
+- `agent-instructions.md`: specialist role and detection patterns
+- `source-files.md`: inline source code (budget-capped at 150K tokens)
+- `finding-template.md`: structured output format
+- `output.md`: agent writes findings here (self-persisting)
+
+This eliminates the relay output writing bottleneck and enforces read-only review behavior at the platform level.
+
+### Custom Subagents
+
+| Subagent | Purpose |
+|----------|---------|
+| `review-specialist` | Secure execution container for all review agents (SEC, PERF, QUAL, CORR, ARCH) |
+| `red-team-auditor` | Consensus quality auditor (Phase 2b) |
+| `compose-report` | Report generation from pre-processed findings |
+
+### Phase 2b: Red Team Audit
+
+After the cross-agent challenge round, an optional red team auditor reviews consensus quality:
+1. Single auditor checks for weak evidence, severity inflation, groupthink, blind spots
+2. Flagged findings trigger targeted deep dives by the original specialist
+3. Deep dive results update the resolution deterministically
+
+Enable with `--red-team` flag.
+
+### Finding Validation
+
+`validate-findings.py` enforces schema validation after each agent writes:
+- Finding ID format (`PREFIX-NNN`)
+- Severity enum (`Critical`/`Important`/`Minor`)
+- Severity ceiling (severity cannot exceed source trust level)
+- Cross-finding dedup detection
+
 ## Profiles
 
 ### Code Profile (default)
@@ -463,7 +503,7 @@ graph TD
 
 ## Programmatic Validation
 
-All agent outputs are validated through bash scripts -- not just LLM judgment:
+All agent outputs are validated through bash scripts, not just LLM judgment:
 
 | Script | Purpose |
 |--------|---------|
@@ -494,6 +534,20 @@ bash tests/run-all-tests.sh
 ```
 
 Test suite covering validation, injection resistance, convergence detection, budget tracking, deduplication, reference module discovery, and single-agent pipeline integration.
+
+## Evaluation
+
+The skill includes an eval harness integration (`eval/`) with:
+- Ground truth corpus (24 verified findings for opendatahub-operator)
+- Detection judge with 4 format parsers (structured, markdown, narrative, table)
+- Severity accuracy scoring
+- False positive rate tracking
+
+Latest results (eval-default, all 5 agents):
+- Detection rate: 96% (23/24)
+- False positive rate: 0%
+- Severity accuracy: 87%
+- Cost: ~$34 per review
 
 ## Dependencies
 

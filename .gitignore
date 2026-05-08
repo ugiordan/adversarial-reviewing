@@ -33,6 +33,10 @@ __pycache__/
 /docs/arch-*.dot
 /docs/arch-*.png
 
+# Eval run artifacts (large, machine-generated)
+adversarial-review/skills/adversarial-reviewing/eval/runs/
+adversarial-review/skills/adversarial-reviewing/tmp/
+
 # Build artifacts
 site/site/
 adversarial-review/skills/adversarial-reviewing/output/
@@ -40,3 +44,4 @@ adversarial-review/skills/adversarial-reviewing/output/
 # Working documents (not project artifacts)
 docs/reviews/
 docs/superpowers/
+adversarial-review/docs/superpowers/
