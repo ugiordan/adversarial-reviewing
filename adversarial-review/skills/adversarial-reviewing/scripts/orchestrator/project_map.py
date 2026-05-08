@@ -179,8 +179,11 @@ def _find_security_relevant_files(source_root: str) -> dict[str, list[str]]:
                     by_concern[concern].append(rel)
                     break
 
+    _src_exts = {".go", ".py", ".ts", ".tsx", ".js", ".rs", ".java", ".rb", ".c", ".cpp"}
     for concern in by_concern:
-        by_concern[concern] = sorted(set(by_concern[concern]))[:30]
+        unique = sorted(set(by_concern[concern]),
+                        key=lambda p: (0 if os.path.splitext(p)[1].lower() in _src_exts else 1, p))
+        by_concern[concern] = unique[:30]
 
     return dict(by_concern)
 

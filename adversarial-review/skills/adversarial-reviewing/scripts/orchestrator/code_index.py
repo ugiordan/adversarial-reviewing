@@ -60,12 +60,26 @@ _SYMBOL_PATTERNS = {
     ],
 }
 
+_SECURITY_INLINE_PATTERNS = [
+    re.compile(r"IsCA\s*[:=]"),
+    re.compile(r"InsecureSkipVerify\s*[:=]"),
+    re.compile(r"GrantHandler"),
+    re.compile(r"system:authenticated"),
+    re.compile(r"aggregate-to-edit"),
+    re.compile(r"verbs\s*[:=]\s*\[?\s*[\"']\*"),
+    re.compile(r"groups\s*[:=]\s*[\"']\*"),
+    re.compile(r"DeepCopy\(\)"),
+    re.compile(r"\[0\]"),
+    re.compile(r"os\.WriteFile"),
+]
+
 _SECURITY_KEYWORDS = {
     "auth", "secret", "credential", "password", "token", "webhook",
     "rbac", "permission", "cert", "tls", "crypt", "ssl", "oauth",
     "session", "key", "security", "policy", "role", "validate",
     "sanitize", "admin", "grant", "acl", "gateway", "proxy",
-    "hash", "crypto", "registry",
+    "hash", "crypto", "registry", "cluster", "main", "resource",
+    "deploy", "cache", "controller",
 }
 
 
@@ -155,6 +169,11 @@ def _extract_from_file(
                 sig = stripped[:120]
                 symbols.append((name, kind, line_num, sig))
                 break
+        else:
+            for sec_pat in _SECURITY_INLINE_PATTERNS:
+                if sec_pat.search(stripped):
+                    symbols.append(("", "security", line_num, stripped[:120]))
+                    break
 
     return symbols
 
@@ -286,6 +305,9 @@ def _format_file_section(
     """Format a single file's symbols."""
     lines = [f"**{rel_path}**"]
     for name, kind, line_num, sig in symbols:
+        if kind == "security" and not name:
+            lines.append(f"- `!! {sig}` :{line_num}")
+            continue
         caller_info = ""
         if name in callers:
             caller_list = ", ".join(callers[name][:3])
