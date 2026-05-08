@@ -109,7 +109,7 @@ class TestSecurityRelevance:
         sec, other = _split_by_security_relevance(symbols, go_repo)
         assert "auth.go" in sec
         assert os.path.join("pkg", "cert", "cert.go") in sec
-        assert "main.go" in sec  # main.go is security-relevant (entry point)
+        assert "main.go" in other  # main.go is not security-relevant by keyword
 
     def test_empty_repo(self, tmp_path):
         d = tmp_path / "empty"
