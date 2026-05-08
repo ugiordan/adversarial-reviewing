@@ -19,7 +19,7 @@ agents:
     file: code-quality-reviewer.md
     tools: [Read, Write, Grep, Glob]
     effort: medium
-    maxTurns: 12
+    maxTurns: 15
   - prefix: CORR
     file: correctness-verifier.md
     tools: [Read, Write, Grep, Glob]

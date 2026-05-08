@@ -77,6 +77,8 @@ _SECURITY_KEYWORDS = {
     "proxy": "network/gateway",
     "hash": "crypto/TLS",
     "registry": "service registry",
+    "annotation": "metadata/annotations",
+    "metadata": "metadata/annotations",
 }
 
 _INFRA_FILES = {"Dockerfile", "Makefile", "docker-compose.yml", "docker-compose.yaml"}

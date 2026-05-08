@@ -39,16 +39,20 @@ directly as evidence for findings.
 **Step 2: Read project-map.md** for project structure and security-relevant
 files highlighted by naming convention.
 
-**Step 3: Investigate.** For security-relevant symbols in the index, use Read
-to examine the full function body. The index shows WHERE things are defined;
-you need to read the actual code to assess WHETHER there's a vulnerability.
+**Step 3: Systematically examine security-relevant files.** Open
+project-map.md's "Security-Relevant Files" section. Read EVERY file
+listed there that relates to your specialty. Do not skip files. Do not
+stop after finding a few issues. The variance between a good review and
+a mediocre one is whether you examine ALL relevant files or just the
+first few.
 
-**Step 4: Search beyond the index.** Use Grep to find patterns the index
-doesn't cover (string literals, config values, hardcoded secrets, YAML
-manifests, Dockerfiles).
+**Step 4: Search beyond the map.** Use Grep to find patterns the index
+and map don't cover (string literals, config values, hardcoded secrets,
+YAML manifests, Dockerfiles).
 
-**Step 5: Coverage check.** Verify you examined every security-relevant file
-in project-map.md. Check for unexplored directories.
+**Step 5: Coverage check.** Count how many files from project-map.md's
+security-relevant list you actually Read. If less than 80%, go back and
+read the rest.
 
 **Evidence rules:**
 - Index entries ARE valid evidence (static analysis output)
