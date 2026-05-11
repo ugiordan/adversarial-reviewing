@@ -87,7 +87,7 @@ class RetryDispatchError(Exception):
     pass
 
 
-ALLOWED_AGENT_TOOLS = {"Read", "Write", "Bash", "Grep", "Glob"}
+ALLOWED_AGENT_TOOLS = {"Read", "Write", "Grep", "Glob"}
 VALID_EFFORT_LEVELS = {"low", "medium", "high", "xhigh", "max"}
 
 
