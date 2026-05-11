@@ -229,7 +229,7 @@ class TestAgentControlFields:
         args = parse_args(["--profile", "code", "/tmp/target"])
         cfg = resolve_config(args, skill_dir)
         sec = next(a for a in cfg.agents if a.prefix == "SEC")
-        assert sec.tools == ["Read", "Write", "Grep", "Glob"]
+        assert sec.tools == ["Read", "Write", "Bash", "Grep", "Glob"]
         assert sec.effort == "high"
         assert sec.max_turns == 20
 
@@ -245,14 +245,14 @@ class TestAgentControlFields:
         args = parse_args(["--quick", "/tmp/target"])
         cfg = resolve_config(args, skill_dir)
         for agent in cfg.agents:
-            assert agent.tools == ["Read", "Write", "Grep", "Glob"]
+            assert agent.tools == ["Read", "Write", "Bash", "Grep", "Glob"]
             assert agent.effort in ("medium", "high")
 
     def test_perf_agent_control_fields(self, skill_dir):
         args = parse_args(["--profile", "code", "/tmp/target"])
         cfg = resolve_config(args, skill_dir)
         perf = next(a for a in cfg.agents if a.prefix == "PERF")
-        assert perf.tools == ["Read", "Write", "Grep", "Glob"]
+        assert perf.tools == ["Read", "Write", "Bash", "Grep", "Glob"]
         assert perf.effort == "high"
         assert perf.max_turns == 12
 

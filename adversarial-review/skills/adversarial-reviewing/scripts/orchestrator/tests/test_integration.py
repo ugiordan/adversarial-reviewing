@@ -256,6 +256,6 @@ class TestAgentControlIntegration:
         assert len(cfg.agents) == 5
         sec = next(a for a in cfg.agents if a.prefix == "SEC")
         assert isinstance(sec, AgentConfig)
-        assert sec.tools == ["Read", "Write", "Grep", "Glob"]
+        assert sec.tools == ["Read", "Write", "Bash", "Grep", "Glob"]
         assert sec.effort == "high"
         assert sec.max_turns == 20

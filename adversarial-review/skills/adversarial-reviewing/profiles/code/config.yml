@@ -7,27 +7,27 @@ phase5_enabled: true
 agents:
   - prefix: SEC
     file: security-auditor.md
-    tools: [Read, Write, Grep, Glob]
+    tools: [Read, Write, Bash, Grep, Glob]
     effort: high
     maxTurns: 20
   - prefix: PERF
     file: performance-analyst.md
-    tools: [Read, Write, Grep, Glob]
+    tools: [Read, Write, Bash, Grep, Glob]
     effort: high
     maxTurns: 12
   - prefix: QUAL
     file: code-quality-reviewer.md
-    tools: [Read, Write, Grep, Glob]
+    tools: [Read, Write, Bash, Grep, Glob]
     effort: medium
     maxTurns: 12
   - prefix: CORR
     file: correctness-verifier.md
-    tools: [Read, Write, Grep, Glob]
+    tools: [Read, Write, Bash, Grep, Glob]
     effort: medium
     maxTurns: 15
   - prefix: ARCH
     file: architecture-reviewer.md
-    tools: [Read, Write, Grep, Glob]
+    tools: [Read, Write, Bash, Grep, Glob]
     effort: high
     maxTurns: 15
 

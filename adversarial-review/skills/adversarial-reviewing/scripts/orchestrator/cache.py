@@ -6,12 +6,14 @@ CacheError = ScriptError
 
 def init_cache(session_hex: str, skill_dir: str, profile: str,
                source_root: str = "") -> dict:
+    import tempfile
     return _run_manage_cache(
         ["init", session_hex],
         skill_dir=skill_dir,
         env_extra={
             "REVIEW_PROFILE": profile,
             "SOURCE_ROOT": source_root or os.getcwd(),
+            "TMPDIR": os.environ.get("TMPDIR", tempfile.gettempdir()),
         },
     )
 
