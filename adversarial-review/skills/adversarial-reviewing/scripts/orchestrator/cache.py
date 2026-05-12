@@ -7,13 +7,19 @@ CacheError = ScriptError
 def init_cache(session_hex: str, skill_dir: str, profile: str,
                source_root: str = "") -> dict:
     import tempfile
+    tmpdir = os.environ.get("TMPDIR") or tempfile.gettempdir()
+    resolved = os.path.realpath(tmpdir)
+    if resolved == "/private/tmp" or resolved == "/tmp":
+        alt = os.path.expanduser("~/.cache/adversarial-review")
+        os.makedirs(alt, exist_ok=True)
+        tmpdir = alt
     return _run_manage_cache(
         ["init", session_hex],
         skill_dir=skill_dir,
         env_extra={
             "REVIEW_PROFILE": profile,
             "SOURCE_ROOT": source_root or os.getcwd(),
-            "TMPDIR": os.environ.get("TMPDIR", tempfile.gettempdir()),
+            "TMPDIR": tmpdir,
         },
     )
 

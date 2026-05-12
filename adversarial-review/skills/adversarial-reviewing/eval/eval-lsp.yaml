@@ -1,13 +1,13 @@
-name: adversarial-reviewing-default
-description: 'Default mode: all 5 agents (SEC, PERF, QUAL, CORR, ARCH), default budget.
+name: adversarial-reviewing-lsp
+description: 'LSP mode: agents use gopls LSP instead of Grep/Glob.
 
-  Full scope review without iteration limit. No external context.
+  Tests whether semantic code navigation improves detection.
 
   '
 skill: adversarial-reviewing:adversarial-reviewing
 execution:
   mode: case
-  arguments: --save {prompt}
+  arguments: --profile code-lsp --save {prompt}
   max_budget_usd: 100.0
 runner:
   type: claude-code
@@ -45,18 +45,17 @@ runner:
       - Edit(/tmp/**)
       - Edit(/private/tmp/**)
       - Write(artifacts/**)
-      - Read(~/.cache/**)
-      - Write(~/.cache/**)
+      - mcp__gopls-lsp__*
       additionalDirectories:
       - /tmp
       - /private/tmp
-      - ~/.cache
       - /Users/ugogiordano/workdir/rhoai/opendatahub-io/opendatahub-operator
 models:
   skill: claude-opus-4-6
   judge: claude-opus-4-6
 permissions:
-  allow: []
+  allow:
+  - mcp__gopls-lsp__*
   deny:
   - mcp__*
 mlflow:
