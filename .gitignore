@@ -26,6 +26,7 @@ __pycache__/
 
 # Local cache metadata
 .adversarial-review/
+.adversarial-review-cache/
 
 # Internal planning docs (not published)
 /docs/specs/
