@@ -1,0 +1,7 @@
+prompt: "/Users/ugogiordano/workdir/rhoai/opendatahub-io/kube-auth-proxy"
+context: |
+  Review the kube-auth-proxy codebase for security, correctness,
+  performance, quality, and architecture issues.
+  This is a Go-based authentication proxy used in OpenDataHub/RHOAI.
+  Focus on: TLS handling, session management, authentication flows,
+  header injection, proxy configuration, and error handling.

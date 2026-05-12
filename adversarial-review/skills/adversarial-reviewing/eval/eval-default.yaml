@@ -45,12 +45,12 @@ runner:
       - Edit(/tmp/**)
       - Edit(/private/tmp/**)
       - Write(artifacts/**)
-      - Read(~/.cache/**)
-      - Write(~/.cache/**)
+      - Read(/Users/ugogiordano/.cache/**)
+      - Write(/Users/ugogiordano/.cache/**)
       additionalDirectories:
       - /tmp
       - /private/tmp
-      - ~/.cache
+      - /Users/ugogiordano/.cache
       - /Users/ugogiordano/workdir/rhoai/opendatahub-io/opendatahub-operator
 models:
   skill: claude-opus-4-6

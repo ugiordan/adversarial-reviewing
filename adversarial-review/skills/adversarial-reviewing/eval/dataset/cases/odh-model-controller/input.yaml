@@ -1,0 +1,7 @@
+prompt: "/Users/ugogiordano/workdir/rhoai/opendatahub-io/odh-model-controller"
+context: |
+  Review the odh-model-controller codebase for security, correctness,
+  performance, quality, and architecture issues.
+  This is a Go Kubernetes controller for model serving in OpenDataHub/RHOAI.
+  Focus on: RBAC, webhook handling, model routing, namespace isolation,
+  resource lifecycle, and error handling.
