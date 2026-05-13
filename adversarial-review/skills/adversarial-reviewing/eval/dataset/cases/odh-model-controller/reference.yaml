@@ -1,0 +1,114 @@
+# Ground Truth: odh-model-controller verified findings
+# Source: adversarial-review skill output, manually verified against source code
+# Repo: opendatahub-io/odh-model-controller
+
+metadata:
+  repo: opendatahub-io/odh-model-controller
+  corpus_version: "1.0"
+  total_findings: 10
+
+findings:
+  - id: ARCH-DOUBLE-START
+    severity: Critical
+    category: input_validation
+    file: cmd/main.go
+    title: "Double mgr.Start() call causes manager to start twice"
+    detection_signals:
+      - "mgr.Start"
+      - "Start(ctx)"
+      - "Start(signal"
+      - "double"
+
+  - id: CORR-BASH-TYPO
+    severity: Important
+    category: input_validation
+    file: internal/webhook/core/v1/pod_webhook.go
+    title: "Bash variable typo retires vs retries"
+    detection_signals:
+      - "retires"
+      - "retries"
+      - "typo"
+
+  - id: SEC-WEBHOOK-CREATE-ONLY
+    severity: Important
+    category: webhook
+    file: internal/webhook/serving/v1beta1/inferenceservice_webhook.go
+    title: "Webhook only covers create, not update"
+    detection_signals:
+      - "verbs=create"
+      - "webhook"
+      - "update"
+      - "ValidateUpdate"
+
+  - id: SEC-RBAC-ESCALATE
+    severity: Important
+    category: rbac
+    file: config/rbac/role.yaml
+    title: "ClusterRole grants explicit escalate verb"
+    detection_signals:
+      - "escalate"
+      - "rbac"
+      - "ClusterRole"
+
+  - id: SEC-CROSS-NS-SECRET
+    severity: Important
+    category: data_flow
+    file: api/nim/v1/account_types.go
+    title: "ObjectReference allows cross-namespace secret access"
+    detection_signals:
+      - "ObjectReference"
+      - "APIKeySecret"
+      - "cross-namespace"
+
+  - id: SEC-CERT-ENTROPY
+    severity: Important
+    category: randomness
+    file: internal/controller/utils/cert.go
+    title: "Certificate serial number limited to ~62 bits entropy"
+    detection_signals:
+      - "UnixNano"
+      - "rand.Int"
+      - "SerialNumber"
+      - "entropy"
+
+  - id: CORR-BODY-LEAK
+    severity: Important
+    category: data_flow
+    file: internal/controller/utils/nim.go
+    title: "HTTP response bodies never closed across NIM API calls"
+    detection_signals:
+      - "resp.Body"
+      - "ReadAll"
+      - "Close"
+      - "leak"
+
+  - id: CORR-SPLIT-BOUNDS
+    severity: Important
+    category: bounds_check
+    file: internal/controller/utils/nim.go
+    title: "Unguarded slice access on Split result for ResourceId"
+    detection_signals:
+      - "Split"
+      - "ResourceId"
+      - "parts[0]"
+      - "bounds"
+
+  - id: PERF-GOMEMLIMIT
+    severity: Important
+    category: input_validation
+    file: config/manager/manager.yaml
+    title: "Missing GOMEMLIMIT in controller deployment"
+    detection_signals:
+      - "GOMEMLIMIT"
+      - "memory"
+      - "manager.yaml"
+
+  - id: ARCH-TESTING-PROD
+    severity: Important
+    category: input_validation
+    file: internal/controller/nim/handlers/template_handler.go
+    title: "testing.Testing() used in production code path"
+    detection_signals:
+      - "testing.Testing"
+      - "production"
+      - "runtime"

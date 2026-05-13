@@ -70,6 +70,7 @@ When multiple files are in scope, actively look for contradictions between them.
 **Slice and map safety:**
 - Direct index access (`slice[0]`, `map[key]`) without bounds/existence checks. Especially dangerous on K8s Status fields (`.Status.History[0]`, `.Status.Conditions[0]`, `.Items[0]`) which can be empty during bootstrap, upgrade, or degraded states.
 - Nil map writes panic. Check for `map[key] = value` where the map might not be initialized.
+- **Before reporting a panic/crash finding**: Read the full function body and verify there is no bounds check, nil check, or length guard ABOVE the flagged access. Guard clauses are often 1-3 lines before the access.
 
 **Error propagation gaps:**
 - `fmt.Errorf` wrapping that drops the original error type, preventing `errors.Is()` or `errors.As()` classification

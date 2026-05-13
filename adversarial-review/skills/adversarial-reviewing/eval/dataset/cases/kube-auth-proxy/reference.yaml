@@ -1,0 +1,103 @@
+# Ground Truth: kube-auth-proxy verified findings
+# Source: adversarial-review skill output, manually verified against source code
+# Repo: opendatahub-io/kube-auth-proxy
+
+metadata:
+  repo: opendatahub-io/kube-auth-proxy
+  corpus_version: "1.0"
+  total_findings: 9
+
+findings:
+  - id: SEC-REDIS-TLS
+    severity: Important
+    category: crypto
+    file: pkg/sessions/redis/redis_store.go
+    title: "Redis TLS connection sets InsecureSkipVerify=true"
+    detection_signals:
+      - "InsecureSkipVerify"
+      - "redis"
+      - "TLS"
+
+  - id: SEC-GLOBAL-TRANSPORT
+    severity: Important
+    category: crypto
+    file: pkg/validation/options.go
+    title: "Global --ssl-insecure-skip-verify mutates process-wide default transport"
+    detection_signals:
+      - "DefaultTransport"
+      - "InsecureSkipVerify"
+      - "SSLInsecureSkipVerify"
+
+  - id: SEC-CFB-NO-AUTH
+    severity: Important
+    category: crypto
+    file: pkg/encryption/cipher.go
+    title: "CFB cipher mode provides no authentication"
+    detection_signals:
+      - "CFB"
+      - "NewCFBEncrypter"
+      - "cipher"
+      - "authentication"
+
+  - id: SEC-PATH-BYPASS
+    severity: Important
+    category: access_control
+    file: oauthproxy.go
+    title: "Path-based auth bypass via IsAllowedRequest"
+    detection_signals:
+      - "IsAllowedRequest"
+      - "allowedPaths"
+      - "bypass"
+
+  - id: CORR-SHADOW-ATTRS
+    severity: Important
+    category: input_validation
+    file: kube-rbac-proxy/pkg/proxy/proxy.go
+    title: "Variable shadowing in GetRequestAttributes causes empty allAttrs"
+    detection_signals:
+      - "allAttrs"
+      - "shadow"
+      - ":="
+      - "GetRequestAttributes"
+
+  - id: CORR-INT32-OVERFLOW
+    severity: Important
+    category: bounds_check
+    file: kube-rbac-proxy/cmd/kube-rbac-proxy/app/kube-rbac-proxy.go
+    title: "Integer overflow in HTTP/2 buffer size via int32 multiplication"
+    detection_signals:
+      - "int32"
+      - "MaxUploadBuffer"
+      - "overflow"
+      - "HTTP/2"
+
+  - id: CORR-RACE-LOGOUT
+    severity: Minor
+    category: data_flow
+    file: oauthproxy.go
+    title: "Race condition on cachedLogoutURL field"
+    detection_signals:
+      - "cachedLogoutURL"
+      - "race"
+      - "concurrent"
+
+  - id: PERF-TEMPLATE-ALLOC
+    severity: Important
+    category: input_validation
+    file: kube-rbac-proxy/pkg/proxy/proxy.go
+    title: "Template parsed and allocated on every proxied request"
+    detection_signals:
+      - "template.New"
+      - "Parse"
+      - "every request"
+
+  - id: SEC-REGEX-PATH
+    severity: Important
+    category: access_control
+    file: kube-rbac-proxy/pkg/filters/path.go
+    title: "WithAllowPaths regex-based path matching may bypass auth"
+    detection_signals:
+      - "WithAllowPaths"
+      - "regex"
+      - "bypass"
+      - "path"
