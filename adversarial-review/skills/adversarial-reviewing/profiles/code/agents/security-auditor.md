@@ -97,6 +97,20 @@ Beyond OWASP Top 10, check for these patterns common in Kubernetes operator code
 - Name fields without DNS-1123 or RFC validation
 - Fields controlling security behavior without admission webhook guards
 
+**Annotation/label-driven SSRF (Kubernetes-specific confused deputy):**
+- Controllers that read URLs from CRD annotations or labels (`obj.Annotations[key]`,
+  `obj.Labels[key]`) and make HTTP requests to those URLs. The annotation value is
+  user-controlled via kubectl/API, bypassing any URL validation in the controller.
+- CRITICAL: when a controller has TWO code paths for resolving a URL (e.g., safe
+  Service discovery AND unsafe annotation override), trace BOTH paths. The agent
+  must not stop after finding the safe path. Check for annotation/label fallback
+  or override paths that bypass the safe resolution.
+- Service account tokens mounted on controller pods can be stolen via SSRF: the
+  attacker sets the annotation URL to a server they control, the controller follows
+  it with the SA token in headers.
+- Check for `AutomountServiceAccountToken: true` forced on pods created by the
+  controller, and projected volume mounts that inject SA tokens.
+
 ## File Triage Strategy
 
 When more files are listed than you can deeply review:
