@@ -53,7 +53,7 @@ runner:
       - /Users/ugogiordano/.cache
       - /Users/ugogiordano/workdir/rhoai/opendatahub-io/opendatahub-operator
 models:
-  skill: claude-opus-4-6
+  skill: claude-sonnet-4-6
   judge: claude-opus-4-6
 permissions:
   allow: []

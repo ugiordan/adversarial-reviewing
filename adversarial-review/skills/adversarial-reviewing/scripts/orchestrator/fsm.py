@@ -716,7 +716,7 @@ def _prepare_dispatch_directories(state, cache_dir, skill_dir, phase) -> list[tu
 
     iteration = _current_phase_iteration(state)
     source_root = state.config.source_root or os.getcwd()
-    if iteration <= 1:
+    if iteration <= 1 and phase == PHASE_SELF_REFINEMENT:
         from .code_index import build_code_index
         code_index = build_code_index(source_root, state.config.detected_language)
         if code_index:
