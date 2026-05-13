@@ -68,6 +68,7 @@ def process_state(state: FsmState, cache_dir: str, skill_dir: str):
             "iterations": state.iteration,
             "budget_consumed": state.budget_consumed,
         })
+        telemetry.log_to_mlflow(state)
 
 
 def resume_dispatch_state(state: FsmState, cache_dir: str, skill_dir: str):

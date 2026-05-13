@@ -127,6 +127,61 @@ def _try_otlp_export(spans: list, metrics: list) -> None:
         return
     try:
         from opentelemetry.sdk.trace import TracerProvider  # noqa: F401
-        # OTel SDK export would be implemented here
     except ImportError:
+        pass
+
+
+def log_to_mlflow(state, findings_count: int = 0, detection_rate: float = 0.0,
+                  false_positive_rate: float = 0.0, severity_accuracy: float = 0.0) -> None:
+    """Log run results to MLflow for tracking and comparison."""
+    try:
+        import mlflow
+    except ImportError:
+        return
+
+    experiment_name = "adversarial-reviewing"
+    try:
+        mlflow.set_experiment(experiment_name)
+    except Exception:
+        return
+
+    config = state.config if state.config else None
+    if not config:
+        return
+
+    try:
+        with mlflow.start_run(run_name=f"{config.profile}-{config.target.split('/')[-1]}"):
+            mlflow.log_params({
+                "profile": config.profile,
+                "target": config.target,
+                "detected_language": config.detected_language,
+                "agents": ",".join(a.prefix for a in config.agents),
+                "max_iterations": config.max_iterations,
+                "budget_limit": config.budget_limit,
+            })
+
+            mlflow.log_metrics({
+                "detection_rate": detection_rate,
+                "false_positive_rate": false_positive_rate,
+                "severity_accuracy": severity_accuracy,
+                "findings_count": findings_count,
+                "iterations_completed": state.iteration,
+                "challenge_iterations": state.challenge_iteration,
+                "budget_consumed": state.budget_consumed,
+                "compliance_violations": state.relay_compliance_violations,
+            })
+
+            if _tracer and _tracer.spans:
+                total_duration = 0.0
+                for span in _tracer.spans.values():
+                    if span.end_time > 0:
+                        total_duration += span.end_time - span.start_time
+                mlflow.log_metric("total_span_duration_s", round(total_duration, 2))
+
+            cache_dir = _tracer.cache_dir if _tracer else ""
+            if cache_dir:
+                telemetry_file = Path(cache_dir) / "telemetry.json"
+                if telemetry_file.exists():
+                    mlflow.log_artifact(str(telemetry_file))
+    except Exception:
         pass
