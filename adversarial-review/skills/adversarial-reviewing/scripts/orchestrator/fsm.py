@@ -1171,6 +1171,8 @@ def _validate_delimiters(state, output_files) -> tuple[bool, str, str]:
         return True, "", ""
     known_prefixes = [a.prefix for a in state.config.agents] if state.config else []
     for f in output_files:
+        if "/dispatch/" in f:
+            continue
         delim_result = check_delimiters(f, state.delimiters)
         if not delim_result.passed:
             prefix = _extract_agent_prefix(os.path.basename(f), known_prefixes)

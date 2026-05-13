@@ -256,8 +256,8 @@ def resolve_config(args: argparse.Namespace, skill_dir: str) -> FsmConfig:
         max_iterations=max_iter,
         min_iterations=min(2, max_iter),
         flags=flags,
-        target=args.target,
-        source_root=os.path.realpath(args.target) if os.path.isdir(args.target) else os.getcwd(),
+        target=os.path.abspath(args.target),
+        source_root=os.path.realpath(os.path.abspath(args.target)) if os.path.isdir(args.target) else os.path.realpath(os.getcwd()),
         specialist_flags=active_specialist_flags,
         topic=args.topic,
     )
