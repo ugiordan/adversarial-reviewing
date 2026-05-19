@@ -1,18 +1,6 @@
-# Ground Truth: opendatahub-operator confirmed security vulnerabilities
-# Source: manual security audit by Ugo Giordano, validated via adversarial-review
-# Repo: opendatahub-io/opendatahub-operator
-# Commit: pre-fix state (before 4b79091c4)
-#
-# Usage: eval/score.py compares adversarial-review findings against this corpus
-# to compute detection rate, false positive rate, and severity accuracy.
-#
-# scope_note: marks GT entries whose files are outside the --quick scope.
-# These are expected misses in quick mode and should not count against
-# detection rate when evaluating --quick runs.
-
 metadata:
   repo: opendatahub-io/opendatahub-operator
-  corpus_version: "3.4"
+  corpus_version: '3.4'
   total_findings: 33
   categories:
     rbac: 4
@@ -25,764 +13,721 @@ metadata:
     randomness: 2
     supply_chain: 2
     access_control: 5
-
 findings:
-  # --- Batch 1: Fixed (commit 4b79091c4) ---
+- id: SEC-001
+  jira: RHOAIENG-56110
+  severity: Critical
+  category: rbac
+  source_trust: Authenticated
+  file: internal/controller/services/auth/auth_controller_actions.go
+  lines: 63-65
+  title: RBAC operator precedence bug in auth group filter
+  description: 'Operator precedence in boolean condition allows system:authenticated through for roles other than data-science-admingroup-role.
+    The condition groups incorrectly, bypassing the group filter for all admin role bindings.
 
-  - id: SEC-001
-    jira: RHOAIENG-56110
-    severity: Critical
-    category: rbac
-    source_trust: Authenticated
-    file: internal/controller/services/auth/auth_controller_actions.go
-    lines: 63-65
-    title: "RBAC operator precedence bug in auth group filter"
-    description: >
-      Operator precedence in boolean condition allows system:authenticated
-      through for roles other than data-science-admingroup-role. The condition
-      groups incorrectly, bypassing the group filter for all admin role bindings.
-    detection_signals:
-      - "system:authenticated"
-      - "operator precedence"
-      - "bindRole"
-      - "group filter"
+    '
+  detection_signals:
+  - system:authenticated
+  - operator precedence
+  - bindRole
+  - group filter
+- id: SEC-002
+  severity: Important
+  category: crypto
+  source_trust: N/A
+  file: pkg/cluster/cert.go
+  lines: 106-118
+  title: Server certificate marked as CA with unnecessary capabilities
+  description: 'Self-signed server certificate set with IsCA=true and KeyUsageCertSign. Server certs should never be CAs.
+    Also adds unconditional localhost SAN.
 
-  - id: SEC-002
-    severity: Important
-    category: crypto
-    source_trust: N/A
-    file: pkg/cluster/cert.go
-    lines: 106-118
-    title: "Server certificate marked as CA with unnecessary capabilities"
-    description: >
-      Self-signed server certificate set with IsCA=true and KeyUsageCertSign.
-      Server certs should never be CAs. Also adds unconditional localhost SAN.
-    detection_signals:
-      - "IsCA"
-      - "KeyUsageCertSign"
-      - "x509.Certificate"
-      - "localhost"
+    '
+  detection_signals:
+  - IsCA
+  - KeyUsageCertSign
+  - x509.Certificate
+  - localhost
+- id: SEC-006
+  severity: Important
+  category: randomness
+  source_trust: N/A
+  file: pkg/cluster/cert.go
+  lines: 91-91
+  title: Weak certificate serial number entropy
+  description: 'Certificate serial number uses time-dependent upper bound (time.Now().UnixNano()) providing only ~60 bits
+    of entropy instead of 128-bit standard.
 
-  # SEC-003 REMOVED: file pkg/controller/actions/dependency/certmanager/bootstrap.go
-  # does not exist in this repo. The 876000h/caRootDuration code was never here.
+    '
+  detection_signals:
+  - UnixNano
+  - rand.Int
+  - SerialNumber
+  - serial number
+  - entropy
+  - cert.go
+- id: SEC-008
+  jira: RHOAIENG-56113
+  severity: Important
+  category: webhook
+  source_trust: N/A
+  file: internal/webhook/notebook/mutating.go
+  lines: 86-119
+  title: Zero-value admission response on webhook fall-through
+  description: 'Notebook mutating webhook does not return explicit Allowed response on the default path. Returns zero-value
+    admission.Response which may be misinterpreted.
 
-  - id: SEC-006
-    severity: Important
-    category: randomness
-    source_trust: N/A
-    file: pkg/cluster/cert.go
-    lines: 91-91
-    title: "Weak certificate serial number entropy"
-    description: >
-      Certificate serial number uses time-dependent upper bound
-      (time.Now().UnixNano()) providing only ~60 bits of entropy
-      instead of 128-bit standard.
-    detection_signals:
-      - "UnixNano"
-      - "rand.Int"
-      - "SerialNumber"
-      - "serial number"
-      - "entropy"
-      - "cert.go"
+    '
+  detection_signals:
+  - admission.Response
+  - Handle
+  - fall-through
+  - Allowed
+- id: SEC-009
+  jira: RHOAIENG-56111
+  severity: Important
+  category: bounds_check
+  source_trust: N/A
+  file: pkg/cluster/cluster_config.go
+  lines: 190-192
+  title: Panic on empty ClusterVersion history
+  description: 'Unprotected array access on clusterVersion.Status.History without bounds check. Empty History during cluster
+    bootstrap causes panic.
 
-  - id: SEC-008
-    jira: RHOAIENG-56113
-    severity: Important
-    category: webhook
-    source_trust: N/A
-    file: internal/webhook/notebook/mutating.go
-    lines: 86-119
-    title: "Zero-value admission response on webhook fall-through"
-    description: >
-      Notebook mutating webhook does not return explicit Allowed response
-      on the default path. Returns zero-value admission.Response which
-      may be misinterpreted.
-    detection_signals:
-      - "admission.Response"
-      - "Handle"
-      - "fall-through"
-      - "Allowed"
+    '
+  detection_signals:
+  - History[0]
+  - ClusterVersion
+  - getOCPVersion
+  - bounds
+  - panic
+  - cluster_config
+- id: B2-OIDC-URL
+  jira: RHOAIENG-56115
+  severity: Important
+  category: input_validation
+  source_trust: Authenticated
+  file: api/services/v1alpha1/gateway_types.go
+  lines: 148-150
+  title: OIDC IssuerURL accepts invalid URLs without format validation
+  description: 'IssuerURL field in OIDCConfig lacks URL format validation. Accepts any string, causing runtime errors in OIDC
+    provider communication.
 
-  - id: SEC-009
-    jira: RHOAIENG-56111
-    severity: Important
-    category: bounds_check
-    source_trust: N/A
-    file: pkg/cluster/cluster_config.go
-    lines: 190-192
-    title: "Panic on empty ClusterVersion history"
-    description: >
-      Unprotected array access on clusterVersion.Status.History without
-      bounds check. Empty History during cluster bootstrap causes panic.
-    detection_signals:
-      - "History[0]"
-      - "ClusterVersion"
-      - "getOCPVersion"
-      - "bounds"
-      - "panic"
-      - "cluster_config"
+    '
+  detection_signals:
+  - IssuerURL
+  - OIDCConfig
+  - URL validation
+  - format validation
+  - gateway_types
+- id: B2-SECRET-NS
+  jira: RHOAIENG-56116
+  severity: Important
+  category: data_flow
+  source_trust: Authenticated
+  file: internal/controller/services/gateway/gateway_support.go
+  lines: null
+  title: SecretNamespace allows cross-namespace secret read
+  description: 'User-specified SecretNamespace field allows reading OIDC client secrets from arbitrary namespaces. Controller
+    uses its elevated SA identity to read secrets from the user-specified namespace (confused deputy).
 
-  # --- Batch 2-3: Jiras filed, not yet fixed ---
+    '
+  detection_signals:
+  - SecretNamespace
+  - secretNamespace
+  - cross-namespace
+  - OIDCConfig
+- id: B2-DSCI-WEBHOOK
+  jira: RHOAIENG-56117
+  severity: Important
+  category: webhook
+  source_trust: Authenticated
+  file: internal/webhook/dscinitialization/v2/validating.go
+  lines: null
+  title: DSCI webhook skips UPDATE validation
+  scope_note: Directory outside --quick scope
+  description: 'DSCI webhook only validates CREATE operations. Users can modify DSCI after creation without validation, bypassing
+    security controls.
 
-  - id: B2-OIDC-URL
-    jira: RHOAIENG-56115
-    severity: Important
-    category: input_validation
-    source_trust: Authenticated
-    file: api/services/v1alpha1/gateway_types.go
-    lines: 148-150
-    title: "OIDC IssuerURL accepts invalid URLs without format validation"
-    description: >
-      IssuerURL field in OIDCConfig lacks URL format validation.
-      Accepts any string, causing runtime errors in OIDC provider communication.
-    detection_signals:
-      - "IssuerURL"
-      - "OIDCConfig"
-      - "URL validation"
-      - "format validation"
-      - "gateway_types"
+    '
+  detection_signals:
+  - ValidatingWebhook
+  - validating
+  - CREATE
+  - UPDATE
+  - DSCI
+  - DSCInitialization
+  - webhook
+  - skip
+- id: B2-CERT-NAME
+  jira: RHOAIENG-56121
+  severity: Minor
+  category: input_validation
+  source_trust: Authenticated
+  file: api/infrastructure/v1/cert_types.go
+  lines: null
+  title: CertificateSpec.SecretName no format validation
+  description: 'SecretName field accepts any string without DNS-1123 subdomain validation. Invalid names cause runtime errors.
 
-  - id: B2-SECRET-NS
-    jira: RHOAIENG-56116
-    severity: Important
-    category: data_flow
-    source_trust: Authenticated
-    file: internal/controller/services/gateway/gateway_support.go
-    lines: null
-    title: "SecretNamespace allows cross-namespace secret read"
-    description: >
-      User-specified SecretNamespace field allows reading OIDC client secrets
-      from arbitrary namespaces. Controller uses its elevated SA identity to
-      read secrets from the user-specified namespace (confused deputy).
-    detection_signals:
-      - "SecretNamespace"
-      - "secretNamespace"
-      - "cross-namespace"
-      - "OIDCConfig"
+    '
+  detection_signals:
+  - SecretName
+  - CertificateSpec
+  - validation
+  - cert_types
+  - DNS-1123
+  - format
+- id: B2-CERT-ISCA
+  jira: RHOAIENG-56114
+  severity: Important
+  category: crypto
+  source_trust: N/A
+  file: pkg/cluster/cert.go
+  lines: 106-107
+  title: Self-signed cert IsCA=true
+  description: 'Duplicate of SEC-002. Self-signed certificates should not be marked as certificate authorities.
 
-  - id: B2-DSCI-WEBHOOK
-    jira: RHOAIENG-56117
-    severity: Important
-    category: webhook
-    source_trust: Authenticated
-    file: internal/webhook/dscinitialization/v2/validating.go
-    lines: null
-    title: "DSCI webhook skips UPDATE validation"
-    scope_note: "Directory outside --quick scope"
-    description: >
-      DSCI webhook only validates CREATE operations. Users can modify DSCI
-      after creation without validation, bypassing security controls.
-    detection_signals:
-      - "ValidatingWebhook"
-      - "validating"
-      - "CREATE"
-      - "UPDATE"
-      - "DSCI"
-      - "DSCInitialization"
-      - "webhook"
-      - "skip"
+    '
+  duplicate_of: SEC-002
+  detection_signals:
+  - IsCA
+  - BasicConstraints
+- id: RBAC-AGGREGATE
+  severity: Important
+  category: rbac
+  source_trust: N/A
+  file: opt/manifests/
+  lines: null
+  title: aggregate-to-edit labels grant implicit CRD access
+  description: 'CRDs with aggregate-to-edit labels implicitly grant edit permissions to all users with the edit ClusterRole,
+    expanding the attack surface without explicit RBAC review.
 
-  # B2-RBAC-SUB REMOVED: No evidence of overprivileged subresource access
-  # in config/rbac/. The actual RBAC issues are wildcard verbs (RBAC-WILDCARD-VERB)
-  # and wildcard API groups (in kubebuilder_rbac.go), which are separate entries.
+    '
+  detection_signals:
+  - aggregate-to-edit
+  - rbac.authorization.k8s.io/aggregate-to-edit
+  - aggregationRule
+  - edit ClusterRole
+- id: CACHE-OOM
+  severity: Important
+  category: input_validation
+  source_trust: Internal
+  file: cmd/main.go
+  lines: null
+  title: Informer cache missing label selectors on high-volume types
+  description: 'Cache uses namespace-scoped ByObject configs but some high-volume types (Secrets, ConfigMaps) lack label selectors,
+    caching all objects within watched namespaces. OOM risk on large clusters.
 
-  # B2-MON-SECRET REMOVED: monitoring.go deleted in 2ea33f0ac
-  # (Remove legacy managed monitoring stack)
+    '
+  detection_signals:
+  - NewCache
+  - informer
+  - DefaultTransform
+  - GOMEMLIMIT
+  - cache.Options
+- id: UNPINNED-AUTH-IMG
+  severity: Minor
+  category: supply_chain
+  source_trust: N/A
+  file: internal/controller/services/gateway/gateway_support.go
+  lines: null
+  title: Security-critical auth proxy images use unpinned :latest tags
+  description: 'Fallback container images for kube-auth-proxy and nginx redirect use :latest tags. Production images are set
+    via RELATED_IMAGE env vars but no runtime guard ensures the fallback is never used in production.
 
-  - id: B2-CERT-NAME
-    jira: RHOAIENG-56121
-    severity: Minor
-    category: input_validation
-    source_trust: Authenticated
-    file: api/infrastructure/v1/cert_types.go
-    lines: null
-    title: "CertificateSpec.SecretName no format validation"
-    description: >
-      SecretName field accepts any string without DNS-1123 subdomain
-      validation. Invalid names cause runtime errors.
-    detection_signals:
-      - "SecretName"
-      - "CertificateSpec"
-      - "validation"
-      - "cert_types"
-      - "DNS-1123"
-      - "format"
+    '
+  detection_signals:
+  - getKubeAuthProxyImage
+  - getDashboardRedirectImage
+  - :latest
+  - RELATED_IMAGE
+  - unpinned
+  - fallback
+  - container image
+  - gateway_support
+  - RELATED_IMAGE
+- id: SSL-SKIP-VERIFY
+  severity: Minor
+  category: access_control
+  source_trust: N/A
+  file: internal/controller/services/gateway/resources/kube-auth-proxy-oauth-deployment.tmpl.yaml
+  lines: null
+  title: OAuth2 proxy ssl-insecure-skip-verify controlled by API field without admission guard
+  description: 'ssl-insecure-skip-verify is templated from user-facing GatewayConfig.Spec.VerifyProviderCertificate field.
+    Defaults to true but no webhook prevents disabling TLS verification in production.
 
-  # B2-ENTROPY REMOVED: GenerateRandomHex no longer exists in codebase.
-  # Removed in 2ea33f0ac (Remove legacy managed monitoring stack).
+    '
+  detection_signals:
+  - ssl-insecure-skip-verify
+  - InsecureSkipVerify
+  - VerifyProviderCertificate
+  - TLS verification
+  - TLS bypass
+  - oauth-deployment
+  - GatewayConfig
+- id: AUTH-DEFAULT
+  severity: Minor
+  category: access_control
+  source_trust: N/A
+  file: internal/controller/dscinitialization/auth.go
+  lines: null
+  title: Default Auth CR grants platform access to all authenticated users
+  description: 'BuildDefaultAuth() creates default Auth CR with AllowedGroups: ["system:authenticated"]. Administrators may
+    not realize the default grants platform access to every cluster user.
 
-  # B2-ERR-EXPOSE REMOVED: No specific file attribution. Generic observation
-  # with signals too broad for reliable scoring. Error info disclosure is a
-  # valid concern but needs a specific file:line to be a testable GT entry.
+    '
+  detection_signals:
+  - BuildDefaultAuth
+  - AllowedGroups
+  - system:authenticated
+  - default
+  - auth.go
+  - authenticated
+  - all users
+- id: UNPINNED-UBI
+  severity: Minor
+  category: supply_chain
+  source_trust: N/A
+  file: Dockerfiles/Dockerfile
+  lines: null
+  title: Final container image uses unpinned UBI minimal :latest tag
+  description: 'Final build stage FROM uses ubi9/ubi-minimal:latest without digest pinning. Builder stage pins Go version
+    but runtime base is not pinned, making builds non-reproducible.
 
-  - id: B2-CERT-ISCA
-    jira: RHOAIENG-56114
-    severity: Important
-    category: crypto
-    source_trust: N/A
-    file: pkg/cluster/cert.go
-    lines: 106-107
-    title: "Self-signed cert IsCA=true"
-    description: >
-      Duplicate of SEC-002. Self-signed certificates should not be
-      marked as certificate authorities.
-    duplicate_of: SEC-002
-    detection_signals:
-      - "IsCA"
-      - "BasicConstraints"
+    '
+  detection_signals:
+  - ubi-minimal
+  - ubi9
+  - :latest
+  - Dockerfile
+  - unpinned
+  - digest
+  - base image
+  - FROM
+  - reproducible
+- id: RBAC-WILDCARD-VERB
+  severity: Important
+  category: rbac
+  source_trust: N/A
+  file: internal/controller/datasciencecluster/kubebuilder_rbac.go
+  lines: null
+  title: Wildcard RBAC verbs on RBAC resources grant escalate and bind capabilities
+  description: 'verbs=* on roles, rolebindings, clusterroles, clusterrolebindings includes the escalate and bind verbs, bypassing
+    Kubernetes privilege escalation prevention.
 
-  # --- Cross-component findings ---
-  # SSRF-ISVC removed: kserve directory does not exist in this repo
+    '
+  detection_signals:
+  - verbs=*
+  - escalate
+  - bind
+  - rbac.authorization.k8s.io
+  - clusterroles
+  - kubebuilder_rbac
+  - wildcard
+- id: PODS-EXEC
+  severity: Important
+  category: rbac
+  source_trust: N/A
+  file: internal/controller/datasciencecluster/kubebuilder_rbac.go
+  lines: null
+  title: Operator SA granted pods/exec create permission enables lateral movement
+  description: 'pods/exec create permission on cluster-wide scope allows the operator SA to exec into any running pod, enabling
+    lateral movement if the SA is compromised.
 
-  - id: RBAC-AGGREGATE
-    severity: Important
-    category: rbac
-    source_trust: N/A
-    file: opt/manifests/
-    lines: null
-    title: "aggregate-to-edit labels grant implicit CRD access"
-    description: >
-      CRDs with aggregate-to-edit labels implicitly grant edit
-      permissions to all users with the edit ClusterRole, expanding
-      the attack surface without explicit RBAC review.
-    detection_signals:
-      - "aggregate-to-edit"
-      - "rbac.authorization.k8s.io/aggregate-to-edit"
-      - "aggregationRule"
-      - "edit ClusterRole"
+    '
+  detection_signals:
+  - pods/exec
+  - exec
+  - lateral
+  - kubebuilder_rbac
+- id: OAUTH-AUTO-GRANT
+  severity: Minor
+  category: access_control
+  source_trust: N/A
+  file: internal/controller/services/gateway/gateway_support.go
+  lines: null
+  title: OAuth client uses GrantHandlerAuto bypassing user consent
+  description: 'OAuthClient created with GrantHandlerAuto automatically approves authorization requests without user consent
+    prompts.
 
-  # --- Cache OOM findings (from architecture analyzer) ---
+    '
+  detection_signals:
+  - GrantHandlerAuto
+  - GrantHandler
+  - OAuthClient
+  - consent
+- id: WEBHOOK-SA-ORPHAN
+  severity: Minor
+  category: data_flow
+  source_trust: N/A
+  file: pkg/webhook/utils.go
+  lines: null
+  title: ServiceAccount creation in webhook without ownership tracking
+  description: 'CreateSA creates ServiceAccounts during webhook admission without owner references, causing orphaned resources
+    when the parent InferenceService is deleted.
 
-  - id: CACHE-OOM
-    severity: Important
-    category: input_validation
-    source_trust: Internal
-    file: cmd/main.go
-    lines: null
-    title: "Informer cache missing label selectors on high-volume types"
-    description: >
-      Cache uses namespace-scoped ByObject configs but some high-volume
-      types (Secrets, ConfigMaps) lack label selectors, caching all
-      objects within watched namespaces. OOM risk on large clusters.
-    detection_signals:
-      - "NewCache"
-      - "informer"
-      - "DefaultTransform"
-      - "GOMEMLIMIT"
-      - "cache.Options"
+    '
+  detection_signals:
+  - CreateSA
+  - ServiceAccount
+  - owner
+  - orphan
+  - OwnerReference
+  - webhook
+  - utils.go
+  - cleanup
+  - webhook
+- id: AUTH-CR-SILENT
+  severity: Minor
+  category: access_control
+  source_trust: N/A
+  file: internal/controller/dscinitialization/auth.go
+  lines: null
+  title: CreateAuth silently accepts existing Auth CR without validation
+  description: 'CreateAuth returns nil if Auth CR exists without validating its configuration. A manually modified Auth CR
+    with weakened groups persists indefinitely.
 
-  # --- Findings consistently discovered by model (added v2.0) ---
+    '
+  detection_signals:
+  - CreateAuth
+  - Auth CR
+  - exists
+  - validation
+  - dscinitialization
+  - silent
+  - default auth
+- id: GOMEMLIMIT-MISSING
+  severity: Minor
+  category: secret_management
+  source_trust: N/A
+  file: opt/manifests/kserve/overlays/test/minio/minio-user-secret.yaml
+  lines: null
+  title: Hardcoded test credentials committed in secret manifest
+  description: 'Minio test secret contains hardcoded access_key_id "minio" and secret_access_key "minio123". While marked
+    as test overlay, committed credentials can be accidentally used in production and appear in container images.
 
-  # SEGMENT-KEY REMOVED: config/monitoring/segment/segment-key-secret.yaml
-  # deleted in 2ea33f0ac (Remove legacy managed monitoring stack).
+    '
+  detection_signals:
+  - minio
+  - minio123
+  - secret_access_key
+  - access_key_id
+  - minio-user-secret
+- id: HASH-COLLISION
+  severity: Minor
+  category: crypto
+  source_trust: N/A
+  file: internal/controller/services/gateway/gateway_support.go
+  lines: null
+  title: Auth config hash uses undelimited string concatenation
+  description: 'calculateAuthConfigHash concatenates clientID + clientSecret + cookieSecret without delimiter before SHA256.
+    Different combinations can produce identical hashes (e.g., id="ab", secret="c" vs id="a", secret="bc").
 
-  # MCP-UNAUTH REMOVED: cmd/mcp-server/main.go does not exist in this repo.
+    '
+  detection_signals:
+  - calculateAuthConfigHash
+  - sha256
+  - clientID
+  - clientSecret
+  - concatenat
+  - hash
+- id: RBAC-WILDCARD-GROUP
+  severity: Important
+  category: rbac
+  source_trust: N/A
+  file: internal/controller/datasciencecluster/kubebuilder_rbac.go
+  lines: null
+  title: RBAC markers use groups=* matching any API group
+  description: 'kubebuilder RBAC markers grant access to services, deployments, replicasets, and statefulsets with groups="*"
+    which matches ANY API group, not just the core group. This grants access to custom API group resources with the same resource
+    name.
 
-  - id: UNPINNED-AUTH-IMG
-    severity: Minor
-    category: supply_chain
-    source_trust: N/A
-    file: internal/controller/services/gateway/gateway_support.go
-    lines: null
-    title: "Security-critical auth proxy images use unpinned :latest tags"
-    description: >
-      Fallback container images for kube-auth-proxy and nginx redirect
-      use :latest tags. Production images are set via RELATED_IMAGE env
-      vars but no runtime guard ensures the fallback is never used in
-      production.
-    detection_signals:
-      - "getKubeAuthProxyImage"
-      - "getDashboardRedirectImage"
-      - ":latest"
-      - "RELATED_IMAGE"
-      - "unpinned"
-      - "fallback"
-      - "container image"
-      - "gateway_support"
-      - "RELATED_IMAGE"
+    '
+  detection_signals:
+  - groups="*"
+  - groups=*
+  - any API group
+  - kubebuilder_rbac
+  - services
+  - deployments
+- id: ANNOTATION-TYPO
+  severity: Minor
+  category: input_validation
+  source_trust: N/A
+  file: pkg/metadata/annotations/annotations.go
+  lines: null
+  title: Exported constant has persistent typo in name
+  description: 'InjectionOfCABundleAnnotatoion is exported with "Annotatoion" instead of "Annotation". Consumers must use
+    the typo to reference the constant, making it fragile to future corrections.
 
-  - id: SSL-SKIP-VERIFY
-    severity: Minor
-    category: access_control
-    source_trust: N/A
-    file: internal/controller/services/gateway/resources/kube-auth-proxy-oauth-deployment.tmpl.yaml
-    lines: null
-    title: "OAuth2 proxy ssl-insecure-skip-verify controlled by API field without admission guard"
-    description: >
-      ssl-insecure-skip-verify is templated from user-facing
-      GatewayConfig.Spec.VerifyProviderCertificate field. Defaults to true
-      but no webhook prevents disabling TLS verification in production.
-    detection_signals:
-      - "ssl-insecure-skip-verify"
-      - "InsecureSkipVerify"
-      - "VerifyProviderCertificate"
-      - "TLS verification"
-      - "TLS bypass"
-      - "oauth-deployment"
-      - "GatewayConfig"
+    '
+  detection_signals:
+  - Annotatoion
+  - InjectionOfCABundle
+  - typo
+  - annotations.go
+- id: CRD-CACHE-ALL
+  severity: Important
+  category: input_validation
+  source_trust: Internal
+  file: cmd/cloudmanager/app/cache.go
+  lines: null
+  title: CRD informer caches all CustomResourceDefinitions cluster-wide
+  description: 'CloudManager caches all CRDs without label or field selector. On clusters with hundreds of CRDs, this wastes
+    memory and increases API server load.
 
-  - id: AUTH-DEFAULT
-    severity: Minor
-    category: access_control
-    source_trust: N/A
-    file: internal/controller/dscinitialization/auth.go
-    lines: null
-    title: "Default Auth CR grants platform access to all authenticated users"
-    description: >
-      BuildDefaultAuth() creates default Auth CR with
-      AllowedGroups: ["system:authenticated"]. Administrators may not realize
-      the default grants platform access to every cluster user.
-    detection_signals:
-      - "BuildDefaultAuth"
-      - "AllowedGroups"
-      - "system:authenticated"
-      - "default"
-      - "auth.go"
-      - "authenticated"
-      - "all users"
+    '
+  detection_signals:
+  - CustomResourceDefinition
+  - cache
+  - ByObject
+  - cache.go
+  - cluster-wide
+- id: ERROR-WRAP-DROP
+  severity: Minor
+  category: input_validation
+  source_trust: N/A
+  file: internal/controller/services/auth/auth_controller_actions.go
+  lines: null
+  title: Error wrapping dropped in bindRole/bindClusterRole
+  description: 'Error wrapping in bindRole and bindClusterRole discards the original error type, preventing callers from using
+    errors.Is/As for specific error handling.
 
-  - id: UNPINNED-UBI
-    severity: Minor
-    category: supply_chain
-    source_trust: N/A
-    file: Dockerfiles/Dockerfile
-    lines: null
-    title: "Final container image uses unpinned UBI minimal :latest tag"
-    description: >
-      Final build stage FROM uses ubi9/ubi-minimal:latest without digest
-      pinning. Builder stage pins Go version but runtime base is not pinned,
-      making builds non-reproducible.
-    detection_signals:
-      - "ubi-minimal"
-      - "ubi9"
-      - ":latest"
-      - "Dockerfile"
-      - "unpinned"
-      - "digest"
-      - "base image"
-      - "FROM"
-      - "reproducible"
+    '
+  detection_signals:
+  - bindRole
+  - bindClusterRole
+  - error
+  - wrap
+  - fmt.Errorf
+- id: MAP-ITERATION-ORDER
+  severity: Minor
+  category: input_validation
+  source_trust: N/A
+  file: internal/controller/components/registry/registry.go
+  lines: null
+  title: Component registry iterates over Go map with non-deterministic order
+  description: 'ForEach iterates over a Go map which has non-deterministic iteration order. Component initialization order
+    varies between reconcile loops.
 
-  # --- Findings discovered by eval runs (added v2.1) ---
+    '
+  detection_signals:
+  - ForEach
+  - registry
+  - map
+  - non-deterministic
+  - iteration
+  - order
+- id: PERF-DISK-IO-RECONCILE
+  severity: Minor
+  category: input_validation
+  source_trust: Internal
+  file: pkg/deploy/envParams.go
+  lines: null
+  title: ApplyParams performs disk I/O on every reconcile
+  description: 'ApplyParams reads and rewrites manifest files from disk on every reconcile loop for multiple components. Should
+    cache or use embed.FS directly.
 
-  - id: RBAC-WILDCARD-VERB
-    severity: Important
-    category: rbac
-    source_trust: N/A
-    file: internal/controller/datasciencecluster/kubebuilder_rbac.go
-    lines: null
-    title: "Wildcard RBAC verbs on RBAC resources grant escalate and bind capabilities"
-    description: >
-      verbs=* on roles, rolebindings, clusterroles, clusterrolebindings
-      includes the escalate and bind verbs, bypassing Kubernetes privilege
-      escalation prevention.
-    detection_signals:
-      - "verbs=*"
-      - "escalate"
-      - "bind"
-      - "rbac.authorization.k8s.io"
-      - "clusterroles"
-      - "kubebuilder_rbac"
-      - "wildcard"
+    '
+  detection_signals:
+  - ApplyParams
+  - envParams
+  - ReadFile
+  - WriteFile
+  - reconcile
+  - disk
+- id: PERF-NODE-LIST-ALL
+  severity: Important
+  category: input_validation
+  source_trust: Internal
+  file: internal/controller/components/kueue/kueue_support.go
+  lines: null
+  title: Kueue reconciler lists all cluster nodes without selectors
+  description: 'Node listing without label or field selectors on large clusters fetches hundreds of node objects per reconcile.
 
-  - id: PODS-EXEC
-    severity: Important
-    category: rbac
-    source_trust: N/A
-    file: internal/controller/datasciencecluster/kubebuilder_rbac.go
-    lines: null
-    title: "Operator SA granted pods/exec create permission enables lateral movement"
-    description: >
-      pods/exec create permission on cluster-wide scope allows the operator
-      SA to exec into any running pod, enabling lateral movement if the
-      SA is compromised.
-    detection_signals:
-      - "pods/exec"
-      - "exec"
-      - "lateral"
-      - "kubebuilder_rbac"
+    '
+  detection_signals:
+  - Node
+  - List
+  - kueue
+  - selector
+  - cluster
+- id: QUAL-DUPLICATE-SWITCH
+  severity: Minor
+  category: input_validation
+  source_trust: N/A
+  file: internal/controller/services/gateway/gateway_support.go
+  lines: null
+  title: validateGatewayConfig does not perform validation
+  description: 'Function named validateGatewayConfig retrieves config but does not validate it. Misleading name suggests validation
+    that does not occur.
 
-  - id: OAUTH-AUTO-GRANT
-    severity: Minor
-    category: access_control
-    source_trust: N/A
-    file: internal/controller/services/gateway/gateway_support.go
-    lines: null
-    title: "OAuth client uses GrantHandlerAuto bypassing user consent"
-    description: >
-      OAuthClient created with GrantHandlerAuto automatically approves
-      authorization requests without user consent prompts.
-    detection_signals:
-      - "GrantHandlerAuto"
-      - "GrantHandler"
-      - "OAuthClient"
-      - "consent"
+    '
+  detection_signals:
+  - validateGatewayConfig
+  - misleading
+  - validate
+  - gateway_support
+- id: QUAL-HARDCODED-NS
+  severity: Minor
+  category: input_validation
+  source_trust: N/A
+  file: internal/controller/services/auth/auth_controller_actions.go
+  lines: null
+  title: Hardcoded namespace strings scattered without constants
+  description: 'Namespace names like "opendatahub" and "redhat-ods-applications" appear as raw string literals across multiple
+    files without centralized constants.
 
-  # FILE-MODE-ZERO REMOVED: ReplaceStringsInFile and MatchLineInFile no longer
-  # exist in pkg/common/common.go. The functions were refactored out.
+    '
+  detection_signals:
+  - opendatahub
+  - redhat-ods
+  - namespace
+  - hardcoded
+  - string
+  - constant
+- id: ARCH-SECRET-CACHE-WIDE
+  severity: Important
+  category: input_validation
+  source_trust: Internal
+  file: cmd/main.go
+  lines: null
+  title: Secret and ConfigMap cache watches all objects in watched namespaces
+  description: 'Informer cache for Secrets and ConfigMaps in watched namespaces has no label selector, caching ALL secrets
+    including ones the operator does not need. Memory and API server load concern.
 
-  - id: WEBHOOK-SA-ORPHAN
-    severity: Minor
-    category: data_flow
-    source_trust: N/A
-    file: pkg/webhook/utils.go
-    lines: null
-    title: "ServiceAccount creation in webhook without ownership tracking"
-    description: >
-      CreateSA creates ServiceAccounts during webhook admission without
-      owner references, causing orphaned resources when the parent
-      InferenceService is deleted.
-    detection_signals:
-      - "CreateSA"
-      - "ServiceAccount"
-      - "owner"
-      - "orphan"
-      - "OwnerReference"
-      - "webhook"
-      - "utils.go"
-      - "cleanup"
-      - "webhook"
+    '
+  detection_signals:
+  - Secret
+  - ConfigMap
+  - cache
+  - ByObject
+  - selector
+  - namespace
+- id: PERF-N1-HARDWARE
+  severity: Minor
+  category: input_validation
+  source_trust: Internal
+  file: cmd/main.go
+  lines: null
+  title: Hardcoded component registration list requires code changes
+  description: 'Components and services are registered via hardcoded lists in main.go. Adding a new component requires modifying
+    main.go and recompiling the operator.
 
-  - id: AUTH-CR-SILENT
-    severity: Minor
-    category: access_control
-    source_trust: N/A
-    file: internal/controller/dscinitialization/auth.go
-    lines: null
-    title: "CreateAuth silently accepts existing Auth CR without validation"
-    description: >
-      CreateAuth returns nil if Auth CR exists without validating its
-      configuration. A manually modified Auth CR with weakened groups
-      persists indefinitely.
-    detection_signals:
-      - "CreateAuth"
-      - "Auth CR"
-      - "exists"
-      - "validation"
-      - "dscinitialization"
-      - "silent"
-      - "default auth"
-
-  # --- Findings from eval runs (added v2.4) ---
-
-  - id: GOMEMLIMIT-MISSING
-    severity: Important
-    category: input_validation
-    source_trust: Internal
-    file: config/manager/manager.yaml
-    lines: null
-    title: "Missing GOMEMLIMIT environment variable despite 4Gi memory limit"
-    description: >
-      Operator deployment sets 4Gi memory limit but does not set
-      GOMEMLIMIT. Without it, Go runtime defaults to unlimited heap
-      and will OOM-kill at the container limit instead of triggering
-      GC earlier. Standard practice is GOMEMLIMIT=0.9*limit.
-    detection_signals:
-      - "GOMEMLIMIT"
-      - "memory"
-      - "resources"
-      - "limits"
-      - "manager.yaml"
-
-  # TEST-CREDS-COMMITTED REMOVED: found in 1/3 runs, not reproducible
-  # - id: TEST-CREDS-COMMITTED
-    severity: Minor
-    category: secret_management
-    source_trust: N/A
-    file: opt/manifests/kserve/overlays/test/minio/minio-user-secret.yaml
-    lines: null
-    title: "Hardcoded test credentials committed in secret manifest"
-    description: >
-      Minio test secret contains hardcoded access_key_id "minio" and
-      secret_access_key "minio123". While marked as test overlay,
-      committed credentials can be accidentally used in production
-      and appear in container images.
-    detection_signals:
-      - "minio"
-      - "minio123"
-      - "secret_access_key"
-      - "access_key_id"
-      - "minio-user-secret"
-
-  - id: HASH-COLLISION
-    severity: Minor
-    category: crypto
-    source_trust: N/A
-    file: internal/controller/services/gateway/gateway_support.go
-    lines: null
-    title: "Auth config hash uses undelimited string concatenation"
-    description: >
-      calculateAuthConfigHash concatenates clientID + clientSecret +
-      cookieSecret without delimiter before SHA256. Different
-      combinations can produce identical hashes (e.g., id="ab",
-      secret="c" vs id="a", secret="bc").
-    detection_signals:
-      - "calculateAuthConfigHash"
-      - "sha256"
-      - "clientID"
-      - "clientSecret"
-      - "concatenat"
-      - "hash"
-
-  - id: RBAC-WILDCARD-GROUP
-    severity: Important
-    category: rbac
-    source_trust: N/A
-    file: internal/controller/datasciencecluster/kubebuilder_rbac.go
-    lines: null
-    title: "RBAC markers use groups=* matching any API group"
-    description: >
-      kubebuilder RBAC markers grant access to services, deployments,
-      replicasets, and statefulsets with groups="*" which matches ANY
-      API group, not just the core group. This grants access to custom
-      API group resources with the same resource name.
-    detection_signals:
-      - "groups=\"*\""
-      - "groups=*"
-      - "any API group"
-      - "kubebuilder_rbac"
-      - "services"
-      - "deployments"
-
-  - id: ANNOTATION-TYPO
-    severity: Minor
-    category: input_validation
-    source_trust: N/A
-    file: pkg/metadata/annotations/annotations.go
-    lines: null
-    title: "Exported constant has persistent typo in name"
-    description: >
-      InjectionOfCABundleAnnotatoion is exported with "Annotatoion"
-      instead of "Annotation". Consumers must use the typo to
-      reference the constant, making it fragile to future corrections.
-    detection_signals:
-      - "Annotatoion"
-      - "InjectionOfCABundle"
-      - "typo"
-      - "annotations.go"
-
-  - id: CRD-CACHE-ALL
-    severity: Important
-    category: input_validation
-    source_trust: Internal
-    file: cmd/cloudmanager/app/cache.go
-    lines: null
-    title: "CRD informer caches all CustomResourceDefinitions cluster-wide"
-    description: >
-      CloudManager caches all CRDs without label or field selector.
-      On clusters with hundreds of CRDs, this wastes memory and
-      increases API server load.
-    detection_signals:
-      - "CustomResourceDefinition"
-      - "cache"
-      - "ByObject"
-      - "cache.go"
-      - "cluster-wide"
-
-  - id: ERROR-WRAP-DROP
-    severity: Minor
-    category: input_validation
-    source_trust: N/A
-    file: internal/controller/services/auth/auth_controller_actions.go
-    lines: null
-    title: "Error wrapping dropped in bindRole/bindClusterRole"
-    description: >
-      Error wrapping in bindRole and bindClusterRole discards the
-      original error type, preventing callers from using errors.Is/As
-      for specific error handling.
-    detection_signals:
-      - "bindRole"
-      - "bindClusterRole"
-      - "error"
-      - "wrap"
-      - "fmt.Errorf"
-
-  - id: MAP-ITERATION-ORDER
-    severity: Minor
-    category: input_validation
-    source_trust: N/A
-    file: internal/controller/components/registry/registry.go
-    lines: null
-    title: "Component registry iterates over Go map with non-deterministic order"
-    description: >
-      ForEach iterates over a Go map which has non-deterministic
-      iteration order. Component initialization order varies between
-      reconcile loops.
-    detection_signals:
-      - "ForEach"
-      - "registry"
-      - "map"
-      - "non-deterministic"
-      - "iteration"
-      - "order"
-
-  # --- Performance findings (added v3.2) ---
-
-  - id: PERF-DISK-IO-RECONCILE
-    severity: Minor
-    category: input_validation
-    source_trust: Internal
-    file: pkg/deploy/envParams.go
-    lines: null
-    title: "ApplyParams performs disk I/O on every reconcile"
-    description: >
-      ApplyParams reads and rewrites manifest files from disk on every
-      reconcile loop for multiple components. Should cache or use
-      embed.FS directly.
-    detection_signals:
-      - "ApplyParams"
-      - "envParams"
-      - "ReadFile"
-      - "WriteFile"
-      - "reconcile"
-      - "disk"
-
-  - id: PERF-NODE-LIST-ALL
-    severity: Important
-    category: input_validation
-    source_trust: Internal
-    file: internal/controller/components/kueue/kueue_support.go
-    lines: null
-    title: "Kueue reconciler lists all cluster nodes without selectors"
-    description: >
-      Node listing without label or field selectors on large clusters
-      fetches hundreds of node objects per reconcile.
-    detection_signals:
-      - "Node"
-      - "List"
-      - "kueue"
-      - "selector"
-      - "cluster"
-
-  # --- Quality findings (added v3.2) ---
-
-  - id: QUAL-DUPLICATE-SWITCH
-    severity: Minor
-    category: input_validation
-    source_trust: N/A
-    file: internal/controller/services/auth/auth_controller_actions.go
-    lines: null
-    title: "Duplicate switch cases for ManagedRhoai and SelfManagedRhoai"
-    description: >
-      createDefaultGroup has identical case branches for ManagedRhoai
-      and SelfManagedRhoai. Should be collapsed into a single case.
-    detection_signals:
-      - "ManagedRhoai"
-      - "SelfManagedRhoai"
-      - "createDefaultGroup"
-      - "switch"
-      - "duplicate"
-      - "identical"
-
-  # QUAL-MISLEADING-VALIDATE REMOVED: found in 1/3 runs, not reproducible
-  # - id: QUAL-MISLEADING-VALIDATE
-    severity: Minor
-    category: input_validation
-    source_trust: N/A
-    file: internal/controller/services/gateway/gateway_support.go
-    lines: null
-    title: "validateGatewayConfig does not perform validation"
-    description: >
-      Function named validateGatewayConfig retrieves config but does
-      not validate it. Misleading name suggests validation that does
-      not occur.
-    detection_signals:
-      - "validateGatewayConfig"
-      - "misleading"
-      - "validate"
-      - "gateway_support"
-
-  - id: QUAL-HARDCODED-NS
-    severity: Minor
-    category: input_validation
-    source_trust: N/A
-    file: internal/controller/services/auth/auth_controller_actions.go
-    lines: null
-    title: "Hardcoded namespace strings scattered without constants"
-    description: >
-      Namespace names like "opendatahub" and "redhat-ods-applications"
-      appear as raw string literals across multiple files without
-      centralized constants.
-    detection_signals:
-      - "opendatahub"
-      - "redhat-ods"
-      - "namespace"
-      - "hardcoded"
-      - "string"
-      - "constant"
-
-  # --- Architecture findings (added v3.2) ---
-
-  - id: ARCH-SECRET-CACHE-WIDE
-    severity: Important
-    category: input_validation
-    source_trust: Internal
-    file: cmd/main.go
-    lines: null
-    title: "Secret and ConfigMap cache watches all objects in watched namespaces"
-    description: >
-      Informer cache for Secrets and ConfigMaps in watched namespaces
-      has no label selector, caching ALL secrets including ones the
-      operator does not need. Memory and API server load concern.
-    detection_signals:
-      - "Secret"
-      - "ConfigMap"
-      - "cache"
-      - "ByObject"
-      - "selector"
-      - "namespace"
-
-  - id: PERF-N1-HARDWARE
-    severity: Minor
-    category: input_validation
-    source_trust: Internal
-    file: internal/controller/components/dashboard/dashboard_controller_actions.go
-    lines: null
-    title: "N+1 API call pattern in hardware profile reconciliation"
-    description: >
-      Dashboard reconciler issues individual API calls per hardware
-      profile instead of batch listing. Scales poorly with profile count.
-    detection_signals:
-      - "HardwareProfile"
-      - "hardwareprofile"
-      - "reconcile"
-      - "N+1"
-      - "dashboard"
-
-  # PERF-DEEPCOPY-HASH REMOVED: found in 0/3 runs, not reproducible
-  # - id: PERF-DEEPCOPY-HASH
-    severity: Minor
-    category: input_validation
-    source_trust: Internal
-    file: pkg/resources/resources.go
-    lines: null
-    title: "DeepCopy and spew.Fprintf in hash function on every deploy check"
-    description: >
-      Hash computation performs DeepCopy of the entire object then
-      spew.Fprintf with SortKeys. Expensive for large objects on
-      every reconcile cache check.
-    detection_signals:
-      - "DeepCopy"
-      - "spew"
-      - "hash"
-      - "resources.go"
-      - "SortKeys"
-
-  # ARCH-HARDCODED-COMPONENTS REMOVED: found in 0/3 runs, not reproducible
-  # - id: ARCH-HARDCODED-COMPONENTS
-    severity: Minor
-    category: input_validation
-    source_trust: Internal
-    file: cmd/main.go
-    lines: null
-    title: "Hardcoded component registration list requires code changes"
-    description: >
-      Components and services are registered via hardcoded lists in
-      main.go. Adding a new component requires modifying main.go
-      and recompiling the operator.
-    detection_signals:
-      - "existingComponents"
-      - "existingServices"
-      - "hardcoded"
-      - "registration"
-      - "main.go"
+    '
+  detection_signals:
+  - existingComponents
+  - existingServices
+  - hardcoded
+  - registration
+  - main.go
+- id: B2-ARCH-012
+  severity: Minor
+  file: internal/controller/dscinitialization/dscinitialization_controller.go
+  title: watchAuthResource returns hardcoded reconcile request name instead of looking up actual DSCI instance name
+  detection_signals:
+  - watchAuthResource
+  - DSCI
+  - returns
+  - hardcoded
+  - reconcile
+- id: B2-PERF-001
+  severity: Important
+  file: pkg/controller/actions/gc/action_gc.go
+  title: GC action uses uncached DiscoveryClient, calling ServerPreferredResources + SelfSubjectRulesReview on every GC cycle
+  detection_signals:
+  - DiscoveryClient
+  - ServerPreferredResources
+  - SelfSubjectRulesReview
+  - action
+  - uncached
+- id: B2-PERF-005
+  severity: Minor
+  file: internal/controller/components/dashboard/dashboard_controller_actions.go
+  title: 'N+1 API call pattern in reconcileHardwareProfiles: per-item Get for each DashboardHardwareProfile'
+  detection_signals:
+  - reconcileHardwareProfiles
+  - DashboardHardwareProfile
+  - API
+  - pattern
+- id: B2-PERF-006
+  severity: Minor
+  file: pkg/controller/actions/resourcecacher/resourcecacher.go
+  title: ResourceCacher deep-copies entire cached resource list on every cache-hit reconcile via Clone()
+  detection_signals:
+  - ResourceCacher
+  - Clone
+  - copies
+  - entire
+  - cached
+- id: B2-QUAL-004
+  severity: Minor
+  file: internal/controller/datasciencecluster/kubebuilder_rbac.go
+  title: Monitoring RBAC markers duplicated verbatim, inflating generated ClusterRole with redundant rules
+  detection_signals:
+  - ClusterRole
+  - RBAC
+  - monitoring
+  - markers
+  - duplicated
+- id: B2-QUAL-009
+  severity: Minor
+  file: internal/controller/services/gateway/gateway_support.go
+  title: computeLegacyRedirectInfo uses strings.Replace to transform structured hostname, fragile if subdomain appears elsewhere
+    in domain
+  detection_signals:
+  - computeLegacyRedirectInfo
+  - strings
+  - replace
+  - transform
+  - structured
+- id: B2-QUAL-011
+  severity: Minor
+  file: api/datasciencecluster/v1/datasciencecluster_conversion.go
+  title: convertConditions uses strings.ReplaceAll on condition types, risking unintended substring matches if component names
+    overlap
+  detection_signals:
+  - convertConditions
+  - ReplaceAll
+  - strings
+  - condition
+  - risking
+- id: B2-SEC-015
+  severity: Important
+  file: .github/workflows/ci-build-push-images-on-pr.yaml
+  title: pull_request_target workflow checks out PR code and executes it with access to container registry secrets
+  detection_signals:
+  - pull_request_target
+  - workflow
+  - checks
+  - executes
+  - access
+- id: B2-SEC-016
+  severity: Important
+  file: .github/workflows/ci-build-push-e2e-tests-on-pr.yaml
+  title: Second pull_request_target workflow builds and pushes fork PR code to container registry without label gate
+  detection_signals:
+  - pull_request_target
+  - second
+  - workflow
+  - builds
+  - pushes
+- id: B2-SEC-013
+  severity: Important
+  file: opt/manifests/datasciencepipelines/argo/clusterrole.argo-aggregate-to-admin.yaml
+  title: Argo aggregate-to-admin ClusterRole grants clusterworkflowtemplates CRUD to all admin-role users
+  detection_signals:
+  - ClusterRole
+  - CRUD
+  - aggregate
+  - grants
+  - clusterworkflowtemplates
+- id: B2-SEC-007
+  severity: Important
+  file: config/segment/segment-key-secret.yaml
+  title: Segment.io write key committed as base64-encoded Kubernetes Secret in Git
+  detection_signals:
+  - segment
+  - committed
+  - encoded
+  - kubernetes
+  - secret

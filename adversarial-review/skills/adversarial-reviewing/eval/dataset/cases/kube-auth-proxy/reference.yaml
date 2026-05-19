@@ -1,103 +1,393 @@
-# Ground Truth: kube-auth-proxy verified findings
-# Source: adversarial-review skill output, manually verified against source code
-# Repo: opendatahub-io/kube-auth-proxy
-
 metadata:
   repo: opendatahub-io/kube-auth-proxy
-  corpus_version: "1.0"
+  corpus_version: '1.0'
   total_findings: 9
-
 findings:
-  - id: SEC-REDIS-TLS
-    severity: Important
-    category: crypto
-    file: pkg/sessions/redis/redis_store.go
-    title: "Redis TLS connection sets InsecureSkipVerify=true"
-    detection_signals:
-      - "InsecureSkipVerify"
-      - "redis"
-      - "TLS"
-
-  - id: SEC-GLOBAL-TRANSPORT
-    severity: Important
-    category: crypto
-    file: pkg/validation/options.go
-    title: "Global --ssl-insecure-skip-verify mutates process-wide default transport"
-    detection_signals:
-      - "DefaultTransport"
-      - "InsecureSkipVerify"
-      - "SSLInsecureSkipVerify"
-
-  - id: SEC-CFB-NO-AUTH
-    severity: Important
-    category: crypto
-    file: pkg/encryption/cipher.go
-    title: "CFB cipher mode provides no authentication"
-    detection_signals:
-      - "CFB"
-      - "NewCFBEncrypter"
-      - "cipher"
-      - "authentication"
-
-  - id: SEC-PATH-BYPASS
-    severity: Important
-    category: access_control
-    file: oauthproxy.go
-    title: "Path-based auth bypass via IsAllowedRequest"
-    detection_signals:
-      - "IsAllowedRequest"
-      - "allowedPaths"
-      - "bypass"
-
-  - id: CORR-SHADOW-ATTRS
-    severity: Important
-    category: input_validation
-    file: kube-rbac-proxy/pkg/proxy/proxy.go
-    title: "Variable shadowing in GetRequestAttributes causes empty allAttrs"
-    detection_signals:
-      - "allAttrs"
-      - "shadow"
-      - ":="
-      - "GetRequestAttributes"
-
-  - id: CORR-INT32-OVERFLOW
-    severity: Important
-    category: bounds_check
-    file: kube-rbac-proxy/cmd/kube-rbac-proxy/app/kube-rbac-proxy.go
-    title: "Integer overflow in HTTP/2 buffer size via int32 multiplication"
-    detection_signals:
-      - "int32"
-      - "MaxUploadBuffer"
-      - "overflow"
-      - "HTTP/2"
-
-  - id: CORR-RACE-LOGOUT
-    severity: Minor
-    category: data_flow
-    file: oauthproxy.go
-    title: "Race condition on cachedLogoutURL field"
-    detection_signals:
-      - "cachedLogoutURL"
-      - "race"
-      - "concurrent"
-
-  - id: PERF-TEMPLATE-ALLOC
-    severity: Important
-    category: input_validation
-    file: kube-rbac-proxy/pkg/proxy/proxy.go
-    title: "Template parsed and allocated on every proxied request"
-    detection_signals:
-      - "template.New"
-      - "Parse"
-      - "every request"
-
-  - id: SEC-REGEX-PATH
-    severity: Important
-    category: access_control
-    file: kube-rbac-proxy/pkg/filters/path.go
-    title: "WithAllowPaths regex-based path matching may bypass auth"
-    detection_signals:
-      - "WithAllowPaths"
-      - "regex"
-      - "bypass"
-      - "path"
+- id: SEC-REDIS-TLS
+  severity: Important
+  category: crypto
+  file: pkg/sessions/redis/redis_store.go
+  title: Redis TLS connection sets InsecureSkipVerify=true
+  detection_signals:
+  - InsecureSkipVerify
+  - redis
+  - TLS
+- id: SEC-GLOBAL-TRANSPORT
+  severity: Important
+  category: crypto
+  file: pkg/validation/options.go
+  title: Global --ssl-insecure-skip-verify mutates process-wide default transport
+  detection_signals:
+  - DefaultTransport
+  - InsecureSkipVerify
+  - SSLInsecureSkipVerify
+- id: SEC-CFB-NO-AUTH
+  severity: Important
+  category: crypto
+  file: pkg/encryption/cipher.go
+  title: CFB cipher mode provides no authentication
+  detection_signals:
+  - CFB
+  - NewCFBEncrypter
+  - cipher
+  - authentication
+- id: SEC-PATH-BYPASS
+  severity: Important
+  category: access_control
+  file: oauthproxy.go
+  title: Path-based auth bypass via IsAllowedRequest
+  detection_signals:
+  - IsAllowedRequest
+  - allowedPaths
+  - bypass
+- id: CORR-SHADOW-ATTRS
+  severity: Important
+  category: input_validation
+  file: kube-rbac-proxy/pkg/proxy/proxy.go
+  title: Variable shadowing in GetRequestAttributes causes empty allAttrs
+  detection_signals:
+  - allAttrs
+  - shadow
+  - :=
+  - GetRequestAttributes
+- id: CORR-INT32-OVERFLOW
+  severity: Important
+  category: bounds_check
+  file: kube-rbac-proxy/cmd/kube-rbac-proxy/app/kube-rbac-proxy.go
+  title: Integer overflow in HTTP/2 buffer size via int32 multiplication
+  detection_signals:
+  - int32
+  - MaxUploadBuffer
+  - overflow
+  - HTTP/2
+- id: CORR-RACE-LOGOUT
+  severity: Minor
+  category: data_flow
+  file: oauthproxy.go
+  title: Race condition on cachedLogoutURL field
+  detection_signals:
+  - cachedLogoutURL
+  - race
+  - concurrent
+- id: PERF-TEMPLATE-ALLOC
+  severity: Important
+  category: input_validation
+  file: kube-rbac-proxy/pkg/proxy/proxy.go
+  title: Template parsed and allocated on every proxied request
+  detection_signals:
+  - template.New
+  - Parse
+  - every request
+- id: SEC-REGEX-PATH
+  severity: Important
+  category: access_control
+  file: kube-rbac-proxy/pkg/filters/path.go
+  title: WithAllowPaths regex-based path matching may bypass auth
+  detection_signals:
+  - WithAllowPaths
+  - regex
+  - bypass
+  - path
+- id: B2-ARCH-002
+  severity: Important
+  file: oauthproxy.go
+  title: OAuthProxy struct has excessive responsibility sprawl, mixing auth orchestration, session management, routing, server
+    lifecycle, and logout discovery
+  detection_signals:
+  - oauthproxy
+  - struct
+  - excessive
+  - responsibility
+  - sprawl
+- id: B2-ARCH-003
+  severity: Important
+  file: providers/openshift.go
+  title: OpenShiftProvider.GetLoginURL mutates shared provider state (LoginURL, RedeemURL) from concurrent HTTP handler goroutines
+  detection_signals:
+  - OpenShiftProvider
+  - GetLoginURL
+  - LoginURL
+  - RedeemURL
+  - HTTP
+- id: B2-ARCH-004
+  severity: Minor
+  file: cmd/entrypoint/main.go
+  title: Entrypoint binary uses exec.Command instead of syscall.Exec, creating unnecessary process tree depth
+  detection_signals:
+  - entrypoint
+  - binary
+  - command
+  - syscall
+  - creating
+- id: B2-ARCH-006
+  severity: Minor
+  file: Dockerfile.redhat
+  title: 'FIPS compliance inconsistency: Dockerfile.redhat builds kube-rbac-proxy without explicit FIPS flags'
+  detection_signals:
+  - FIPS
+  - compliance
+  - inconsistency
+  - dockerfile
+  - redhat
+- id: B2-ARCH-007
+  severity: Minor
+  file: oauthproxy.go
+  title: Session chain construction uses concrete provider type assertion instead of interface-based polymorphism
+  detection_signals:
+  - session
+  - construction
+  - concrete
+  - provider
+  - assertion
+- id: B2-ARCH-008
+  severity: Minor
+  file: providers/openshift.go
+  title: OpenShift provider embeds platform-specific infrastructure (service account discovery, API server URL construction)
+    that should be behind a platform a
+  detection_signals:
+  - OpenShift
+  - API
+  - URL
+  - provider
+  - embeds
+- id: B2-ARCH-010
+  severity: Important
+  file: kube-rbac-proxy/cmd/kube-rbac-proxy/app/kube-rbac-proxy.go
+  title: kube-rbac-proxy monolithic Run function spans 300+ lines orchestrating authentication, authorization, TLS, and HTTP
+    serving without clear phase bounda
+  detection_signals:
+  - TLS
+  - HTTP
+  - monolithic
+  - function
+  - orchestrating
+- id: B2-ARCH-005
+  severity: Minor
+  file: .tekton/kube-auth-proxy-push.yaml
+  title: Tekton push pipeline hardcodes output image tag to v3.4-ea.2, preventing automated version progression
+  detection_signals:
+  - tekton
+  - pipeline
+  - hardcodes
+  - output
+  - preventing
+- id: B2-CORR-001
+  severity: Important
+  file: pkg/providers/oidc/verifier.go
+  title: Type switch case interface{} matches all types, causing panic on non-string audience claims
+  detection_signals:
+  - switch
+  - interface
+  - matches
+  - string
+  - audience
+- id: B2-CORR-006
+  severity: Minor
+  file: oauthproxy.go
+  title: Latent nil pointer dereference in isTrustedIP when RemoteAddr is "@" and trustedIPs is nil
+  detection_signals:
+  - isTrustedIP
+  - RemoteAddr
+  - trustedIPs
+  - latent
+  - pointer
+- id: B2-CORR-008
+  severity: Important
+  file: kube-rbac-proxy/pkg/authz/auth.go
+  title: StaticAuthorizationConfig.Matches ignores configured Groups field, allowing any group to match
+  detection_signals:
+  - StaticAuthorizationConfig
+  - matches
+  - ignores
+  - configured
+  - groups
+- id: B2-CORR-009
+  severity: Minor
+  file: pkg/apis/sessions/session_state.go
+  title: GetClaim panics on nil pointer dereference for created_at and expires_on claims when fields are nil
+  detection_signals:
+  - GetClaim
+  - created_at
+  - expires_on
+  - panics
+  - pointer
+- id: B2-PERF-007
+  severity: Minor
+  file: pkg/apis/sessions/session_state.go
+  title: LZ4 writer and reader allocated per session encode/decode without pooling
+  detection_signals:
+  - writer
+  - reader
+  - allocated
+  - session
+  - encode
+- id: B2-PERF-008
+  severity: Minor
+  file: pkg/cookies/csrf.go
+  title: ClearExtraCsrfCookies decrypts and unmarshals all CSRF cookies to sort by timestamp
+  detection_signals:
+  - ClearExtraCsrfCookies
+  - CSRF
+  - decrypts
+  - unmarshals
+  - cookies
+- id: B2-PERF-002
+  severity: Important
+  file: kube-rbac-proxy/cmd/kube-rbac-proxy/app/kube-rbac-proxy.go
+  title: Handler filter chain rebuilt on every request instead of being composed once at startup
+  detection_signals:
+  - handler
+  - filter
+  - rebuilt
+  - request
+  - composed
+- id: B2-PERF-003
+  severity: Minor
+  file: kube-rbac-proxy/cmd/kube-rbac-proxy/app/sanitazion.go
+  title: JSON unmarshal and re-marshal of full TokenReview on every log line containing "TokenReview"
+  detection_signals:
+  - TokenReview
+  - JSON
+  - unmarshal
+  - marshal
+  - containing
+- id: B2-PERF-004
+  severity: Minor
+  file: pkg/sessions/cookie/session_store.go
+  title: Regexp compiled on every Clear() call for cookie name matching
+  detection_signals:
+  - Clear
+  - regexp
+  - compiled
+  - cookie
+  - matching
+- id: B2-QUAL-004
+  severity: Minor
+  file: oauthproxy.go
+  title: buildHeadersChain logs misleading error message for response header injector failures
+  detection_signals:
+  - buildHeadersChain
+  - misleading
+  - message
+  - response
+  - header
+- id: B2-QUAL-005
+  severity: Minor
+  file: oauthproxy.go
+  title: SignInPage writes HTTP status header before error path that also writes headers, causing superfluous WriteHeader
+  detection_signals:
+  - SignInPage
+  - WriteHeader
+  - HTTP
+  - writes
+  - status
+- id: B2-QUAL-006
+  severity: Minor
+  file: providers/provider_data.go
+  title: context.TODO() used in production HTTP request paths prevents cancellation propagation from client disconnects
+  detection_signals:
+  - TODO
+  - HTTP
+  - context
+  - production
+  - request
+- id: B2-QUAL-007
+  severity: Minor
+  file: providers/providers.go
+  title: parseCodeChallengeMethod is a trivial wrapper that adds indirection without behavioral value
+  detection_signals:
+  - parseCodeChallengeMethod
+  - trivial
+  - wrapper
+  - indirection
+  - behavioral
+- id: B2-QUAL-008
+  severity: Minor
+  file: pkg/middleware/oauth_session.go
+  title: oauth_session.go is a near-complete structural duplicate of jwt_session.go with only regex and error messages changed
+  detection_signals:
+  - oauth_session
+  - jwt_session
+  - complete
+  - structural
+  - duplicate
+- id: B2-QUAL-011
+  severity: Minor
+  file: oauthproxy.go
+  title: checkAllowedEmails iterates over map keys instead of using direct map lookup
+  detection_signals:
+  - checkAllowedEmails
+  - iterates
+  - direct
+  - lookup
+- id: B2-SEC-016
+  severity: Important
+  file: oauthproxy.go
+  title: discoverLogoutURL uses end_session_endpoint from OIDC discovery without validating the URL host matches the OIDC
+    provider
+  detection_signals:
+  - discoverLogoutURL
+  - OIDC
+  - URL
+  - end_session_endpoint
+  - discovery
+- id: B2-SEC-013
+  severity: Minor
+  file: oauthproxy.go
+  title: decodeState silently ignores base64 decode errors, processing malformed OAuth state as raw text
+  detection_signals:
+  - decodeState
+  - silently
+  - ignores
+  - decode
+  - errors
+- id: B2-SEC-002
+  severity: Important
+  file: pkg/authentication/basic/htpasswd.go
+  title: HTPasswd supports SHA1 password hashing, which is cryptographically weak for password storage
+  detection_signals:
+  - htpasswd
+  - supports
+  - password
+  - hashing
+  - cryptographically
+- id: B2-SEC-003
+  severity: Important
+  file: pkg/apis/options/providers.go
+  title: OIDC nonce verification is disabled by default (InsecureSkipNonce defaults to true), weakening OAuth replay protection
+  detection_signals:
+  - InsecureSkipNonce
+  - OIDC
+  - verification
+  - disabled
+  - default
+- id: B2-SEC-006
+  severity: Minor
+  file: oauthproxy.go
+  title: BackendLogoutURL sends id_token in URL via http.Get, risking token leakage through server logs
+  detection_signals:
+  - BackendLogoutURL
+  - URL
+  - id_token
+  - risking
+  - leakage
+- id: B2-SEC-007
+  severity: Minor
+  file: kube-rbac-proxy/examples/verb-override/deployment.yaml
+  title: Example deployment uses unpinned :latest tag from personal registry
+  detection_signals:
+  - example
+  - deployment
+  - unpinned
+  - latest
+  - personal
+- id: B2-SEC-008
+  severity: Minor
+  file: contrib/local-environment/docker-compose-gitea.yaml
+  title: Third-party container images used without digest pinning in development environments
+  detection_signals:
+  - container
+  - images
+  - digest
+  - pinning
+  - development

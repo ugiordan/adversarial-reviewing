@@ -1,114 +1,411 @@
-# Ground Truth: odh-model-controller verified findings
-# Source: adversarial-review skill output, manually verified against source code
-# Repo: opendatahub-io/odh-model-controller
-
 metadata:
   repo: opendatahub-io/odh-model-controller
-  corpus_version: "1.0"
+  corpus_version: '1.0'
   total_findings: 10
-
 findings:
-  - id: ARCH-DOUBLE-START
-    severity: Critical
-    category: input_validation
-    file: cmd/main.go
-    title: "Double mgr.Start() call causes manager to start twice"
-    detection_signals:
-      - "mgr.Start"
-      - "Start(ctx)"
-      - "Start(signal"
-      - "double"
-
-  - id: CORR-BASH-TYPO
-    severity: Important
-    category: input_validation
-    file: internal/webhook/core/v1/pod_webhook.go
-    title: "Bash variable typo retires vs retries"
-    detection_signals:
-      - "retires"
-      - "retries"
-      - "typo"
-
-  - id: SEC-WEBHOOK-CREATE-ONLY
-    severity: Important
-    category: webhook
-    file: internal/webhook/serving/v1beta1/inferenceservice_webhook.go
-    title: "Webhook only covers create, not update"
-    detection_signals:
-      - "verbs=create"
-      - "webhook"
-      - "update"
-      - "ValidateUpdate"
-
-  - id: SEC-RBAC-ESCALATE
-    severity: Important
-    category: rbac
-    file: config/rbac/role.yaml
-    title: "ClusterRole grants explicit escalate verb"
-    detection_signals:
-      - "escalate"
-      - "rbac"
-      - "ClusterRole"
-
-  - id: SEC-CROSS-NS-SECRET
-    severity: Important
-    category: data_flow
-    file: api/nim/v1/account_types.go
-    title: "ObjectReference allows cross-namespace secret access"
-    detection_signals:
-      - "ObjectReference"
-      - "APIKeySecret"
-      - "cross-namespace"
-
-  - id: SEC-CERT-ENTROPY
-    severity: Important
-    category: randomness
-    file: internal/controller/utils/cert.go
-    title: "Certificate serial number limited to ~62 bits entropy"
-    detection_signals:
-      - "UnixNano"
-      - "rand.Int"
-      - "SerialNumber"
-      - "entropy"
-
-  - id: CORR-BODY-LEAK
-    severity: Important
-    category: data_flow
-    file: internal/controller/utils/nim.go
-    title: "HTTP response bodies never closed across NIM API calls"
-    detection_signals:
-      - "resp.Body"
-      - "ReadAll"
-      - "Close"
-      - "leak"
-
-  - id: CORR-SPLIT-BOUNDS
-    severity: Important
-    category: bounds_check
-    file: internal/controller/utils/nim.go
-    title: "Unguarded slice access on Split result for ResourceId"
-    detection_signals:
-      - "Split"
-      - "ResourceId"
-      - "parts[0]"
-      - "bounds"
-
-  - id: PERF-GOMEMLIMIT
-    severity: Important
-    category: input_validation
-    file: config/manager/manager.yaml
-    title: "Missing GOMEMLIMIT in controller deployment"
-    detection_signals:
-      - "GOMEMLIMIT"
-      - "memory"
-      - "manager.yaml"
-
-  - id: ARCH-TESTING-PROD
-    severity: Important
-    category: input_validation
-    file: internal/controller/nim/handlers/template_handler.go
-    title: "testing.Testing() used in production code path"
-    detection_signals:
-      - "testing.Testing"
-      - "production"
-      - "runtime"
+- id: ARCH-DOUBLE-START
+  severity: Critical
+  category: input_validation
+  file: cmd/main.go
+  title: Double mgr.Start() call causes manager to start twice
+  detection_signals:
+  - mgr.Start
+  - Start(ctx)
+  - Start(signal
+  - double
+- id: CORR-BASH-TYPO
+  severity: Important
+  category: input_validation
+  file: internal/webhook/core/v1/pod_webhook.go
+  title: Bash variable typo retires vs retries
+  detection_signals:
+  - retires
+  - retries
+  - typo
+- id: SEC-WEBHOOK-CREATE-ONLY
+  severity: Important
+  category: webhook
+  file: internal/webhook/serving/v1beta1/inferenceservice_webhook.go
+  title: Webhook only covers create, not update
+  detection_signals:
+  - verbs=create
+  - webhook
+  - update
+  - ValidateUpdate
+- id: SEC-RBAC-ESCALATE
+  severity: Important
+  category: rbac
+  file: config/rbac/role.yaml
+  title: ClusterRole grants explicit escalate verb
+  detection_signals:
+  - escalate
+  - rbac
+  - ClusterRole
+- id: SEC-CROSS-NS-SECRET
+  severity: Important
+  category: data_flow
+  file: api/nim/v1/account_types.go
+  title: ObjectReference allows cross-namespace secret access
+  detection_signals:
+  - ObjectReference
+  - APIKeySecret
+  - cross-namespace
+- id: SEC-CERT-ENTROPY
+  severity: Important
+  category: randomness
+  file: internal/controller/utils/cert.go
+  title: Certificate serial number limited to ~62 bits entropy
+  detection_signals:
+  - UnixNano
+  - rand.Int
+  - SerialNumber
+  - entropy
+- id: CORR-BODY-LEAK
+  severity: Important
+  category: data_flow
+  file: internal/controller/utils/nim.go
+  title: HTTP response bodies never closed across NIM API calls
+  detection_signals:
+  - resp.Body
+  - ReadAll
+  - Close
+  - leak
+- id: CORR-SPLIT-BOUNDS
+  severity: Important
+  category: bounds_check
+  file: internal/controller/utils/nim.go
+  title: Unguarded slice access on Split result for ResourceId
+  detection_signals:
+  - Split
+  - ResourceId
+  - parts[0]
+  - bounds
+- id: PERF-GOMEMLIMIT
+  severity: Important
+  category: input_validation
+  file: config/manager/manager.yaml
+  title: Missing GOMEMLIMIT in controller deployment
+  detection_signals:
+  - GOMEMLIMIT
+  - memory
+  - manager.yaml
+- id: ARCH-TESTING-PROD
+  severity: Important
+  category: input_validation
+  file: internal/controller/nim/handlers/template_handler.go
+  title: testing.Testing() used in production code path
+  detection_signals:
+  - testing.Testing
+  - production
+  - runtime
+- id: B2-ARCH-009
+  severity: Important
+  file: internal/controller/serving/servingruntime_controller.go
+  title: reconcileRoleBinding has unreachable dead code for non-monitoring namespace RoleBinding lifecycle management
+  detection_signals:
+  - reconcileRoleBinding
+  - RoleBinding
+  - unreachable
+  - monitoring
+  - namespace
+- id: B2-ARCH-010
+  severity: Minor
+  file: internal/controller/serving/servingruntime_controller.go
+  title: ServingRuntimeReconciler.Reconcile unconditionally creates CA certificate on every reconcile regardless of multi-node
+    presence
+  detection_signals:
+  - ServingRuntimeReconciler
+  - reconcile
+  - unconditionally
+  - certificate
+  - regardless
+- id: B2-ARCH-002
+  severity: Important
+  file: internal/controller/serving/inferencegraph_controller.go
+  title: InferenceGraphReconciler.Reconcile has redundant IsNotFound check and silently drops all non-NotFound API errors
+  detection_signals:
+  - InferenceGraphReconciler
+  - IsNotFound
+  - NotFound
+  - API
+  - reconcile
+- id: B2-ARCH-003
+  severity: Minor
+  file: internal/controller/serving/reconcilers/kserve_raw_inferenceservice_reconciler.go
+  title: Hardcoded sub-resource reconciler list requires code changes to add/remove components
+  detection_signals:
+  - hardcoded
+  - resource
+  - reconciler
+  - requires
+  - changes
+- id: B2-ARCH-004
+  severity: Important
+  file: internal/controller/serving/reconcilers/kserve_raw_clusterrolebinding_reconciler.go
+  title: Inconsistent ServiceAccountName resolution between createDesiredResource, getExistingResource, and Delete causes
+    CRB lookup failure
+  detection_signals:
+  - ServiceAccountName
+  - createDesiredResource
+  - getExistingResource
+  - CRB
+  - inconsistent
+- id: B2-ARCH-005
+  severity: Minor
+  file: internal/controller/serving/reconcilers/serviceaccount_reconciler.go
+  title: 'ServiceAccountReconciler.processDelta update branch is a no-op: sends unchanged DeepCopy back to API server'
+  detection_signals:
+  - ServiceAccountReconciler
+  - processDelta
+  - DeepCopy
+  - API
+  - update
+- id: B2-ARCH-006
+  severity: Minor
+  file: internal/controller/serving/inferenceservice_controller.go
+  title: ServingRuntime watch fan-out reconciles all ISVCs in namespace regardless of runtime association
+  detection_signals:
+  - ServingRuntime
+  - reconciles
+  - namespace
+  - regardless
+  - runtime
+- id: B2-ARCH-007
+  severity: Minor
+  file: cmd/main.go
+  title: Cache configuration for ConfigMaps lacks label or field selector, caching all ConfigMaps across watched namespaces
+  detection_signals:
+  - ConfigMaps
+  - configuration
+  - selector
+  - caching
+  - watched
+- id: B2-CORR-010
+  severity: Important
+  file: internal/controller/serving/reconcilers/kserve_raw_clusterrolebinding_reconciler.go
+  title: getExistingResource uses wrong condition for ServiceAccountName override, creating CRB name mismatch with createDesiredResource
+  detection_signals:
+  - getExistingResource
+  - ServiceAccountName
+  - createDesiredResource
+  - CRB
+  - condition
+- id: B2-CORR-011
+  severity: Minor
+  file: internal/controller/serving/reconcilers/kserve_raw_route_reconciler.go
+  title: Route reconciler returns nil error when no services found, masking the condition and potentially deleting routes
+  detection_signals:
+  - reconciler
+  - returns
+  - services
+  - masking
+  - condition
+- id: B2-CORR-002
+  severity: Important
+  file: internal/controller/nim/handlers/configmap_handler.go
+  title: Nil pointer dereference on account.Status.LastSuccessfulValidation when checking config refresh timing
+  detection_signals:
+  - LastSuccessfulValidation
+  - pointer
+  - dereference
+  - account
+  - status
+- id: B2-CORR-003
+  severity: Minor
+  file: internal/controller/nim/handlers/handlers.go
+  title: mergeStringMaps mutates the caller's existing map, causing unintended side effects on Kubernetes resource labels/annotations
+  detection_signals:
+  - mergeStringMaps
+  - mutates
+  - caller
+  - existing
+  - unintended
+- id: B2-CORR-004
+  severity: Minor
+  file: test/utils/utils.go
+  title: WaitForConfigMap has off-by-one error making the retry loop exit one iteration early and has unreachable sleep
+  detection_signals:
+  - WaitForConfigMap
+  - making
+  - iteration
+  - unreachable
+- id: B2-CORR-005
+  severity: Important
+  file: internal/controller/utils/kuadrant.go
+  title: Potential nil pointer dereference when accessing nested Authorino TLS config fields
+  detection_signals:
+  - TLS
+  - potential
+  - pointer
+  - dereference
+  - accessing
+- id: B2-CORR-006
+  severity: Important
+  file: internal/controller/nim/handlers/handlers.go
+  title: shouldUpdateReference returns true when newRef is nil, triggering unnecessary status updates and potentially clearing
+    valid references
+  detection_signals:
+  - shouldUpdateReference
+  - newRef
+  - returns
+  - triggering
+  - unnecessary
+- id: B2-PERF-006
+  severity: Minor
+  file: internal/controller/resources/authpolicy.go
+  title: AuthPolicy YAML template re-parsed on every reconcile instead of once at startup
+  detection_signals:
+  - AuthPolicy
+  - YAML
+  - template
+  - parsed
+  - reconcile
+- id: B2-PERF-007
+  severity: Minor
+  file: internal/controller/resources/authpolicy.go
+  title: FindLLMServiceFromGatewayAuthPolicy lists all LLMInferenceServices cluster-wide on every gateway AuthPolicy change
+  detection_signals:
+  - FindLLMServiceFromGatewayAuthPolicy
+  - AuthPolicy
+  - llminferenceservices
+  - cluster
+  - gateway
+- id: B2-PERF-001
+  severity: Important
+  file: internal/controller/serving/servingruntime_controller.go
+  title: Cluster-wide ServingRuntime list on every ray-ca-tls secret change triggers O(N) API calls and updates
+  detection_signals:
+  - ServingRuntime
+  - API
+  - cluster
+  - secret
+  - change
+- id: B2-PERF-004
+  severity: Minor
+  file: internal/controller/core/pod_controller.go
+  title: RSA 4096-bit key generation and Pod list on every pod reconcile causes redundant crypto operations during scale-up
+  detection_signals:
+  - RSA
+  - generation
+  - reconcile
+  - redundant
+  - crypto
+- id: B2-PERF-005
+  severity: Minor
+  file: internal/controller/serving/llm/llm_inferenceservice_controller.go
+  title: Gateway change handler lists all LLMInferenceServices across the cluster for each gateway event
+  detection_signals:
+  - gateway
+  - change
+  - handler
+  - llminferenceservices
+  - cluster
+- id: B2-PERF-003
+  severity: Important
+  file: internal/controller/core/pod_controller.go
+  title: PodReconciler watches all Pods cluster-wide, causing high memory usage from informer cache
+  detection_signals:
+  - PodReconciler
+  - watches
+  - cluster
+  - memory
+  - informer
+- id: B2-QUAL-002
+  severity: Minor
+  file: test/e2e/e2e_test.go
+  title: E2E test hardcodes port 8443 and HTTPS but deployment config uses port 8080 with HTTP
+  detection_signals:
+  - HTTPS
+  - HTTP
+  - hardcodes
+  - deployment
+  - config
+- id: B2-QUAL-004
+  severity: Minor
+  file: cmd/main.go
+  title: Metrics secure serving disabled by default with stale TODO, metrics exposed over plaintext HTTP
+  detection_signals:
+  - TODO
+  - HTTP
+  - metrics
+  - secure
+  - serving
+- id: B2-QUAL-006
+  severity: Minor
+  file: internal/controller/core/secret_controller.go
+  title: newStorageSecret reuses a single map across loop iterations, causing fragile key management
+  detection_signals:
+  - newStorageSecret
+  - reuses
+  - iterations
+  - fragile
+  - management
+- id: B2-QUAL-008
+  severity: Minor
+  file: internal/controller/utils/utils.go
+  title: SetOpenshiftRouteTimeoutForIsvc has redundant nil check for route.Annotations
+  detection_signals:
+  - SetOpenshiftRouteTimeoutForIsvc
+  - redundant
+  - annotations
+- id: B2-SEC-016
+  severity: Minor
+  file: internal/webhook/core/v1/pod_webhook.go
+  title: Init container image sourced from ConfigMap without digest validation, enabling supply chain attack via ConfigMap
+    modification
+  detection_signals:
+  - ConfigMap
+  - container
+  - sourced
+  - digest
+  - validation
+- id: B2-SEC-011
+  severity: Important
+  file: cmd/main.go
+  title: Controller's in-cluster bearer token passed to Model Registry client, enabling token leakage via TLS skip
+  detection_signals:
+  - TLS
+  - controller
+  - cluster
+  - bearer
+  - passed
+- id: B2-SEC-013
+  severity: Important
+  file: internal/controller/resources/clusterrolebinding.go
+  title: CRB ProcessDelta attempts to update immutable roleRef field, silently failing to correct pre-planted RBAC
+  detection_signals:
+  - ProcessDelta
+  - roleRef
+  - CRB
+  - RBAC
+  - attempts
+- id: B2-SEC-005
+  severity: Minor
+  file: config/manager/manager.yaml
+  title: Controller manager deployment uses unpinned :latest image tag
+  detection_signals:
+  - controller
+  - manager
+  - deployment
+  - unpinned
+  - latest
+- id: B2-SEC-008
+  severity: Minor
+  file: internal/controller/utils/cert.go
+  title: CA certificate KeyUsage includes KeyUsageKeyEncipherment which is inappropriate for CA certs
+  detection_signals:
+  - KeyUsage
+  - KeyUsageKeyEncipherment
+  - certificate
+  - includes
+  - inappropriate
+- id: B2-SEC-009
+  severity: Minor
+  file: dev_tools/devspace.yaml
+  title: DevSpace development configuration overrides runAsNonRoot to false
+  detection_signals:
+  - DevSpace
+  - runAsNonRoot
+  - development
+  - configuration
+  - overrides
