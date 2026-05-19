@@ -9,6 +9,7 @@ execution:
   mode: case
   arguments: --save {prompt}
   max_budget_usd: 100.0
+  timeout: 7200
 runner:
   type: claude-code
   plugin_dirs:
@@ -20,7 +21,9 @@ runner:
     Do NOT perform your own code review. Do NOT spawn your own agents. The
     orchestrator drives all agent dispatch. When the orchestrator asks for scope
     confirmation, approve immediately. When asked about budget escalation,
-    approve. The orchestrator automatically copies outputs to artifacts/ when done.
+    approve. After agents complete each phase, run orchestrator next IMMEDIATELY.
+    Do NOT read, write, copy, or verify agent output files between dispatch and
+    next. The orchestrator handles all file management internally.
 
     '
   settings:
@@ -45,6 +48,8 @@ runner:
       - Edit(/tmp/**)
       - Edit(/private/tmp/**)
       - Write(artifacts/**)
+      - Write(**/.adversarial-review-cache/**)
+      - Edit(**/.adversarial-review-cache/**)
       - Read(/Users/ugogiordano/.cache/**)
       - Write(/Users/ugogiordano/.cache/**)
       additionalDirectories:
@@ -53,7 +58,7 @@ runner:
       - /Users/ugogiordano/.cache
       - /Users/ugogiordano/workdir/rhoai/opendatahub-io/opendatahub-operator
 models:
-  skill: claude-sonnet-4-6
+  skill: claude-opus-4-6
   judge: claude-opus-4-6
 permissions:
   allow: []

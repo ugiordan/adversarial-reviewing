@@ -45,6 +45,12 @@ SEC:
     description: "Monitoring secrets and credentials"
   - pattern: "htpasswd"
     description: "Password file generation"
+  - pattern: "Annotations\\["
+    description: "CRD annotation reads - potential SSRF if used as URL"
+  - pattern: "AutomountServiceAccountToken"
+    description: "SA token mounting - credential exposure risk"
+  - pattern: "http.Get\\|http.Post\\|http.Do"
+    description: "HTTP requests from controller - trace URL source"
 
 CORR:
   - pattern: "History\\[0\\]"

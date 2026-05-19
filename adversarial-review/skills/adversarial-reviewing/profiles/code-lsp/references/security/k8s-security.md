@@ -71,3 +71,35 @@ enabled: true
 - Are CRD schemas validated with OpenAPI v3 validation?
 - Are webhook validations in place for complex business rules?
 - Is the CRD conversion strategy defined for multi-version CRDs?
+
+## Annotation/Label-Driven SSRF (Confused Deputy)
+
+### Attack Pattern
+Controllers that read URLs from CRD annotations or spec fields and
+make HTTP requests to those URLs. The attacker sets the annotation/field
+to a server they control. The controller follows it using its elevated
+service account, leaking the SA token to the attacker.
+
+### Verification Questions
+- Does the controller read URLs from annotations (`obj.Annotations[key]`)?
+- Does the controller read URLs from CRD spec fields?
+- Are there TWO code paths for URL resolution (safe Service discovery
+  AND unsafe annotation/spec override)? Trace BOTH paths.
+- Does the controller's HTTP client include SA tokens or other
+  credentials in requests to the resolved URL?
+- Is `AutomountServiceAccountToken` forced true on pods the controller
+  creates?
+- Are projected volume mounts injecting SA tokens into pods?
+
+### False Positive Checklist
+- Before flagging annotation-SSRF: Is the annotation set by the
+  controller itself (safe) or by users via kubectl/API (unsafe)?
+- Is there admission webhook validation on the annotation value?
+- Does the controller validate the URL scheme/host before following?
+
+### Real-World Example
+Model Registry controller reads `modelRegistryURLAnnotation` from
+InferenceService annotations. Safe path: resolves URL from Kubernetes
+Service (ClusterIP + port). Unsafe path: annotation override bypasses
+Service discovery, controller follows attacker-controlled URL with SA
+token in Authorization header. CVSS 8.5.

@@ -29,7 +29,7 @@ Orchestrator Progress:
 - [ ] Step 3: Execute dispatch plan
 - [ ] Step 4: Run orchestrator next
 - [ ] Step 5: Read dispatch.json again
-- [ ] Step 6: If done=true, copy outputs to artifacts/ and stop.
+- [ ] Step 6: If done=true, verify artifacts and stop.
 ```
 
 **Step 1: Initialize**
@@ -58,12 +58,10 @@ cat {CACHE_DIR}/dispatch.json
   For each agent, dispatch via Agent tool with the agent's subagent_type
   and dispatch_path. If `parallel` is true, dispatch all in one message.
   
-  **IMPORTANT: Agents write their own output.md files using the Write
-  tool. Do NOT write output files yourself. Do NOT transcribe agent
-  responses to output files. Just dispatch and wait.**
-  
-  After all agents complete, run `orchestrator next` immediately.
-  Do not read or process agent outputs.
+  **CRITICAL: After all agents complete, run `orchestrator next`
+  IMMEDIATELY. Do NOT read agent outputs. Do NOT write output files.
+  Do NOT check dispatch directories. Do NOT verify anything.
+  The orchestrator handles all file management internally.**
   
   Example for one agent:
   ```
@@ -95,12 +93,14 @@ Do not skip agents. Do not add your own analysis.
 Do not perform your own code review or spawn your own agents.
 Do not read files in the review target yourself.
 Do not explore the skill directory or read agent definition files.
-The orchestrator is the skill. If it cannot run, abort.
+Do not read, write, copy, or verify agent output files.
+Do not list or check dispatch directories between steps.
+The orchestrator handles all file management. If it cannot run, abort.
 
 ## Error handling
 
-If an agent fails or times out, write a brief error note to its output_file.
-Then run the next command normally.
+If an agent fails or times out, run `orchestrator next` normally.
+The orchestrator handles missing outputs gracefully.
 
 If any orchestrator command fails: ABORT IMMEDIATELY.
 Do not attempt workarounds.
