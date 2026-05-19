@@ -111,12 +111,16 @@ def prepare_dispatch_directory(
     target_finding: str = "",
     project_context: str = "",
     lsp_guidance: str = "",
+    coverage_report: str = "",
 ) -> str:
     """Prepare a dispatch directory with all files an agent needs.
     Returns the dispatch directory path.
     """
     dispatch_dir = os.path.join(cache_dir, "dispatch", f"{agent_id}-{phase}-iter{iteration}")
     os.makedirs(dispatch_dir, exist_ok=True)
+
+    scripts_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    write_script = os.path.join(scripts_dir, "write_output.py")
 
     try:
         import yaml as _yaml
@@ -126,6 +130,7 @@ def prepare_dispatch_directory(
             "phase": phase,
             "iteration": iteration,
             "output_path": os.path.join(dispatch_dir, "output.md"),
+            "write_script": write_script,
             "target_finding": target_finding,
         }, default_flow_style=False)
     except ImportError:
@@ -135,6 +140,7 @@ def prepare_dispatch_directory(
             f"phase: {phase}\n"
             f"iteration: {iteration}\n"
             f"output_path: {os.path.join(dispatch_dir, 'output.md')}\n"
+            f"write_script: {write_script}\n"
         )
         if target_finding:
             config_text += f"target_finding: {target_finding}\n"
@@ -152,6 +158,8 @@ def prepare_dispatch_directory(
         Path(os.path.join(dispatch_dir, "project-map.md")).write_text(project_context)
     if lsp_guidance:
         Path(os.path.join(dispatch_dir, "lsp-tools.md")).write_text(lsp_guidance)
+    if coverage_report:
+        Path(os.path.join(dispatch_dir, "coverage-report.md")).write_text(coverage_report)
 
     return dispatch_dir
 

@@ -42,6 +42,13 @@ adversarial-review/skills/adversarial-reviewing/tmp/
 site/site/
 adversarial-review/skills/adversarial-reviewing/output/
 
+# Skill cache and artifacts (generated at runtime)
+.adversarial-review-cache/
+artifacts/
+evals/
+mlflow.db
+mlruns/
+
 # Working documents (not project artifacts)
 docs/reviews/
 docs/superpowers/

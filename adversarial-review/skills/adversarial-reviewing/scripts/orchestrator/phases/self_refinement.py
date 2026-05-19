@@ -5,41 +5,29 @@ def compose_extensions(base_prompt: str, iteration: int, cache_dir: str) -> str:
     if iteration <= 1:
         return ""
     parts = []
-    parts.append("\n## Self-Refinement Instructions (Iteration {})".format(iteration))
+    parts.append("\n## Iteration {} Instructions".format(iteration))
     parts.append(
-        "Review your previous findings in the cache directory. "
-        "For each finding, classify as CODE-VERIFIED (traced through actual code) "
-        "or ASSUMPTION-BASED (inferred without full trace). "
-        "Drop ASSUMPTION-BASED findings unless you can verify them this iteration."
+        "This iteration has two tasks: validate prior findings and "
+        "expand coverage to areas not yet examined.\n"
     )
 
-    # Point to populate-findings output (sanitized/split) when available,
-    # falling back to raw outputs directory.
-    findings_dir = os.path.join(cache_dir, "findings")
-    prev_dir = os.path.join(cache_dir, "outputs")
-    if os.path.isdir(findings_dir) and os.listdir(findings_dir):
-        parts.append(
-            f"\nReview your validated findings in: {findings_dir}"
-        )
-        parts.append(
-            "These have been validated and sanitized by populate-findings. "
-            "Use these as your authoritative prior findings, not raw outputs."
-        )
-    elif os.path.isdir(prev_dir):
-        parts.append(f"\nPrevious outputs are in: {prev_dir}")
-
+    parts.append("### Task A: Validate Prior Findings")
     parts.append(
-        "\n### Classification Gate"
+        "For each finding in prior-findings.md, Read the cited file:line "
+        "and verify the evidence holds. Output a verdict line:\n"
+        "- `CONFIRMED <ID>`: evidence verified in code\n"
+        "- `WITHDRAWN <ID>: <reason>`: evidence does not hold\n\n"
+        "Be rigorous. A finding whose cited line doesn't show what "
+        "the finding claims is WITHDRAWN, not CONFIRMED."
     )
+
+    parts.append("\n### Task B: Expand to Uncovered Areas")
     parts.append(
-        "Every finding MUST include a classification tag:\n"
-        "- **CODE-VERIFIED**: You traced the issue through actual source code "
-        "(file path, line number, code snippet).\n"
-        "- **ASSUMPTION-BASED**: You inferred the issue from patterns, naming, "
-        "or documentation without a direct code trace.\n\n"
-        "Only CODE-VERIFIED findings survive to the challenge round. "
-        "ASSUMPTION-BASED findings must be promoted to CODE-VERIFIED "
-        "in this iteration or they will be dropped."
+        "Read coverage-report.md to see which files and directories "
+        "were NOT examined in previous iterations. Focus your new "
+        "investigation on those gaps.\n\n"
+        "Report new findings only from uncovered areas, using the "
+        "standard finding template under a '## New Findings' section."
     )
 
     return "\n".join(parts)

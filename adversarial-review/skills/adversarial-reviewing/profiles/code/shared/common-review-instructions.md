@@ -1,10 +1,13 @@
 ## Output Instructions
 
-Read dispatch-config.yaml to find your output_path. Write ALL your findings
-to that file using the Write tool. Use the finding template format. If you
-produce no findings, write "NO_FINDINGS_REPORTED" to the output file.
+Read dispatch-config.yaml to find your `output_path`.
+Write ALL your findings to that file using the Write tool.
+Use the finding template format.
 
-You MUST write your output file. Do not rely on anyone else to save your work.
+If you produce no findings, write "NO_FINDINGS_REPORTED" to the output file.
+
+You MUST write your output file before finishing. Your work is not complete
+until the output file contains your findings.
 
 ## Severity Classification
 
@@ -72,6 +75,30 @@ After producing your initial findings:
    listed there that you haven't already run.
 4. Review your findings: What did you miss? What's a false positive?
 5. Only then submit your findings.
+
+## Coverage Report (MANDATORY)
+
+After ALL your findings, append a coverage report. This is used by the
+next iteration to avoid re-examining the same files and to target gaps.
+
+```
+## Coverage Report
+### Files Read
+- path/to/file.go (full)
+- path/to/other.go (lines 1-50)
+
+### Grep Patterns Executed
+- pattern1 -> N hits
+- pattern2 -> 0 hits
+
+### Directories NOT Explored
+- path/to/unexplored_dir/
+- path/to/another_dir/
+```
+
+List every file you opened with Read (with line range if partial).
+List every Grep pattern you ran with the hit count.
+List directories you know exist but did NOT examine.
 
 ## Evidence Requirements
 

@@ -392,18 +392,23 @@ def _process_report(state, cache_dir, skill_dir):
 # -- Artifact collection --
 
 def _collect_artifacts(cache_dir: str) -> list[str]:
-    """Copy latest-iteration agent outputs and the final report to artifacts/.
+    """Copy agent outputs and the final report to artifacts/.
 
-    Only the highest iteration per agent prefix is collected to avoid
-    duplicate findings across iterations inflating false positive counts.
+    Exports both the merged per-agent output (latest/largest iteration)
+    AND all per-phase outputs. The detection judge deduplicates by
+    file:line across phases; exporting all phases ensures confirmed
+    iter1 findings are not lost when iter2 uses CONFIRMED format.
     Returns the list of artifact file paths.
     """
     import shutil
+
+    _populate_outputs_from_dispatch(cache_dir)
 
     artifacts_dir = os.path.join(cache_dir, "artifacts")
     os.makedirs(artifacts_dir, exist_ok=True)
     collected = []
 
+    covered_agents = set()
     dispatch_dir = os.path.join(cache_dir, "dispatch")
     if os.path.isdir(dispatch_dir):
         latest = _latest_dispatch_per_agent(dispatch_dir)
@@ -411,6 +416,18 @@ def _collect_artifacts(cache_dir: str) -> list[str]:
             dest = os.path.join(artifacts_dir, f"{agent_id}-output.md")
             shutil.copy2(output_path, dest)
             collected.append(dest)
+            covered_agents.add(agent_id)
+
+        for entry in sorted(os.listdir(dispatch_dir)):
+            output = os.path.join(dispatch_dir, entry, "output.md")
+            if not os.path.isfile(output) or os.path.getsize(output) == 0:
+                continue
+            if entry.startswith("REPORT"):
+                continue
+            dest = os.path.join(artifacts_dir, f"{entry}-output.md")
+            if not os.path.exists(dest):
+                shutil.copy2(output, dest)
+                collected.append(dest)
 
     report_path = os.path.join(cache_dir, "outputs", "REPORT.md")
     if not os.path.isfile(report_path):
@@ -427,6 +444,9 @@ def _collect_artifacts(cache_dir: str) -> list[str]:
     if os.path.isdir(outputs_dir):
         for fname in sorted(os.listdir(outputs_dir)):
             if fname == "REPORT.md":
+                continue
+            prefix = fname.split("-")[0] if "-" in fname else fname
+            if prefix in covered_agents:
                 continue
             src = os.path.join(outputs_dir, fname)
             if os.path.isfile(src) and os.path.getsize(src) > 0:
@@ -656,13 +676,39 @@ def _generate_lsp_guidance(detected_language: str) -> str:
     return "\n".join(lines)
 
 
-_DEDUP_HEADER = """## Previous Iteration Findings
+_DEDUP_HEADER = """## Iteration 2: Validate + Expand
 
-The findings below were reported in your previous iteration(s). DO NOT re-report
-these findings. Instead:
-- If you confirm a previous finding still holds, note its ID in a "Confirmed" list
-- Only report NEW findings not already covered below
-- Focus your analysis on areas, files, or patterns not yet examined
+You have two tasks this iteration:
+
+### Task A: Validate Previous Findings
+For each finding below, Read the cited file:line and verify the evidence.
+Output a verdict line at the start of your output:
+- `CONFIRMED <ID>`: evidence verified in code
+- `WITHDRAWN <ID>: <reason>`: evidence does not hold
+
+### Task B: Expand to Uncovered Areas
+Check the coverage report (coverage-report.md) to see which files and
+directories were NOT examined in iteration 1. Focus your new investigation
+on those gaps. Report new findings only from uncovered areas, using the
+standard finding template.
+
+Structure your output as:
+```
+## Validation Results
+CONFIRMED SEC-001
+CONFIRMED SEC-002
+WITHDRAWN SEC-005: flag is set in test code only
+...
+
+## New Findings
+Finding ID: SEC-013
+...
+
+## Coverage Report
+...
+```
+
+### Previous Findings to Validate
 
 """
 
@@ -699,6 +745,158 @@ def _collect_prior_findings(cache_dir: str, agent_id: str, phase: str,
     return _DEDUP_HEADER + "\n\n".join(parts)
 
 
+def _parse_coverage_report(output_text: str) -> str:
+    """Extract the coverage report section from an agent's output.
+
+    Returns the raw coverage report text (everything from '## Coverage Report'
+    to the end or next top-level heading), or empty string if not found.
+    Strips delimiter lines (===REVIEW_TARGET_...===).
+    """
+    marker = "## Coverage Report"
+    idx = output_text.find(marker)
+    if idx < 0:
+        return ""
+    rest = output_text[idx:]
+    end_markers = ["\n## ", "\n# "]
+    end = len(rest)
+    for m in end_markers:
+        pos = rest.find(m, len(marker))
+        if 0 < pos < end:
+            end = pos
+    lines = [l for l in rest[:end].splitlines()
+             if not l.strip().startswith("===REVIEW_TARGET_")]
+    return "\n".join(lines).strip()
+
+
+_MAX_PRE_READ_TOKENS = 60_000
+_MAX_PRE_READ_FILE_LINES = 800
+
+
+def _pre_read_files(source_root: str, file_paths: list[str]) -> str:
+    """Pre-read source files identified by hotspot analysis.
+
+    Returns markdown with full file contents, capped at ~60K tokens.
+    Files are deduplicated and sorted by size (smallest first to
+    maximize the number of files included).
+    """
+    if not file_paths:
+        return ""
+    unique = sorted(set(file_paths), key=lambda p: os.path.getsize(p) if os.path.isfile(p) else 0)
+    parts = ["## Pre-Read Source Files\n",
+             "The following files were identified as relevant to your domain "
+             "by hotspot pattern analysis. This IS the actual source code, "
+             "cite it directly as evidence. Use Read/Grep for files not "
+             "included here.\n"]
+    total_chars = 0
+    max_chars = _MAX_PRE_READ_TOKENS * 4
+    included = 0
+    for fpath in unique:
+        if not os.path.isfile(fpath):
+            continue
+        try:
+            content = Path(fpath).read_text(errors="replace")
+        except OSError:
+            continue
+        lines = content.splitlines()
+        if len(lines) > _MAX_PRE_READ_FILE_LINES:
+            content = "\n".join(lines[:_MAX_PRE_READ_FILE_LINES])
+            content += f"\n... (truncated, {len(lines)} total lines)"
+        if total_chars + len(content) > max_chars:
+            if included > 0:
+                break
+            content = "\n".join(lines[:200])
+            content += f"\n... (truncated to fit budget)"
+        rel = os.path.relpath(fpath, source_root)
+        parts.append(f"### `{rel}`\n```\n{content}\n```\n")
+        total_chars += len(content)
+        included += 1
+    if included == 0:
+        return ""
+    parts.append(f"\n*{included} files pre-read, {total_chars // 4:,} estimated tokens.*")
+    return "\n".join(parts)
+
+
+def _collect_coverage_reports(cache_dir: str, agent_id: str,
+                              phase: str, iteration: int) -> str:
+    """Collect coverage reports from all prior iterations for an agent."""
+    if iteration <= 1:
+        return ""
+    parts = []
+    dispatch_dir = os.path.join(cache_dir, "dispatch")
+    for prev_iter in range(1, iteration):
+        v3_path = os.path.join(
+            dispatch_dir, f"{agent_id}-{phase}-iter{prev_iter}", "output.md")
+        if os.path.isfile(v3_path):
+            try:
+                content = Path(v3_path).read_text()
+            except (UnicodeDecodeError, OSError):
+                continue
+            report = _parse_coverage_report(content)
+            if report:
+                parts.append(f"### Iteration {prev_iter} Coverage\n{report}")
+    return "\n\n".join(parts)
+
+
+def _build_validated_findings(cache_dir: str, agent_id: str) -> str:
+    """Parse iter2 output for CONFIRMED/WITHDRAWN verdicts.
+
+    Returns only the confirmed findings from iter1, plus any new findings
+    from iter2. Used to build the challenge round input.
+    """
+    dispatch_dir = os.path.join(cache_dir, "dispatch")
+    iter2_path = os.path.join(
+        dispatch_dir, f"{agent_id}-self-refinement-iter2", "output.md")
+    iter1_path = os.path.join(
+        dispatch_dir, f"{agent_id}-self-refinement-iter1", "output.md")
+
+    withdrawn_ids: set[str] = set()
+    iter2_content = ""
+    if os.path.isfile(iter2_path):
+        try:
+            iter2_content = Path(iter2_path).read_text()
+        except (UnicodeDecodeError, OSError):
+            pass
+
+    for line in iter2_content.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("WITHDRAWN "):
+            parts = stripped.split(None, 2)
+            if len(parts) >= 2:
+                withdrawn_ids.add(parts[1].rstrip(":"))
+
+    result_parts = []
+
+    if os.path.isfile(iter1_path) and withdrawn_ids:
+        try:
+            iter1_content = Path(iter1_path).read_text()
+        except (UnicodeDecodeError, OSError):
+            iter1_content = ""
+        if iter1_content:
+            blocks = re.split(r'(?=Finding\s+ID:)', iter1_content)
+            for block in blocks:
+                fid_m = re.match(r'Finding\s+ID:\s*(\S+)', block.strip())
+                if fid_m and fid_m.group(1) not in withdrawn_ids:
+                    result_parts.append(block.strip())
+            if result_parts:
+                result_parts.insert(0, "## Confirmed Findings from Iteration 1\n")
+    elif os.path.isfile(iter1_path):
+        try:
+            result_parts.append(Path(iter1_path).read_text())
+        except (UnicodeDecodeError, OSError):
+            pass
+
+    new_section = ""
+    if "## New Findings" in iter2_content:
+        idx = iter2_content.find("## New Findings")
+        cov_idx = iter2_content.find("## Coverage Report", idx)
+        end = cov_idx if cov_idx > idx else len(iter2_content)
+        new_section = iter2_content[idx:end].strip()
+    if new_section:
+        result_parts.append(new_section)
+
+    return "\n\n".join(result_parts)
+
+
 def _prepare_dispatch_directories(state, cache_dir, skill_dir, phase) -> list[tuple[str, str]]:
     """Prepare dispatch directories for all agents. Returns (agent_id, dispatch_path) tuples."""
     profile_dir = os.path.join(skill_dir, "profiles", state.config.profile)
@@ -716,7 +914,7 @@ def _prepare_dispatch_directories(state, cache_dir, skill_dir, phase) -> list[tu
 
     iteration = _current_phase_iteration(state)
     source_root = state.config.source_root or os.getcwd()
-    if iteration <= 1 and phase == PHASE_SELF_REFINEMENT:
+    if phase == PHASE_SELF_REFINEMENT:
         from .code_index import build_code_index
         code_index = build_code_index(source_root, state.config.detected_language)
         if code_index:
@@ -737,25 +935,35 @@ def _prepare_dispatch_directories(state, cache_dir, skill_dir, phase) -> list[tu
     else:
         source_files = (
             "## Source Code\n\n"
-            "The code index was provided in iteration 1. For this iteration, "
-            "use Grep and Read tools to search the source root for patterns "
-            f"you haven't examined yet.\n\nSource root: {source_root}\n"
+            "Use Grep and Read tools to search the source root for patterns "
+            f"relevant to your task.\n\nSource root: {source_root}\n"
         )
 
     project_context_map: dict[str, str] = {}
-    if iteration == 1 and phase == PHASE_SELF_REFINEMENT:
+    hotspot_files_by_agent: dict[str, list[str]] = {}
+    if phase == PHASE_SELF_REFINEMENT:
         from .project_map import build_project_map, load_hotspot_patterns, compute_hotspots
+        from .hotspots import _grep_pattern, _SKIP_DIRS as _HS_SKIP
         project_map = build_project_map(source_root)
         patterns_by_agent = load_hotspot_patterns(profile_dir)
         for agent_cfg in state.config.agents:
             agent_parts = [project_map] if project_map else []
             agent_patterns = patterns_by_agent.get(agent_cfg.prefix, [])
+            agent_hit_files: set[str] = set()
             if agent_patterns:
                 hotspots = compute_hotspots(
                     source_root, agent_cfg.prefix, agent_patterns,
                 )
                 if hotspots:
                     agent_parts.append(hotspots)
+                exclude = [f"--exclude-dir={d}" for d in _HS_SKIP]
+                for entry in agent_patterns:
+                    pat = entry.get("pattern", "")
+                    if pat:
+                        hits = _grep_pattern(source_root, pat, exclude, 50)
+                        for fpath, _, _ in hits:
+                            agent_hit_files.add(fpath)
+            hotspot_files_by_agent[agent_cfg.prefix] = sorted(agent_hit_files)
             if agent_parts:
                 project_context_map[agent_cfg.prefix] = "\n\n".join(agent_parts)
 
@@ -769,6 +977,26 @@ def _prepare_dispatch_directories(state, cache_dir, skill_dir, phase) -> list[tu
             cache_dir, agent_cfg.prefix, phase, iteration,
         )
 
+        agent_source = source_files
+        if iteration <= 1 and phase == PHASE_SELF_REFINEMENT:
+            pre_read = _pre_read_files(
+                source_root,
+                hotspot_files_by_agent.get(agent_cfg.prefix, []),
+            )
+            if pre_read:
+                agent_source = source_files + "\n\n" + pre_read
+
+        coverage_report = ""
+        if phase == PHASE_SELF_REFINEMENT and iteration > 1:
+            coverage_report = _collect_coverage_reports(
+                cache_dir, agent_cfg.prefix, phase, iteration,
+            )
+        elif phase == PHASE_CHALLENGE_ROUND:
+            coverage_report = _collect_coverage_reports(
+                cache_dir, agent_cfg.prefix, PHASE_SELF_REFINEMENT,
+                state.iteration + 1,
+            )
+
         dispatch_path = prepare_dispatch_directory(
             cache_dir=cache_dir,
             agent_id=agent_cfg.prefix,
@@ -777,10 +1005,11 @@ def _prepare_dispatch_directories(state, cache_dir, skill_dir, phase) -> list[tu
             agent_instructions=agent_instructions,
             common_instructions=common_instructions,
             finding_template=finding_template,
-            source_files=source_files,
+            source_files=agent_source,
             prior_findings=prior_findings,
             project_context=project_context_map.get(agent_cfg.prefix, ""),
             lsp_guidance=lsp_guidance if iteration == 1 else "",
+            coverage_report=coverage_report,
         )
         results.append((agent_cfg.prefix, dispatch_path))
     return results
@@ -1214,7 +1443,48 @@ def _handle_delimiter_retry(state, cache_dir, phase, iteration, failed_agent) ->
     )
 
 
+def _populate_outputs_from_dispatch(cache_dir):
+    """Copy agent outputs from dispatch dirs to outputs/ dir.
+
+    Agents write to dispatch/<AGENT>-<phase>-iter<N>/output.md but budget
+    tracking and convergence checking look in outputs/. Doing this copy here
+    eliminates relay turns wasted on file I/O.
+    """
+    dispatch_dir = os.path.join(cache_dir, "dispatch")
+    outputs_dir = os.path.join(cache_dir, "outputs")
+    if not os.path.isdir(dispatch_dir):
+        return
+    os.makedirs(outputs_dir, exist_ok=True)
+    _iter_re = re.compile(r"iter(\d+)$")
+    _phase_re = re.compile(
+        r"-(self-refinement|challenge-round|challenge|red-team-audit|report)-"
+    )
+    for entry in os.listdir(dispatch_dir):
+        src = os.path.join(dispatch_dir, entry, "output.md")
+        if not os.path.isfile(src) or os.path.getsize(src) == 0:
+            continue
+        phase_m = _phase_re.search(entry)
+        if phase_m:
+            agent_id = entry[:phase_m.start()]
+            phase_name = phase_m.group(1)
+        else:
+            continue
+        m = _iter_re.search(entry)
+        iter_num = int(m.group(1)) if m else 1
+        if agent_id == "REPORT":
+            dest_name = "REPORT.md"
+        elif "challenge" in phase_name:
+            dest_name = f"{agent_id}-challenge-iter{iter_num}.md"
+        else:
+            dest_name = f"{agent_id}-phase1-iter{iter_num}.md"
+        dest = os.path.join(outputs_dir, dest_name)
+        if not os.path.exists(dest) or os.path.getmtime(src) > os.path.getmtime(dest):
+            import shutil
+            shutil.copy2(src, dest)
+
+
 def _run_compliance_checks(state, cache_dir):
+    _populate_outputs_from_dispatch(cache_dir)
     output_files, phase, iteration = _get_expected_outputs(state, cache_dir)
 
     passed, error_type, error_msg = _validate_outputs(state, output_files)
@@ -1247,12 +1517,9 @@ def _run_compliance_checks(state, cache_dir):
 
     delim_ok, delim_err, failed_agent = _validate_delimiters(state, output_files)
     if not delim_ok:
-        state.relay_compliance_violations += 1
-        if state.active_retry:
-            log_guardrail(state, "compliance", "delimiter_failed_retry", failed_agent,
-                          "warning", f"Delimiter check failed after retry: {delim_err}")
-        else:
-            _handle_delimiter_retry(state, cache_dir, phase, iteration, failed_agent)
+        state.relay_compliance_warnings += 1
+        log_guardrail(state, "compliance", "delimiter_missing", failed_agent,
+                      "warning", f"Delimiter not echoed in output: {delim_err}")
 
     size_result = check_output_sizes(output_files)
     state.relay_compliance_warnings += size_result.warnings

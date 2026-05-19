@@ -84,7 +84,7 @@ class TestAgentConfig:
         assert a2.tools == ["Read"]
 
     def test_allowed_tools_constant(self):
-        assert ALLOWED_AGENT_TOOLS == {"Read", "Write", "Grep", "Glob"}
+        assert ALLOWED_AGENT_TOOLS == {"Read", "Write", "Bash", "Grep", "Glob"}
 
     def test_valid_effort_levels_constant(self):
         assert VALID_EFFORT_LEVELS == {"low", "medium", "high", "xhigh", "max"}

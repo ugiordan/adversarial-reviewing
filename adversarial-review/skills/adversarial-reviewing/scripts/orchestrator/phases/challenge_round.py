@@ -1,8 +1,6 @@
 import os
 
 
-# Domain affinity hints: map agent prefix patterns to their primary review domains.
-# Used to route specialists to the findings most relevant to their expertise.
 _DOMAIN_AFFINITY = {
     "SEC": "security",
     "CORR": "correctness",
@@ -15,7 +13,6 @@ _DOMAIN_AFFINITY = {
 
 
 def _get_domain_hint(agent_prefix: str) -> str:
-    """Return domain affinity hint for an agent prefix."""
     for prefix_pattern, domain in _DOMAIN_AFFINITY.items():
         if agent_prefix.startswith(prefix_pattern):
             return domain
@@ -24,52 +21,51 @@ def _get_domain_hint(agent_prefix: str) -> str:
 
 def compose_extensions(base_prompt: str, iteration: int, cache_dir: str) -> str:
     parts = []
-    parts.append("\n## Challenge Round Instructions")
+    parts.append("\n## Challenge Round: Adversarial Review + Blind Spots")
 
-    # Two-tier finding access: summary for all, detail only for challenged findings
+    parts.append(
+        "\nThis round has two tasks: challenge validated findings and "
+        "investigate remaining blind spots."
+    )
+
+    parts.append("\n### Task A: Challenge Validated Findings")
     summary_path = os.path.join(cache_dir, "cross-agent-summary.md")
     findings_dir = os.path.join(cache_dir, "findings")
     if os.path.exists(summary_path):
         parts.append(f"Read the cross-agent summary at: {summary_path}")
-        parts.append(
-            "Use the summary for an overview of all findings. "
-            "Only read the full detail files when you need to challenge "
-            "or deeply evaluate a specific finding."
-        )
     if os.path.isdir(findings_dir) and os.listdir(findings_dir):
         parts.append(
-            f"Detailed per-agent findings are in: {findings_dir}"
-        )
-        parts.append(
-            "Read detailed findings only for items you intend to challenge. "
-            "Do not re-read everything; focus on findings in your domain."
+            f"Detailed per-agent findings are in: {findings_dir}\n"
+            "Read details only for findings you intend to challenge."
         )
 
-    # Domain affinity routing hint
     parts.append(
-        "\n### Domain Routing"
+        "\nTry to disprove each finding. Read the cited evidence and check "
+        "if it actually demonstrates the claimed vulnerability.\n"
+        "- `CONFIRMED <ID>`: evidence holds after adversarial review\n"
+        "- `WITHDRAWN <ID>: <reason>`: evidence does not support the claim"
     )
+
+    parts.append("\n### Task B: Blind Spot Scan")
     parts.append(
-        "Focus your review on findings that fall within your specialization. "
-        "Challenge findings outside your domain only when you have strong, "
+        "Read coverage-report.md to see which files and directories "
+        "were NOT examined in iterations 1-2. Investigate remaining "
+        "uncovered areas. Report new findings only from blind spots, "
+        "using the standard finding template."
+    )
+
+    parts.append("\n### Domain Routing")
+    parts.append(
+        "Focus your review on findings within your specialization. "
+        "Challenge findings outside your domain only with strong, "
         "code-backed evidence."
     )
 
     if iteration >= 3:
+        parts.append("\n### Convergence Constraints")
         parts.append(
-            "\n### Iteration 3 Constraints"
-        )
-        parts.append(
-            "**No new findings allowed in this iteration.** "
-            "Evidence-based rebuttals only. Every claim must include "
-            "file:line citations from the reviewed code. "
-            "Focus exclusively on resolving disputed findings from "
-            "previous iterations."
-        )
-    else:
-        parts.append(
-            "\nNew findings are allowed in this iteration, but prioritize "
-            "challenging existing findings over introducing new ones."
+            "**No new findings allowed.** Evidence-based rebuttals only. "
+            "Every claim must include file:line citations."
         )
 
     return "\n".join(parts)

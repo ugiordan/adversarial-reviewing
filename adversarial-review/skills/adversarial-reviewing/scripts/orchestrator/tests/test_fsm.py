@@ -12,6 +12,9 @@ from orchestrator.fsm import (
     process_state, _evaluate_convergence, _discover_new_files,
     _agent_filename, _collect_findings_summary, _collect_artifacts,
     _find_v3_output, _get_expected_outputs,
+    _populate_outputs_from_dispatch,
+    _parse_coverage_report, _collect_coverage_reports,
+    _build_validated_findings,
     _process_red_team_audit, _process_red_team_check,
     _process_red_team_deep_dive, log_guardrail,
     _write_red_team_dispatch, _write_deep_dive_dispatch,
@@ -19,7 +22,7 @@ from orchestrator.fsm import (
 )
 from orchestrator.types import (
     State, FsmState, FsmConfig, Delimiters, ActiveRetry, InvalidTransitionError,
-    AgentConfig, RetryDispatchError,
+    AgentConfig,
 )
 from orchestrator.state import save_state, load_state
 
@@ -576,7 +579,7 @@ class TestComplianceChecks:
         assert len(state.guardrail_log) > 0
         assert state.guardrail_log[-1]["name"] == "missing_output"
 
-    def test_delimiter_mismatch_triggers_retry(self, tmp_cache_dir, skill_dir):
+    def test_delimiter_mismatch_warns_without_retry(self, tmp_cache_dir, skill_dir):
         delimiters = _make_delimiters()
         state = FsmState(
             current_state=State.SELF_REFINEMENT,
@@ -600,38 +603,12 @@ class TestComplianceChecks:
                        "prompt_file": "p", "output_file": "o"}],
         }))
 
-        with pytest.raises(RetryDispatchError):
-            _run_compliance_checks(state, str(tmp_cache_dir))
-
-        assert state.current_state == State.SELF_REFINEMENT
-        assert state.active_retry is not None
-        assert state.active_retry.attempt == 1
-
-    def test_delimiter_mismatch_after_retry_warns(self, tmp_cache_dir, skill_dir):
-        delimiters = _make_delimiters()
-        state = FsmState(
-            current_state=State.SELF_REFINEMENT,
-            iteration=1,
-            config=_make_config(agents=[AgentConfig(prefix="SEC", file="sec.md")]),
-            delimiters=delimiters,
-            active_retry=ActiveRetry(
-                phase="self-refinement", iteration=1, attempt=1
-            ),
-            dispatch_history=[{
-                "phase": "self-refinement",
-                "iteration": 1,
-                "agents": ["SEC"],
-            }],
-        )
-
-        output_path = tmp_cache_dir / "outputs" / "SEC-phase1-iter1.md"
-        output_path.write_text("still no delimiters after retry")
-
         _run_compliance_checks(state, str(tmp_cache_dir))
 
         assert state.current_state == State.SELF_REFINEMENT
+        assert state.active_retry is None
         warning_logs = [g for g in state.guardrail_log
-                        if g["name"] == "delimiter_failed_retry"]
+                        if g["name"] == "delimiter_missing"]
         assert len(warning_logs) == 1
 
     def test_passing_compliance(self, tmp_cache_dir, skill_dir):
@@ -1210,9 +1187,11 @@ class TestCollectArtifacts:
         assert artifacts_dir.exists()
         assert (artifacts_dir / "CORR-output.md").read_text() == "CORR findings"
         assert (artifacts_dir / "SEC-output.md").read_text() == "SEC findings"
-        assert len(result) == 2
+        assert (artifacts_dir / "SEC-self-refinement-iter1-output.md").exists()
+        assert (artifacts_dir / "CORR-self-refinement-iter1-output.md").exists()
+        assert len(result) == 4
 
-    def test_collects_only_latest_iteration(self, tmp_path):
+    def test_collects_latest_plus_all_phases(self, tmp_path):
         cache_dir = str(tmp_path / "cache")
         dispatch_dir = os.path.join(cache_dir, "dispatch")
         for i in range(1, 4):
@@ -1225,7 +1204,7 @@ class TestCollectArtifacts:
         artifacts_dir = Path(cache_dir) / "artifacts"
         assert (artifacts_dir / "SEC-output.md").read_text() == "iter3"
         sec_files = [f for f in os.listdir(artifacts_dir) if f.startswith("SEC")]
-        assert len(sec_files) == 1
+        assert len(sec_files) == 4
 
     def test_collects_report(self, tmp_path):
         cache_dir = str(tmp_path / "cache")
@@ -1274,6 +1253,76 @@ class TestCollectArtifacts:
 
         artifacts_dir = Path(cache_dir) / "artifacts"
         assert (artifacts_dir / "RED-TEAM-output.md").read_text() == "red team findings"
+
+
+class TestPopulateOutputsFromDispatch:
+    def test_copies_self_refinement_outputs(self, tmp_path):
+        cache_dir = str(tmp_path / "cache")
+        dispatch_dir = os.path.join(cache_dir, "dispatch")
+        os.makedirs(os.path.join(dispatch_dir, "SEC-self-refinement-iter1"))
+        os.makedirs(os.path.join(dispatch_dir, "CORR-self-refinement-iter2"))
+        Path(os.path.join(dispatch_dir, "SEC-self-refinement-iter1", "output.md")).write_text("SEC findings")
+        Path(os.path.join(dispatch_dir, "CORR-self-refinement-iter2", "output.md")).write_text("CORR findings")
+
+        _populate_outputs_from_dispatch(cache_dir)
+
+        outputs_dir = Path(cache_dir) / "outputs"
+        assert (outputs_dir / "SEC-phase1-iter1.md").read_text() == "SEC findings"
+        assert (outputs_dir / "CORR-phase1-iter2.md").read_text() == "CORR findings"
+
+    def test_copies_challenge_outputs(self, tmp_path):
+        cache_dir = str(tmp_path / "cache")
+        dispatch_dir = os.path.join(cache_dir, "dispatch")
+        os.makedirs(os.path.join(dispatch_dir, "SEC-challenge-round-iter1"))
+        Path(os.path.join(dispatch_dir, "SEC-challenge-round-iter1", "output.md")).write_text("challenge")
+
+        _populate_outputs_from_dispatch(cache_dir)
+
+        outputs_dir = Path(cache_dir) / "outputs"
+        assert (outputs_dir / "SEC-challenge-iter1.md").read_text() == "challenge"
+
+    def test_copies_report(self, tmp_path):
+        cache_dir = str(tmp_path / "cache")
+        dispatch_dir = os.path.join(cache_dir, "dispatch")
+        os.makedirs(os.path.join(dispatch_dir, "REPORT-report-iter1"))
+        Path(os.path.join(dispatch_dir, "REPORT-report-iter1", "output.md")).write_text("report")
+
+        _populate_outputs_from_dispatch(cache_dir)
+
+        outputs_dir = Path(cache_dir) / "outputs"
+        assert (outputs_dir / "REPORT.md").read_text() == "report"
+
+    def test_skips_empty_outputs(self, tmp_path):
+        cache_dir = str(tmp_path / "cache")
+        dispatch_dir = os.path.join(cache_dir, "dispatch")
+        os.makedirs(os.path.join(dispatch_dir, "SEC-self-refinement-iter1"))
+        Path(os.path.join(dispatch_dir, "SEC-self-refinement-iter1", "output.md")).write_text("")
+
+        _populate_outputs_from_dispatch(cache_dir)
+
+        outputs_dir = Path(cache_dir) / "outputs"
+        assert not outputs_dir.exists() or not list(outputs_dir.iterdir())
+
+    def test_no_dispatch_dir_is_noop(self, tmp_path):
+        cache_dir = str(tmp_path / "cache")
+        os.makedirs(cache_dir)
+        _populate_outputs_from_dispatch(cache_dir)
+        assert not (Path(cache_dir) / "outputs").exists()
+
+    def test_updates_stale_outputs(self, tmp_path):
+        cache_dir = str(tmp_path / "cache")
+        dispatch_dir = os.path.join(cache_dir, "dispatch")
+        outputs_dir = os.path.join(cache_dir, "outputs")
+        os.makedirs(os.path.join(dispatch_dir, "SEC-self-refinement-iter1"))
+        os.makedirs(outputs_dir)
+        Path(os.path.join(outputs_dir, "SEC-phase1-iter1.md")).write_text("old")
+        import time
+        time.sleep(0.05)
+        Path(os.path.join(dispatch_dir, "SEC-self-refinement-iter1", "output.md")).write_text("new")
+
+        _populate_outputs_from_dispatch(cache_dir)
+
+        assert Path(os.path.join(outputs_dir, "SEC-phase1-iter1.md")).read_text() == "new"
 
 
 class TestFindV3Output:
@@ -1464,3 +1513,125 @@ class TestRedTeamFlagDetection:
             _process_red_team_check(state, str(cache), str(tmp_path))
 
         assert state.current_state != State.REPORT or mock_rp.called
+
+
+class TestParseCoverageReport:
+    def test_extracts_coverage_section(self):
+        text = """Finding ID: SEC-001
+Severity: Important
+Title: Some finding
+
+## Coverage Report
+### Files Read
+- pkg/auth.go (full)
+- pkg/cert.go (lines 1-50)
+
+### Grep Patterns Executed
+- system:authenticated -> 3 hits
+
+### Directories NOT Explored
+- pkg/upgrade/
+"""
+        result = _parse_coverage_report(text)
+        assert "## Coverage Report" in result
+        assert "pkg/auth.go (full)" in result
+        assert "system:authenticated -> 3 hits" in result
+        assert "pkg/upgrade/" in result
+
+    def test_returns_empty_when_no_coverage(self):
+        text = "Finding ID: SEC-001\nSeverity: Important\nTitle: test"
+        assert _parse_coverage_report(text) == ""
+
+    def test_stops_at_next_heading(self):
+        text = """## Coverage Report
+### Files Read
+- file.go
+
+## Some Other Section
+This should not be included.
+"""
+        result = _parse_coverage_report(text)
+        assert "file.go" in result
+        assert "Some Other Section" not in result
+
+
+class TestCollectCoverageReports:
+    def test_collects_from_prior_iterations(self, tmp_path):
+        cache_dir = str(tmp_path / "cache")
+        dispatch_dir = os.path.join(cache_dir, "dispatch")
+        os.makedirs(os.path.join(dispatch_dir, "SEC-self-refinement-iter1"))
+        Path(os.path.join(dispatch_dir, "SEC-self-refinement-iter1", "output.md")).write_text(
+            "Finding ID: SEC-001\n\n## Coverage Report\n### Files Read\n- auth.go\n"
+        )
+
+        result = _collect_coverage_reports(cache_dir, "SEC", "self-refinement", 2)
+        assert "auth.go" in result
+        assert "Iteration 1 Coverage" in result
+
+    def test_returns_empty_for_iter1(self, tmp_path):
+        result = _collect_coverage_reports(str(tmp_path), "SEC", "self-refinement", 1)
+        assert result == ""
+
+    def test_handles_no_coverage_in_output(self, tmp_path):
+        cache_dir = str(tmp_path / "cache")
+        dispatch_dir = os.path.join(cache_dir, "dispatch")
+        os.makedirs(os.path.join(dispatch_dir, "SEC-self-refinement-iter1"))
+        Path(os.path.join(dispatch_dir, "SEC-self-refinement-iter1", "output.md")).write_text(
+            "Finding ID: SEC-001\nTitle: test\n"
+        )
+
+        result = _collect_coverage_reports(cache_dir, "SEC", "self-refinement", 2)
+        assert result == ""
+
+
+class TestBuildValidatedFindings:
+    def test_filters_withdrawn_findings(self, tmp_path):
+        cache_dir = str(tmp_path / "cache")
+        dispatch_dir = os.path.join(cache_dir, "dispatch")
+        os.makedirs(os.path.join(dispatch_dir, "SEC-self-refinement-iter1"))
+        os.makedirs(os.path.join(dispatch_dir, "SEC-self-refinement-iter2"))
+
+        Path(os.path.join(dispatch_dir, "SEC-self-refinement-iter1", "output.md")).write_text(
+            "Finding ID: SEC-001\nTitle: Real bug\n\n"
+            "Finding ID: SEC-002\nTitle: False positive\n"
+        )
+        Path(os.path.join(dispatch_dir, "SEC-self-refinement-iter2", "output.md")).write_text(
+            "## Validation Results\n"
+            "CONFIRMED SEC-001\n"
+            "WITHDRAWN SEC-002: not a real issue\n"
+        )
+
+        result = _build_validated_findings(cache_dir, "SEC")
+        assert "SEC-001" in result
+        assert "SEC-002" not in result
+
+    def test_includes_new_findings_from_iter2(self, tmp_path):
+        cache_dir = str(tmp_path / "cache")
+        dispatch_dir = os.path.join(cache_dir, "dispatch")
+        os.makedirs(os.path.join(dispatch_dir, "SEC-self-refinement-iter1"))
+        os.makedirs(os.path.join(dispatch_dir, "SEC-self-refinement-iter2"))
+
+        Path(os.path.join(dispatch_dir, "SEC-self-refinement-iter1", "output.md")).write_text(
+            "Finding ID: SEC-001\nTitle: Existing\n"
+        )
+        Path(os.path.join(dispatch_dir, "SEC-self-refinement-iter2", "output.md")).write_text(
+            "## Validation Results\nCONFIRMED SEC-001\n\n"
+            "## New Findings\nFinding ID: SEC-010\nTitle: Found in gaps\n\n"
+            "## Coverage Report\n### Files Read\n- new_file.go\n"
+        )
+
+        result = _build_validated_findings(cache_dir, "SEC")
+        assert "SEC-001" in result
+        assert "SEC-010" in result
+        assert "Coverage Report" not in result
+
+    def test_passes_through_when_no_iter2(self, tmp_path):
+        cache_dir = str(tmp_path / "cache")
+        dispatch_dir = os.path.join(cache_dir, "dispatch")
+        os.makedirs(os.path.join(dispatch_dir, "SEC-self-refinement-iter1"))
+        Path(os.path.join(dispatch_dir, "SEC-self-refinement-iter1", "output.md")).write_text(
+            "Finding ID: SEC-001\nTitle: test\n"
+        )
+
+        result = _build_validated_findings(cache_dir, "SEC")
+        assert "SEC-001" in result
