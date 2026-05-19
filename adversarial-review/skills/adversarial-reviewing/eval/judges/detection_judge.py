@@ -13,6 +13,7 @@ The scorer receives the harness's outputs dict containing:
 Returns (score, rationale) where score is detection_rate (0.0-1.0).
 """
 
+import os
 import re
 from pathlib import Path
 
@@ -195,28 +196,90 @@ def _detect_quick_mode(outputs):
         return False
 
 
+_PROXIMITY_LINES = 5
+
+
+def _finding_dedup_key(finding: dict) -> tuple[str, str, int | None]:
+    """Build dedup info for a finding.
+
+    Returns (key, basename, first_line_or_None).
+    - key: primary dedup key (loc:basename:line or id:finding_id)
+    - basename: file basename for proximity matching
+    - first_line: parsed first line number, or None
+    """
+    file_path = finding.get("file", "").strip()
+    basename = file_path.rsplit("/", 1)[-1] if file_path else ""
+
+    lines = finding.get("lines", "")
+    first_line = None
+    if lines and basename:
+        part = re.split(r'[\s,\-]', str(lines))[0]
+        if part.isdigit():
+            first_line = int(part)
+            return (f"loc:{basename}:{first_line}", basename, first_line)
+
+    fid = finding.get("finding_id", "")
+    if fid:
+        return (f"id:{fid}", basename, None)
+
+    return (f"_anon_{id(finding)}", "", None)
+
+
 def _extract_findings(outputs):
-    """Extract structured findings from ALL output artifacts."""
+    """Extract structured findings from agent output artifacts, deduped.
+
+    Dedup strategy: two findings are the same if they point to the
+    same file within 5 lines of each other. When file:line is absent,
+    falls back to finding_id (only collides within exact ID match).
+
+    REPORT files are excluded: they re-summarize agent findings with
+    different formatting, causing false inflation. If no agent findings
+    exist, falls back to REPORT and stdout.
+    """
     files = outputs.get("files", {})
-    all_findings = []
+    agent_findings = []
+    report_findings = []
 
     for _path, content in sorted(files.items()):
         if not content or not isinstance(content, str):
             continue
         parsed = _parse_findings_from_text(content)
-        if parsed:
-            all_findings.extend(parsed)
+        if not parsed:
+            continue
+        if "REPORT" in _path or "report" in _path:
+            report_findings.extend(parsed)
+        else:
+            agent_findings.extend(parsed)
 
-    if all_findings:
-        return all_findings
+    all_raw = agent_findings
+    if not all_raw:
+        all_raw = report_findings
+    if not all_raw:
+        stdout = outputs.get("stdout", "")
+        if stdout:
+            parsed = _parse_findings_from_text(stdout)
+            if parsed:
+                all_raw = parsed
 
-    stdout = outputs.get("stdout", "")
-    if stdout:
-        parsed = _parse_findings_from_text(stdout)
-        if parsed:
-            return parsed
+    if not all_raw:
+        return []
 
-    return []
+    seen_keys: set[str] = set()
+    seen_locations: dict[str, list[int]] = {}
+    deduped: list[dict] = []
+    for f in all_raw:
+        key, basename, first_line = _finding_dedup_key(f)
+        if key in seen_keys:
+            continue
+        if first_line is not None and basename in seen_locations:
+            if any(abs(first_line - ln) <= _PROXIMITY_LINES
+                   for ln in seen_locations[basename]):
+                continue
+        seen_keys.add(key)
+        if first_line is not None and basename:
+            seen_locations.setdefault(basename, []).append(first_line)
+        deduped.append(f)
+    return deduped
 
 
 def _parse_findings_from_text(text):
@@ -263,6 +326,7 @@ def _parse_structured_format(text):
             continue
         st_m = re.search(r'Source\s+Trust:\s*(\S+)', block)
         file_m = re.search(r'File:\s*(.+?)(?:\n|$)', block)
+        lines_m = re.search(r'Lines?:\s*(.+?)(?:\n|$)', block)
         title_m = re.search(r'Title:\s*(.+?)(?:\n|$)', block)
         evidence_m = re.search(
             r'Evidence:\s*(.+?)(?=\nRecommend|\nVerdict|\nFinding\s+ID:|\Z)',
@@ -275,6 +339,7 @@ def _parse_structured_format(text):
             "severity": sev_m.group(1).strip(),
             "source_trust": (st_m.group(1).strip() if st_m else ""),
             "file": (file_m.group(1).strip() if file_m else ""),
+            "lines": (lines_m.group(1).strip() if lines_m else ""),
             "title": title_m.group(1).strip(),
             "evidence": (evidence_m.group(1).strip()[:2000] if evidence_m else ""),
         })
@@ -314,7 +379,7 @@ def _parse_markdown_format(text):
     """Parse findings from markdown report with ### F-NNN: Title headers.
 
     Skips findings under a "Dismissed Findings" section or with
-    DISMISSED/WITHDRAWN in the title.
+    DISMISSED/WITHDRAWN/CONFIRMED in the title, or ADJUST SEVERITY verdicts.
     """
     dismissed_ranges = _find_dismissed_ranges(text)
 
@@ -329,7 +394,9 @@ def _parse_markdown_format(text):
             continue
         finding_id = match.group(1).strip()
         title = match.group(2).strip()
-        if re.search(r'\b(DISMISSED|WITHDRAWN)\b', title):
+        if re.search(r'\b(DISMISSED|WITHDRAWN|CONFIRMED)\b', title):
+            continue
+        if re.match(r'ADJUST\s+SEVERITY\b', title):
             continue
         end = headers[i + 1].start() if i + 1 < len(headers) else len(text)
         body = text[match.end():end]
@@ -400,7 +467,9 @@ def _parse_narrative_format(text):
         if any(start <= match.start() < end for start, end in dismissed_ranges):
             continue
         title = match.group(1).strip()
-        if re.search(r'\b(DISMISSED|WITHDRAWN)\b', title):
+        if re.search(r'\b(DISMISSED|WITHDRAWN|CONFIRMED)\b', title):
+            continue
+        if re.match(r'ADJUST\s+SEVERITY\b', title):
             continue
 
         severity_raw = match.group(2).strip()
@@ -459,7 +528,8 @@ def _parse_table_format(text):
 
         finding_id = match.group(1).strip()
         severity_raw = match.group(2).strip()
-        if severity_raw.lower() in ("id", "severity", "---"):
+        if severity_raw.lower() in ("id", "severity", "---",
+                                     "confirmed", "withdrawn", "status"):
             continue
         severity = _SEVERITY_MAP.get(severity_raw.lower(), severity_raw)
         if severity not in ("Critical", "Important", "Minor"):
@@ -469,6 +539,11 @@ def _parse_table_format(text):
         file_path = re.sub(r':\d+[-,]\d+[-,\d]*$|:\d+$', '', file_path)
 
         description = match.group(4).strip()
+
+        if re.match(r'^(CONFIRMED|WITHDRAWN|ADJUST\s)', description, re.IGNORECASE):
+            continue
+        if not file_path or not re.search(r'[./]', file_path):
+            continue
 
         findings.append({
             "finding_id": finding_id,
