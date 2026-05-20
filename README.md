@@ -323,7 +323,7 @@ Reference or inline `AGENTS.md` in your AI tool's context. Feature set depends o
 | Flag | Effect |
 |------|--------|
 | `--profile strat` | Strategy document review (verdicts, text citations) |
-| `--quick` | 2 specialists (SEC + CORR for code, SEC + FEAS for strat), 2 iterations, 150K budget |
+| `--quick` | Reduced specialists (SEC + CORR for code, SEC + FEAS for strat), 2 iterations, 150K budget |
 | `--thorough` | All 5 specialists, 3 iterations, 800K budget |
 | `--delta` | Re-review only changes since last review |
 | `--save` | Write report to `docs/reviews/YYYY-MM-DD-<topic>-review.md` |
@@ -336,7 +336,8 @@ Reference or inline `AGENTS.md` in your AI tool's context. Feature set depends o
 | `--gap-analysis` | Include coverage gap analysis in triage report |
 | `--strict-scope` | Reject (not demote) out-of-scope findings and patches |
 | `--fix --dry-run` | Preview remediation without writing anything |
-| `--context <label>=<source>` | Inject labeled context (e.g., `architecture=./docs/arch`). Repeatable. Works with both profiles. |
+| `--context <label>=<source>` | Inject labeled reference context (e.g., `architecture=./docs/arch`). Repeatable. Agents use it as advisory reference. |
+| `--binding-context <label>=<source>` | Inject binding context that overrides agent defaults (e.g., `severity=./severity-tree.md`). Repeatable. Agents must follow rules in binding context over their built-in definitions. |
 
 ### Reference Module Flags
 
@@ -378,6 +379,12 @@ Reference or inline `AGENTS.md` in your AI tool's context. Feature set depends o
 
 # Strategy review with architecture context
 /adversarial-reviewing artifacts/strat-tasks/ --profile strat --context architecture=https://github.com/org/repo
+
+# Review with org-specific severity calibration (binding overrides agent defaults)
+/adversarial-reviewing src/ --binding-context severity=./severity-tree.md --binding-context org=./org-constraints.md
+
+# Mix reference and binding context
+/adversarial-reviewing src/ --context arch=./docs/architecture.md --binding-context rules=./security-catalog.md
 
 # Quick security-only strategy review
 /adversarial-reviewing artifacts/strat-tasks/ --profile strat --security --quick
