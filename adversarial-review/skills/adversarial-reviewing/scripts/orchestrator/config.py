@@ -79,6 +79,8 @@ def parse_args(argv: list[str] = None) -> argparse.Namespace:
 
     # Existing flags
     p.add_argument("--context", action="append", default=[], metavar="LABEL=SOURCE")
+    p.add_argument("--binding-context", action="append", default=[], metavar="LABEL=SOURCE",
+                   help="Context that overrides agent defaults (severity trees, org rules)")
     p.add_argument("--constraints", default="")
     p.add_argument("--principles", default="")
     p.add_argument("--no-budget", action="store_true")
@@ -182,24 +184,18 @@ def resolve_config(args: argparse.Namespace, skill_dir: str) -> FsmConfig:
     ]
 
     # Determine agent selection and iteration/budget settings
-    if active_specialist_flags:
-        # Specialist flags override: filter to only matching agents
+    if active_specialist_flags and not args.quick and not args.thorough:
+        # Specialist flags alone: filter to only matching agents, default budget
         wanted_prefixes = {SPECIALIST_FLAG_MAP[f] for f in active_specialist_flags}
         agents = [a for a in all_agents if a.prefix in wanted_prefixes]
-
-        if args.quick:
-            max_iter = QUICK_MAX_ITER
-            budget = QUICK_BUDGET
-        elif args.thorough:
-            max_iter = THOROUGH_MAX_ITER
-            budget = THOROUGH_BUDGET
-        else:
-            max_iter = defaults.get("max_iterations", 3)
-            budget = defaults.get("budget", DEFAULT_BUDGET)
+        max_iter = defaults.get("max_iterations", 3)
+        budget = defaults.get("budget", DEFAULT_BUDGET)
     elif args.quick:
         quick_prefixes = set(
             profile_cfg.get("quick_specialists", [a.prefix for a in all_agents[:2]])
         )
+        if active_specialist_flags:
+            quick_prefixes |= {SPECIALIST_FLAG_MAP[f] for f in active_specialist_flags}
         agents = [a for a in all_agents if a.prefix in quick_prefixes]
         max_iter = QUICK_MAX_ITER
         budget = QUICK_BUDGET
@@ -242,6 +238,8 @@ def resolve_config(args: argparse.Namespace, skill_dir: str) -> FsmConfig:
             flags[flag_name] = val
     if args.context:
         flags["context"] = args.context
+    if args.binding_context:
+        flags["binding_context"] = args.binding_context
 
     if not agents:
         fatal_error(

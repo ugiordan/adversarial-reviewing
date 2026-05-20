@@ -15,6 +15,7 @@ from orchestrator.fsm import (
     _populate_outputs_from_dispatch,
     _parse_coverage_report, _collect_coverage_reports,
     _build_validated_findings,
+    _load_user_context,
     _process_red_team_audit, _process_red_team_check,
     _process_red_team_deep_dive, log_guardrail,
     _write_red_team_dispatch, _write_deep_dive_dispatch,
@@ -1635,3 +1636,54 @@ class TestBuildValidatedFindings:
 
         result = _build_validated_findings(cache_dir, "SEC")
         assert "SEC-001" in result
+
+
+
+class TestLoadUserContext:
+    def test_returns_empty_when_no_context_dir(self, tmp_path):
+        result = _load_user_context(str(tmp_path), set())
+        assert result == ""
+
+    def test_loads_reference_context(self, tmp_path):
+        ctx_dir = tmp_path / "context" / "arch"
+        ctx_dir.mkdir(parents=True)
+        (ctx_dir / "overview.md").write_text("# Architecture\nService mesh overview")
+
+        result = _load_user_context(str(tmp_path), set())
+        assert "Context: arch" in result
+        assert "(BINDING)" not in result
+        assert "reference material" in result
+        assert "Service mesh overview" in result
+
+    def test_loads_binding_context(self, tmp_path):
+        ctx_dir = tmp_path / "context" / "severity"
+        ctx_dir.mkdir(parents=True)
+        (ctx_dir / "tree.md").write_text("# Severity Tree\nHigh: credential exposure")
+
+        result = _load_user_context(str(tmp_path), {"severity"})
+        assert "Context: severity (BINDING)" in result
+        assert "OVERRIDE your default" in result
+        assert "credential exposure" in result
+
+    def test_mixed_reference_and_binding(self, tmp_path):
+        ref_dir = tmp_path / "context" / "arch"
+        ref_dir.mkdir(parents=True)
+        (ref_dir / "doc.md").write_text("reference content")
+
+        bind_dir = tmp_path / "context" / "rules"
+        bind_dir.mkdir(parents=True)
+        (bind_dir / "doc.md").write_text("binding content")
+
+        result = _load_user_context(str(tmp_path), {"rules"})
+        assert "Context: arch\n" in result
+        assert "Context: rules (BINDING)" in result
+        assert "reference content" in result
+        assert "binding content" in result
+
+    def test_skips_non_directory_entries(self, tmp_path):
+        ctx_dir = tmp_path / "context"
+        ctx_dir.mkdir()
+        (ctx_dir / "stray-file.txt").write_text("not a label dir")
+
+        result = _load_user_context(str(tmp_path), set())
+        assert result == ""

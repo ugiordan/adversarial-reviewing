@@ -53,3 +53,4 @@ mlruns/
 docs/reviews/
 docs/superpowers/
 adversarial-review/docs/superpowers/
+.claude/worktrees/

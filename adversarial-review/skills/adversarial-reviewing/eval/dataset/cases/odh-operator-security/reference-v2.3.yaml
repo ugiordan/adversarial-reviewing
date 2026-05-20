@@ -1,0 +1,502 @@
+# Ground Truth: opendatahub-operator confirmed security vulnerabilities
+# Source: manual security audit by Ugo Giordano, validated via adversarial-review
+# Repo: opendatahub-io/opendatahub-operator
+# Commit: pre-fix state (before 4b79091c4)
+#
+# Usage: eval/score.py compares adversarial-review findings against this corpus
+# to compute detection rate, false positive rate, and severity accuracy.
+#
+# scope_note: marks GT entries whose files are outside the --quick scope.
+# These are expected misses in quick mode and should not count against
+# detection rate when evaluating --quick runs.
+
+metadata:
+  repo: opendatahub-io/opendatahub-operator
+  corpus_version: "2.3"
+  total_findings: 24
+  categories:
+    rbac: 4
+    webhook: 2
+    crypto: 1
+    input_validation: 3
+    secret_management: 2
+    data_flow: 2
+    bounds_check: 1
+    randomness: 2
+    supply_chain: 2
+    access_control: 5
+
+findings:
+  # --- Batch 1: Fixed (commit 4b79091c4) ---
+
+  - id: SEC-001
+    jira: RHOAIENG-56110
+    severity: Critical
+    category: rbac
+    source_trust: Authenticated
+    file: internal/controller/services/auth/auth_controller_actions.go
+    lines: 63-65
+    title: "RBAC operator precedence bug in auth group filter"
+    description: >
+      Operator precedence in boolean condition allows system:authenticated
+      through for roles other than data-science-admingroup-role. The condition
+      groups incorrectly, bypassing the group filter for all admin role bindings.
+    detection_signals:
+      - "system:authenticated"
+      - "operator precedence"
+      - "bindRole"
+      - "group filter"
+
+  - id: SEC-002
+    severity: Important
+    category: crypto
+    source_trust: N/A
+    file: pkg/cluster/cert.go
+    lines: 106-118
+    title: "Server certificate marked as CA with unnecessary capabilities"
+    description: >
+      Self-signed server certificate set with IsCA=true and KeyUsageCertSign.
+      Server certs should never be CAs. Also adds unconditional localhost SAN.
+    detection_signals:
+      - "IsCA"
+      - "KeyUsageCertSign"
+      - "x509.Certificate"
+      - "localhost"
+
+  # SEC-003 REMOVED: file pkg/controller/actions/dependency/certmanager/bootstrap.go
+  # does not exist in this repo. The 876000h/caRootDuration code was never here.
+
+  - id: SEC-006
+    severity: Important
+    category: randomness
+    source_trust: N/A
+    file: pkg/cluster/cert.go
+    lines: 91-91
+    title: "Weak certificate serial number entropy"
+    description: >
+      Certificate serial number uses time-dependent upper bound
+      (time.Now().UnixNano()) providing only ~60 bits of entropy
+      instead of 128-bit standard.
+    detection_signals:
+      - "UnixNano"
+      - "rand.Int"
+      - "SerialNumber"
+      - "serial number"
+      - "entropy"
+      - "cert.go"
+
+  - id: SEC-008
+    jira: RHOAIENG-56113
+    severity: Important
+    category: webhook
+    source_trust: N/A
+    file: internal/webhook/notebook/mutating.go
+    lines: 86-119
+    title: "Zero-value admission response on webhook fall-through"
+    description: >
+      Notebook mutating webhook does not return explicit Allowed response
+      on the default path. Returns zero-value admission.Response which
+      may be misinterpreted.
+    detection_signals:
+      - "admission.Response"
+      - "Handle"
+      - "fall-through"
+      - "Allowed"
+
+  - id: SEC-009
+    jira: RHOAIENG-56111
+    severity: Important
+    category: bounds_check
+    source_trust: N/A
+    file: pkg/cluster/cluster_config.go
+    lines: 190-192
+    title: "Panic on empty ClusterVersion history"
+    description: >
+      Unprotected array access on clusterVersion.Status.History without
+      bounds check. Empty History during cluster bootstrap causes panic.
+    detection_signals:
+      - "History[0]"
+      - "ClusterVersion"
+      - "getOCPVersion"
+      - "bounds"
+      - "panic"
+      - "cluster_config"
+
+  # --- Batch 2-3: Jiras filed, not yet fixed ---
+
+  - id: B2-OIDC-URL
+    jira: RHOAIENG-56115
+    severity: Important
+    category: input_validation
+    source_trust: Authenticated
+    file: api/services/v1alpha1/gateway_types.go
+    lines: 148-150
+    title: "OIDC IssuerURL accepts invalid URLs without format validation"
+    description: >
+      IssuerURL field in OIDCConfig lacks URL format validation.
+      Accepts any string, causing runtime errors in OIDC provider communication.
+    detection_signals:
+      - "IssuerURL"
+      - "OIDCConfig"
+      - "URL validation"
+      - "format validation"
+      - "gateway_types"
+
+  - id: B2-SECRET-NS
+    jira: RHOAIENG-56116
+    severity: Important
+    category: data_flow
+    source_trust: Authenticated
+    file: internal/controller/services/gateway/gateway_support.go
+    lines: null
+    title: "SecretNamespace allows cross-namespace secret read"
+    description: >
+      User-specified SecretNamespace field allows reading OIDC client secrets
+      from arbitrary namespaces. Controller uses its elevated SA identity to
+      read secrets from the user-specified namespace (confused deputy).
+    detection_signals:
+      - "SecretNamespace"
+      - "secretNamespace"
+      - "cross-namespace"
+      - "OIDCConfig"
+
+  - id: B2-DSCI-WEBHOOK
+    jira: RHOAIENG-56117
+    severity: Important
+    category: webhook
+    source_trust: Authenticated
+    file: internal/webhook/dscinitialization/v2/validating.go
+    lines: null
+    title: "DSCI webhook skips UPDATE validation"
+    scope_note: "Directory outside --quick scope"
+    description: >
+      DSCI webhook only validates CREATE operations. Users can modify DSCI
+      after creation without validation, bypassing security controls.
+    detection_signals:
+      - "ValidatingWebhook"
+      - "CREATE"
+      - "UPDATE"
+      - "DSCI"
+
+  # B2-RBAC-SUB REMOVED: No evidence of overprivileged subresource access
+  # in config/rbac/. The actual RBAC issues are wildcard verbs (RBAC-WILDCARD-VERB)
+  # and wildcard API groups (in kubebuilder_rbac.go), which are separate entries.
+
+  - id: B2-MON-SECRET
+    jira: RHOAIENG-56119
+    severity: Important
+    category: secret_management
+    source_trust: N/A
+    file: internal/controller/dscinitialization/monitoring.go
+    lines: null
+    title: "Monitoring secrets stored in plaintext on disk"
+    description: >
+      AlertManager secrets (PagerDuty key, SMTP password, snitch URL)
+      injected into YAML manifest files on disk via ReplaceStringsInFile.
+      Secrets persist in plaintext on the container filesystem.
+    detection_signals:
+      - "SessionSecret"
+      - "monitoring.go"
+      - "GenerateRandomHex"
+      - "htpasswd"
+      - "prometheus"
+      - "alertmanager"
+      - "plaintext"
+      - "manifest"
+      - "ReplaceStringsInFile"
+      - "secrets"
+
+  - id: B2-CERT-NAME
+    jira: RHOAIENG-56121
+    severity: Minor
+    category: input_validation
+    source_trust: Authenticated
+    file: api/infrastructure/v1/cert_types.go
+    lines: null
+    title: "CertificateSpec.SecretName no format validation"
+    description: >
+      SecretName field accepts any string without DNS-1123 subdomain
+      validation. Invalid names cause runtime errors.
+    detection_signals:
+      - "SecretName"
+      - "CertificateSpec"
+      - "validation"
+
+  - id: B2-ENTROPY
+    jira: RHOAIENG-56120
+    severity: Minor
+    category: randomness
+    source_trust: N/A
+    file: internal/controller/dscinitialization/utils.go
+    lines: 262-275
+    title: "GenerateRandomHex returns half the expected entropy"
+    description: >
+      GenerateRandomHex(32) generates 16 random bytes (128 bits) but
+      returns 32 hex characters, suggesting 256-bit intent. The
+      numBytes := length / 2 halves the entropy.
+    detection_signals:
+      - "GenerateRandomHex"
+      - "numBytes"
+      - "length / 2"
+      - "hex.EncodeToString"
+      - "entropy"
+      - "random"
+
+  # B2-ERR-EXPOSE REMOVED: No specific file attribution. Generic observation
+  # with signals too broad for reliable scoring. Error info disclosure is a
+  # valid concern but needs a specific file:line to be a testable GT entry.
+
+  - id: B2-CERT-ISCA
+    jira: RHOAIENG-56114
+    severity: Important
+    category: crypto
+    source_trust: N/A
+    file: pkg/cluster/cert.go
+    lines: 106-107
+    title: "Self-signed cert IsCA=true"
+    description: >
+      Duplicate of SEC-002. Self-signed certificates should not be
+      marked as certificate authorities.
+    duplicate_of: SEC-002
+    detection_signals:
+      - "IsCA"
+      - "BasicConstraints"
+
+  # --- Cross-component findings ---
+  # SSRF-ISVC removed: kserve directory does not exist in this repo
+
+  - id: RBAC-AGGREGATE
+    severity: Important
+    category: rbac
+    source_trust: N/A
+    file: opt/manifests/
+    lines: null
+    title: "aggregate-to-edit labels grant implicit CRD access"
+    description: >
+      CRDs with aggregate-to-edit labels implicitly grant edit
+      permissions to all users with the edit ClusterRole, expanding
+      the attack surface without explicit RBAC review.
+    detection_signals:
+      - "aggregate-to-edit"
+      - "rbac.authorization.k8s.io/aggregate-to-edit"
+      - "aggregationRule"
+      - "edit ClusterRole"
+
+  # --- Cache OOM findings (from architecture analyzer) ---
+
+  - id: CACHE-OOM
+    severity: Important
+    category: input_validation
+    source_trust: Internal
+    file: cmd/main.go
+    lines: null
+    title: "Informer cache missing label selectors on high-volume types"
+    description: >
+      Cache uses namespace-scoped ByObject configs but some high-volume
+      types (Secrets, ConfigMaps) lack label selectors, caching all
+      objects within watched namespaces. OOM risk on large clusters.
+    detection_signals:
+      - "NewCache"
+      - "informer"
+      - "DefaultTransform"
+      - "GOMEMLIMIT"
+      - "cache.Options"
+
+  # --- Findings consistently discovered by model (added v2.0) ---
+
+  - id: SEGMENT-KEY
+    severity: Important
+    category: secret_management
+    source_trust: N/A
+    file: config/monitoring/segment/segment-key-secret.yaml
+    lines: null
+    title: "Segment.io analytics API key committed to source in plaintext"
+    description: >
+      Base64-encoded Segment.io write key committed to git. While write
+      keys cannot read data, they allow injection of arbitrary telemetry
+      events into the analytics workspace (data poisoning).
+    detection_signals:
+      - "segmentKey"
+      - "Segment"
+      - "analytics"
+      - "base64"
+      - "write key"
+
+  # MCP-UNAUTH REMOVED: cmd/mcp-server/main.go does not exist in this repo.
+
+  - id: UNPINNED-AUTH-IMG
+    severity: Minor
+    category: supply_chain
+    source_trust: N/A
+    file: internal/controller/services/gateway/gateway_support.go
+    lines: null
+    title: "Security-critical auth proxy images use unpinned :latest tags"
+    description: >
+      Fallback container images for kube-auth-proxy and nginx redirect
+      use :latest tags. Production images are set via RELATED_IMAGE env
+      vars but no runtime guard ensures the fallback is never used in
+      production.
+    detection_signals:
+      - "getKubeAuthProxyImage"
+      - "getDashboardRedirectImage"
+      - ":latest"
+      - "RELATED_IMAGE"
+
+  - id: SSL-SKIP-VERIFY
+    severity: Minor
+    category: access_control
+    source_trust: N/A
+    file: internal/controller/services/gateway/resources/kube-auth-proxy-oauth-deployment.tmpl.yaml
+    lines: null
+    title: "OAuth2 proxy ssl-insecure-skip-verify controlled by API field without admission guard"
+    description: >
+      ssl-insecure-skip-verify is templated from user-facing
+      GatewayConfig.Spec.VerifyProviderCertificate field. Defaults to true
+      but no webhook prevents disabling TLS verification in production.
+    detection_signals:
+      - "ssl-insecure-skip-verify"
+      - "InsecureSkipVerify"
+      - "VerifyProviderCertificate"
+
+  - id: AUTH-DEFAULT
+    severity: Minor
+    category: access_control
+    source_trust: N/A
+    file: internal/controller/dscinitialization/auth.go
+    lines: null
+    title: "Default Auth CR grants platform access to all authenticated users"
+    description: >
+      BuildDefaultAuth() creates default Auth CR with
+      AllowedGroups: ["system:authenticated"]. Administrators may not realize
+      the default grants platform access to every cluster user.
+    detection_signals:
+      - "BuildDefaultAuth"
+      - "AllowedGroups"
+      - "system:authenticated"
+      - "default"
+
+  - id: UNPINNED-UBI
+    severity: Minor
+    category: supply_chain
+    source_trust: N/A
+    file: Dockerfiles/Dockerfile
+    lines: null
+    title: "Final container image uses unpinned UBI minimal :latest tag"
+    description: >
+      Final build stage FROM uses ubi9/ubi-minimal:latest without digest
+      pinning. Builder stage pins Go version but runtime base is not pinned,
+      making builds non-reproducible.
+    detection_signals:
+      - "ubi-minimal"
+      - "ubi9"
+      - ":latest"
+      - "Dockerfile"
+
+  # --- Findings discovered by eval runs (added v2.1) ---
+
+  - id: RBAC-WILDCARD-VERB
+    severity: Important
+    category: rbac
+    source_trust: N/A
+    file: internal/controller/datasciencecluster/kubebuilder_rbac.go
+    lines: null
+    title: "Wildcard RBAC verbs on RBAC resources grant escalate and bind capabilities"
+    description: >
+      verbs=* on roles, rolebindings, clusterroles, clusterrolebindings
+      includes the escalate and bind verbs, bypassing Kubernetes privilege
+      escalation prevention.
+    detection_signals:
+      - "verbs=*"
+      - "escalate"
+      - "bind"
+      - "rbac.authorization.k8s.io"
+      - "clusterroles"
+      - "kubebuilder_rbac"
+      - "wildcard"
+
+  - id: PODS-EXEC
+    severity: Important
+    category: rbac
+    source_trust: N/A
+    file: internal/controller/datasciencecluster/kubebuilder_rbac.go
+    lines: null
+    title: "Operator SA granted pods/exec create permission enables lateral movement"
+    description: >
+      pods/exec create permission on cluster-wide scope allows the operator
+      SA to exec into any running pod, enabling lateral movement if the
+      SA is compromised.
+    detection_signals:
+      - "pods/exec"
+      - "exec"
+      - "lateral"
+      - "kubebuilder_rbac"
+
+  - id: OAUTH-AUTO-GRANT
+    severity: Minor
+    category: access_control
+    source_trust: N/A
+    file: internal/controller/services/gateway/gateway_support.go
+    lines: null
+    title: "OAuth client uses GrantHandlerAuto bypassing user consent"
+    description: >
+      OAuthClient created with GrantHandlerAuto automatically approves
+      authorization requests without user consent prompts.
+    detection_signals:
+      - "GrantHandlerAuto"
+      - "GrantHandler"
+      - "OAuthClient"
+      - "consent"
+
+  - id: FILE-MODE-ZERO
+    severity: Minor
+    category: access_control
+    source_trust: N/A
+    file: pkg/common/common.go
+    lines: null
+    title: "os.WriteFile uses file mode 0 instead of restrictive permissions"
+    description: >
+      ReplaceStringsInFile and MatchLineInFile call os.WriteFile with
+      mode 0, relying on running as root. Will break when operator runs
+      as non-root.
+    detection_signals:
+      - "WriteFile"
+      - "file mode"
+      - "permissions"
+      - "ReplaceStringsInFile"
+      - "common.go"
+
+  - id: WEBHOOK-SA-ORPHAN
+    severity: Minor
+    category: data_flow
+    source_trust: N/A
+    file: pkg/webhook/utils.go
+    lines: null
+    title: "ServiceAccount creation in webhook without ownership tracking"
+    description: >
+      CreateSA creates ServiceAccounts during webhook admission without
+      owner references, causing orphaned resources when the parent
+      InferenceService is deleted.
+    detection_signals:
+      - "CreateSA"
+      - "ServiceAccount"
+      - "owner"
+      - "orphan"
+      - "webhook"
+
+  - id: AUTH-CR-SILENT
+    severity: Minor
+    category: access_control
+    source_trust: N/A
+    file: internal/controller/dscinitialization/auth.go
+    lines: null
+    title: "CreateAuth silently accepts existing Auth CR without validation"
+    description: >
+      CreateAuth returns nil if Auth CR exists without validating its
+      configuration. A manually modified Auth CR with weakened groups
+      persists indefinitely.
+    detection_signals:
+      - "CreateAuth"
+      - "Auth CR"
+      - "exists"
+      - "validation"
+      - "dscinitialization"

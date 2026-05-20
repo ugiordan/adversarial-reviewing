@@ -111,9 +111,35 @@ class TestResolveConfig:
     def test_specialist_with_quick(self, skill_dir):
         args = parse_args(["--quick", "--security", "/tmp/target"])
         cfg = resolve_config(args, skill_dir)
-        assert [a.prefix for a in cfg.agents] == ["SEC"]
+        prefixes = [a.prefix for a in cfg.agents]
+        assert "SEC" in prefixes
+        assert "CORR" in prefixes
         assert cfg.max_iterations == 2
         assert cfg.budget_limit == QUICK_BUDGET
+
+    def test_specialist_flag_alone_no_quick(self, skill_dir):
+        args = parse_args(["--security", "/tmp/target"])
+        cfg = resolve_config(args, skill_dir)
+        assert [a.prefix for a in cfg.agents] == ["SEC"]
+
+    def test_binding_context_flag(self, skill_dir):
+        args = parse_args([
+            "--binding-context", "sev=tree.md",
+            "--binding-context", "org=rules.md",
+            "/tmp/target",
+        ])
+        cfg = resolve_config(args, skill_dir)
+        assert cfg.flags["binding_context"] == ["sev=tree.md", "org=rules.md"]
+
+    def test_mixed_context_and_binding_context(self, skill_dir):
+        args = parse_args([
+            "--context", "arch=arch.md",
+            "--binding-context", "sev=tree.md",
+            "/tmp/target",
+        ])
+        cfg = resolve_config(args, skill_dir)
+        assert cfg.flags["context"] == ["arch=arch.md"]
+        assert cfg.flags["binding_context"] == ["sev=tree.md"]
 
     def test_topic_flag(self, skill_dir):
         args = parse_args(["--topic", "my-topic", "/tmp/target"])

@@ -107,6 +107,7 @@ def _serialize(state: FsmState) -> dict:
         "dispatch_history": state.dispatch_history,
         "resolution_warning": state.resolution_warning,
         "red_team_completed": state.red_team_completed,
+        "binding_context_labels": sorted(state.binding_context_labels),
     }
     if state.delimiters:
         d["delimiters"] = {
@@ -217,16 +218,17 @@ def _deserialize(data: dict) -> FsmState:
                 raise StateError(
                     f"Flag '{key}' must be boolean, got {type(flags[key]).__name__}: {flags[key]!r}"
                 )
-        if "context" in flags:
-            if not isinstance(flags["context"], list):
-                raise StateError(
-                    f"Flag 'context' must be a list, got {type(flags['context']).__name__}: {flags['context']!r}"
-                )
-            for idx, x in enumerate(flags["context"]):
-                if not isinstance(x, str):
+        for list_key in ("context", "binding_context"):
+            if list_key in flags:
+                if not isinstance(flags[list_key], list):
                     raise StateError(
-                        f"Flag 'context' element {idx} must be string, got {type(x).__name__}: {x!r}"
+                        f"Flag '{list_key}' must be a list, got {type(flags[list_key]).__name__}: {flags[list_key]!r}"
                     )
+                for idx, x in enumerate(flags[list_key]):
+                    if not isinstance(x, str):
+                        raise StateError(
+                            f"Flag '{list_key}' element {idx} must be string, got {type(x).__name__}: {x!r}"
+                        )
         for str_key in _KNOWN_STRING_FLAGS:
             if str_key in flags and not isinstance(flags[str_key], str):
                 raise StateError(
@@ -340,5 +342,6 @@ def _deserialize(data: dict) -> FsmState:
         dispatch_history=dispatch_history,
         resolution_warning=data.get("resolution_warning", ""),
         red_team_completed=red_team_completed,
+        binding_context_labels=set(data.get("binding_context_labels", [])),
         error=data.get("error"),
     )

@@ -769,6 +769,42 @@ def _parse_coverage_report(output_text: str) -> str:
 
 
 _MAX_PRE_READ_TOKENS = 60_000
+
+
+def _load_user_context(cache_dir: str, binding_labels: set[str]) -> str:
+    """Load user-provided context files with authority markers."""
+    context_dir = os.path.join(cache_dir, "context")
+    if not os.path.isdir(context_dir):
+        return ""
+    parts = []
+    for label in sorted(os.listdir(context_dir)):
+        label_dir = os.path.join(context_dir, label)
+        if not os.path.isdir(label_dir):
+            continue
+        is_binding = label in binding_labels
+        for fname in sorted(os.listdir(label_dir)):
+            fpath = os.path.join(label_dir, fname)
+            if not os.path.isfile(fpath):
+                continue
+            try:
+                content = Path(fpath).read_text()
+            except (OSError, UnicodeDecodeError):
+                continue
+            if is_binding:
+                header = (
+                    f"## Context: {label} (BINDING)\n\n"
+                    "This context contains rules that OVERRIDE your default "
+                    "definitions. Where your built-in instructions conflict "
+                    "with rules in this context, follow this context.\n\n"
+                )
+            else:
+                header = (
+                    f"## Context: {label}\n\n"
+                    "This is reference material. Use it to inform your "
+                    "analysis but your built-in instructions take precedence.\n\n"
+                )
+            parts.append(header + content)
+    return "\n\n".join(parts)
 _MAX_PRE_READ_FILE_LINES = 800
 
 
@@ -968,6 +1004,9 @@ def _prepare_dispatch_directories(state, cache_dir, skill_dir, phase) -> list[tu
                 project_context_map[agent_cfg.prefix] = "\n\n".join(agent_parts)
 
     lsp_guidance = _generate_lsp_guidance(state.config.detected_language)
+    user_context = _load_user_context(
+        cache_dir, state.binding_context_labels,
+    )
 
     results = []
     for agent_cfg in state.config.agents:
@@ -1010,6 +1049,7 @@ def _prepare_dispatch_directories(state, cache_dir, skill_dir, phase) -> list[tu
             project_context=project_context_map.get(agent_cfg.prefix, ""),
             lsp_guidance=lsp_guidance if iteration == 1 else "",
             coverage_report=coverage_report,
+            user_context=user_context,
         )
         results.append((agent_cfg.prefix, dispatch_path))
     return results

@@ -363,3 +363,50 @@ class TestFindDismissedRanges:
         text = "## Active\nstuff\n## Summary\nmore"
         ranges = _find_dismissed_ranges(text)
         assert len(ranges) == 0
+
+
+class TestParseBoldEntryFormat:
+    def test_basic_parsing(self):
+        from eval.judges.detection_judge import _parse_bold_entry_format
+        text = (
+            "### Important (2)\n\n"
+            "**SEC-001: Certificate entropy too low**\n"
+            "- File: internal/utils/cert.go:69-77\n"
+            "- Uses time.Now() for serial number\n\n"
+            "**SEC-002: CA cert has ServerAuth EKU**\n"
+            "- File: internal/utils/cert.go:80-87\n"
+            "- CA template sets ExtKeyUsageServerAuth\n\n"
+            "### Minor (1)\n\n"
+            "**SEC-003: Unpinned image tag**\n"
+            "- File: config/manager/manager.yaml\n"
+            "- Uses :latest tag\n"
+        )
+        findings = _parse_bold_entry_format(text)
+        assert len(findings) == 3
+        assert findings[0]["finding_id"] == "SEC-001"
+        assert findings[0]["severity"] == "Important"
+        assert "cert.go" in findings[0]["file"]
+        assert findings[2]["finding_id"] == "SEC-003"
+        assert findings[2]["severity"] == "Minor"
+
+    def test_skips_dismissed(self):
+        from eval.judges.detection_judge import _parse_bold_entry_format
+        text = (
+            "## Dismissed Findings\n\n"
+            "### Important (1)\n\n"
+            "**SEC-099: Dismissed finding**\n"
+            "- File: foo.go\n\n"
+            "## Active Findings\n\n"
+            "### Important (1)\n\n"
+            "**SEC-001: Real finding**\n"
+            "- File: bar.go\n"
+        )
+        findings = _parse_bold_entry_format(text)
+        assert len(findings) == 1
+        assert findings[0]["finding_id"] == "SEC-001"
+
+    def test_returns_empty_for_no_severity_headers(self):
+        from eval.judges.detection_judge import _parse_bold_entry_format
+        text = "### F-001: Title\n**Severity:** High\n"
+        findings = _parse_bold_entry_format(text)
+        assert len(findings) == 0

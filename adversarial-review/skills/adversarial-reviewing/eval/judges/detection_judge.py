@@ -285,16 +285,18 @@ def _extract_findings(outputs):
 def _parse_findings_from_text(text):
     """Parse structured findings from review report text.
 
-    Supports four formats:
+    Supports five formats:
     1. Structured fields: Finding ID: X / Severity: Y / Title: Z / Evidence: W
     2. Markdown headers: ### F-001: Title / **Severity:** High / **File:** path
     3. Narrative consensus: ### N. Title (Severity) [AGENT-NNN + ...] / **File:** path
     4. Table rows: | SEC-001 | Medium | `path` | description |
+    5. Bold entries under severity headers: ### Important (N) / **SEC-001: Title**
     Tries all parsers and returns the one that found the most findings.
     """
     results = []
     for parser in [_parse_structured_format, _parse_markdown_format,
-                   _parse_narrative_format, _parse_table_format]:
+                   _parse_narrative_format, _parse_table_format,
+                   _parse_bold_entry_format]:
         parsed = parser(text)
         if parsed:
             results.append(parsed)
@@ -553,4 +555,75 @@ def _parse_table_format(text):
             "title": description[:200],
             "evidence": description[:2000],
         })
+    return findings
+
+
+def _parse_bold_entry_format(text):
+    """Parse findings from bold entries under severity group headers.
+
+    Handles report formats like:
+      ### Important (5)
+      **SEC-001: Title here**
+      - File: path/to/file.go:123-456
+      - Description text
+      - Fix: recommendation
+
+      ### Minor (7)
+      **SEC-006: Another title**
+      ...
+    """
+    dismissed_ranges = _find_dismissed_ranges(text)
+
+    severity_sections = list(re.finditer(
+        r'^###\s+(Critical|Important|Minor|High|Medium|Low)\s*\(\d+\)',
+        text, re.MULTILINE | re.IGNORECASE
+    ))
+    if not severity_sections:
+        return []
+
+    findings = []
+    for i, sec_match in enumerate(severity_sections):
+        if any(start <= sec_match.start() < end
+               for start, end in dismissed_ranges):
+            continue
+        severity_raw = sec_match.group(1).strip()
+        severity = _SEVERITY_MAP.get(severity_raw.lower(), severity_raw)
+
+        sec_end = (severity_sections[i + 1].start()
+                   if i + 1 < len(severity_sections) else len(text))
+        section_text = text[sec_match.end():sec_end]
+
+        entry_pattern = re.compile(
+            r'\*\*([A-Z]+-\d+):\s*(.+?)\*\*',
+        )
+        entries = list(entry_pattern.finditer(section_text))
+        for j, entry in enumerate(entries):
+            finding_id = entry.group(1).strip()
+            title = entry.group(2).strip()
+
+            entry_end = (entries[j + 1].start()
+                         if j + 1 < len(entries) else len(section_text))
+            body = section_text[entry.end():entry_end]
+
+            file_match = re.search(
+                r'-\s*File:\s*`?([^`\n,]+)`?', body)
+            if not file_match:
+                file_match = re.search(
+                    r'`([a-zA-Z][\w/.-]+\.\w+)`', body)
+            file_path = file_match.group(1).strip() if file_match else ""
+            file_path = re.sub(r'\s*\(lines?\s+\d+[-–]\d+\)$', '',
+                               file_path)
+            file_path = re.sub(r':\d+[-–,]\d+[-,\d]*$|:\d+$', '',
+                               file_path)
+
+            evidence = body.strip()[:2000]
+
+            findings.append({
+                "finding_id": finding_id,
+                "severity": severity,
+                "source_trust": "",
+                "file": file_path,
+                "title": title,
+                "evidence": evidence,
+            })
     return findings

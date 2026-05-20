@@ -127,53 +127,57 @@ def handle_confirm(argv: list[str], skill_dir: str):
         cache.populate_templates(cache_dir, skill_dir, state.config.profile)
         cache.populate_references(cache_dir, skill_dir, state.config.profile)
 
-        ctx_flags = state.config.flags.get("context", [])
-        for ctx in ctx_flags:
-            if "=" not in ctx:
-                log_guardrail(
-                    state, "input", "context_parse", "",
-                    "warning", f"Context entry missing '=' separator, skipped: {ctx}",
-                )
-                continue
-            label, source = ctx.split("=", 1)
-            if not label or not source:
-                log_guardrail(
-                    state, "input", "context_parse", "",
-                    "warning", f"Context entry has empty label or source: {ctx}",
-                )
-                continue
-            if not SAFE_ID_RE.match(label):
-                log_guardrail(
-                    state, "input", "context_parse", "",
-                    "warning", f"Context label contains invalid characters: {label}",
-                )
-                continue
-            if "://" in source:
-                log_guardrail(
-                    state, "input", "context_traversal", "",
-                    "warning", f"Context source contains URL scheme, skipped: {source}",
-                )
-                continue
-            # SEC-002: Reject shell metacharacters in context source paths
-            _shell_meta = set(";|&$`\\!()")
-            if any(ch in _shell_meta for ch in source):
-                log_guardrail(
-                    state, "input", "context_source_validation", "",
-                    "warning", f"Context source contains shell metacharacters, skipped: {source}",
-                )
-                continue
-            if state.config.source_root:
-                resolved_source = os.path.realpath(source)
-                root = os.path.realpath(state.config.source_root)
-                if not resolved_source.startswith(root + os.sep) and resolved_source != root:
+        binding_labels: set[str] = set()
+        for flag_key in ("context", "binding_context"):
+            ctx_flags = state.config.flags.get(flag_key, [])
+            for ctx in ctx_flags:
+                if "=" not in ctx:
                     log_guardrail(
-                        state, "input", "context_traversal", "",
-                        "warning", f"Context source outside source root, skipped: {source}",
+                        state, "input", "context_parse", "",
+                        "warning", f"Context entry missing '=' separator, skipped: {ctx}",
                     )
                     continue
-            cache.populate_context(
-                cache_dir, skill_dir, state.config.profile, label, source
-            )
+                label, source = ctx.split("=", 1)
+                if not label or not source:
+                    log_guardrail(
+                        state, "input", "context_parse", "",
+                        "warning", f"Context entry has empty label or source: {ctx}",
+                    )
+                    continue
+                if not SAFE_ID_RE.match(label):
+                    log_guardrail(
+                        state, "input", "context_parse", "",
+                        "warning", f"Context label contains invalid characters: {label}",
+                    )
+                    continue
+                if "://" in source:
+                    log_guardrail(
+                        state, "input", "context_traversal", "",
+                        "warning", f"Context source contains URL scheme, skipped: {source}",
+                    )
+                    continue
+                _shell_meta = set(";|&$`\\!()")
+                if any(ch in _shell_meta for ch in source):
+                    log_guardrail(
+                        state, "input", "context_source_validation", "",
+                        "warning", f"Context source contains shell metacharacters, skipped: {source}",
+                    )
+                    continue
+                if state.config.source_root:
+                    resolved_source = os.path.realpath(source)
+                    root = os.path.realpath(state.config.source_root)
+                    if not resolved_source.startswith(root + os.sep) and resolved_source != root:
+                        log_guardrail(
+                            state, "input", "context_traversal", "",
+                            "warning", f"Context source outside source root, skipped: {source}",
+                        )
+                        continue
+                cache.populate_context(
+                    cache_dir, skill_dir, state.config.profile, label, source
+                )
+                if flag_key == "binding_context":
+                    binding_labels.add(label)
+        state.binding_context_labels = binding_labels
 
         if state.config.flags.get("constraints"):
             cache.populate_constraints(

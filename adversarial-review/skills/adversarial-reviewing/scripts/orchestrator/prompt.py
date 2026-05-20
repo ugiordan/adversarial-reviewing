@@ -112,6 +112,7 @@ def prepare_dispatch_directory(
     project_context: str = "",
     lsp_guidance: str = "",
     coverage_report: str = "",
+    user_context: str = "",
 ) -> str:
     """Prepare a dispatch directory with all files an agent needs.
     Returns the dispatch directory path.
@@ -160,6 +161,8 @@ def prepare_dispatch_directory(
         Path(os.path.join(dispatch_dir, "lsp-tools.md")).write_text(lsp_guidance)
     if coverage_report:
         Path(os.path.join(dispatch_dir, "coverage-report.md")).write_text(coverage_report)
+    if user_context:
+        Path(os.path.join(dispatch_dir, "context.md")).write_text(user_context)
 
     return dispatch_dir
 

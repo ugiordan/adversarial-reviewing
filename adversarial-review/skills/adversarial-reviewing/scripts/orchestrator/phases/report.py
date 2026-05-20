@@ -101,6 +101,16 @@ def compose_report_prompt(cache_dir: str, profile_dir: str,
 
     if template:
         parts.append(f"\nReport template:\n{template}")
+    parts.append(
+        "\nCRITICAL FORMAT REQUIREMENT: Each finding MUST use markdown header format:\n"
+        "### FINDING-ID: Title\n"
+        "- **Severity:** Critical/Important/Minor\n"
+        "- **File:** path/to/file.go (lines N-M)\n"
+        "- **Evidence:** description\n"
+        "- **Recommended fix:** fix text\n\n"
+        "Do NOT use **FINDING-ID: Title** bold format or group findings under "
+        "severity headers like ### Important (N). Each finding gets its own ### header."
+    )
     if resolution_warning:
         parts.append(f"\n**Warning:** {resolution_warning}")
 

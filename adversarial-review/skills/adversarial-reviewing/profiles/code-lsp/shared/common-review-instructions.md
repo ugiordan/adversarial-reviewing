@@ -165,6 +165,19 @@ Focus on:
 Do NOT limit your review to the changed lines. The diff tells you WHERE to
 look; the impact graph tells you WHAT ELSE to check.
 
+## User-Provided Context
+
+If `context.md` is present in your dispatch directory, it contains user-provided
+reference material and/or binding rules.
+
+- **BINDING context**: Marked with "(BINDING)" in the header. These rules override
+  your default definitions. If a binding context provides a severity decision tree,
+  use it instead of your built-in severity criteria. If it provides organizational
+  constraints, treat violations as findings. If it provides a pattern catalog,
+  check each pattern and report APPLICABLE or NOT-APPLICABLE.
+- **Reference context**: Unmarked. Use it to inform your analysis (e.g., architecture
+  docs that help avoid false positives) but your built-in instructions take precedence.
+
 ## Triage Mode Instructions (active when --triage is used)
 
 You are EVALUATING external review comments, not performing an independent review.

@@ -160,4 +160,5 @@ class FsmState:
     dispatch_history: list[dict] = field(default_factory=list)
     resolution_warning: str = ""
     red_team_completed: bool = False
+    binding_context_labels: set[str] = field(default_factory=set)
     error: Optional[dict] = None
