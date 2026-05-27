@@ -13,6 +13,7 @@ The scorer receives the harness's outputs dict containing:
 Returns (score, rationale) where score is detection_rate (0.0-1.0).
 """
 
+import json
 import os
 import re
 from pathlib import Path
@@ -241,6 +242,30 @@ def _finding_dedup_key(finding: dict) -> tuple[str, str, int | None]:
     return (f"_anon_{id(finding)}", "", None)
 
 
+def _extract_text_from_stdout(stdout: str) -> str:
+    """Extract plain text from stdout, handling both raw text and JSONL formats."""
+    if not stdout or not stdout.strip().startswith("{"):
+        return stdout
+    parts = []
+    for line in stdout.splitlines():
+        try:
+            msg = json.loads(line)
+        except (json.JSONDecodeError, ValueError):
+            parts.append(line)
+            continue
+        m = msg.get("message", {})
+        content = m.get("content", [])
+        if isinstance(content, str):
+            parts.append(content)
+        elif isinstance(content, list):
+            for block in content:
+                if isinstance(block, dict) and block.get("type") == "text":
+                    parts.append(block.get("text", ""))
+                elif isinstance(block, dict) and block.get("type") == "tool_result":
+                    parts.append(str(block.get("content", "")))
+    return "\n".join(parts)
+
+
 def _extract_findings(outputs):
     """Extract structured findings from agent output artifacts, deduped.
 
@@ -273,7 +298,8 @@ def _extract_findings(outputs):
     if not all_raw:
         stdout = outputs.get("stdout", "")
         if stdout:
-            parsed = _parse_findings_from_text(stdout)
+            text = _extract_text_from_stdout(stdout)
+            parsed = _parse_findings_from_text(text)
             if parsed:
                 all_raw = parsed
 
