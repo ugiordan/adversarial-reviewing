@@ -1,7 +1,7 @@
 metadata:
   repo: opendatahub-io/opendatahub-operator
   corpus_version: '3.4'
-  total_findings: 33
+  total_findings: 44
   categories:
     rbac: 4
     webhook: 2

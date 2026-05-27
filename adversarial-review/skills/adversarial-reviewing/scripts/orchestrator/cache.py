@@ -105,7 +105,15 @@ def validate_cache(cache_dir: str, skill_dir: str, profile: str) -> dict:
                              env_extra={"CACHE_DIR": cache_dir, "REVIEW_PROFILE": profile})
 
 
+_MANAGE_CACHE_TIMEOUTS = {
+    "populate-code": 300,
+    "populate-context": 120,
+}
+
+
 def _run_manage_cache(args: list[str], skill_dir: str,
                       env_extra: dict = None) -> dict:
     script = os.path.join(skill_dir, "scripts", "manage_cache.py")
-    return run_python_script(script, args, env_extra=env_extra, timeout=60)
+    cmd = args[0] if args else ""
+    timeout = _MANAGE_CACHE_TIMEOUTS.get(cmd, 60)
+    return run_python_script(script, args, env_extra=env_extra, timeout=timeout)

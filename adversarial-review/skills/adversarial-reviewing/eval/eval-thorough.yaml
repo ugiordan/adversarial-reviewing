@@ -99,7 +99,7 @@ judges:
   module: eval.judges.detection_judge
   function: score_detection
 - name: false_positive_rate
-  description: 'Check that false positive rate stays under 30%.
+  description: 'Check that false positive rate stays under 20%.
 
     '
   module: eval.judges.detection_judge

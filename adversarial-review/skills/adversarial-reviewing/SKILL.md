@@ -17,7 +17,7 @@ orchestrator commands and dispatch agents as instructed.
 Run exactly this command first:
 
 ```bash
-python3 ${CLAUDE_SKILL_DIR}/scripts/orchestrator init $ARGUMENTS
+cd ${CLAUDE_SKILL_DIR} && python3 -m scripts.orchestrator init $ARGUMENTS
 ```
 
 ## Workflow
@@ -35,7 +35,7 @@ Orchestrator Progress:
 **Step 1: Initialize**
 
 ```bash
-python3 ${CLAUDE_SKILL_DIR}/scripts/orchestrator init $ARGUMENTS
+cd ${CLAUDE_SKILL_DIR} && python3 -m scripts.orchestrator init $ARGUMENTS
 ```
 
 Parse the JSON output. Store `cache_dir`.
@@ -51,7 +51,7 @@ cat {CACHE_DIR}/dispatch.json
 - **If `action` is `ask_user`**: Read `message_file`, show to user,
   wait for approval. On approval:
   ```bash
-  python3 ${CLAUDE_SKILL_DIR}/scripts/orchestrator confirm --cache-dir {CACHE_DIR}
+  cd ${CLAUDE_SKILL_DIR} && python3 -m scripts.orchestrator confirm --cache-dir {CACHE_DIR}
   ```
 
 - **If `dispatch_version` is `"3.0"` and `agents` is present**:
@@ -75,7 +75,7 @@ cat {CACHE_DIR}/dispatch.json
 **Step 4: Advance**
 
 ```bash
-python3 ${CLAUDE_SKILL_DIR}/scripts/orchestrator next --cache-dir {CACHE_DIR}
+cd ${CLAUDE_SKILL_DIR} && python3 -m scripts.orchestrator next --cache-dir {CACHE_DIR}
 ```
 
 **Step 5-6: Read dispatch.json. If done, verify artifacts and stop.**
@@ -102,11 +102,16 @@ The orchestrator handles all file management. If it cannot run, abort.
 If an agent fails or times out, run `orchestrator next` normally.
 The orchestrator handles missing outputs gracefully.
 
-If any orchestrator command fails: ABORT IMMEDIATELY.
-Do not attempt workarounds.
+If any orchestrator command (init, confirm, next) fails or returns a
+non-zero exit code: STOP. Do not retry. Do not re-initialize. Do not
+attempt workarounds. Do not run the command from a different directory.
+Do not improvise a recovery. Report the error to the user and exit.
+
+Re-initializing after a failure creates a new cache with wrong paths
+and corrupts the entire review.
 
 ## Crash recovery
 
 ```bash
-python3 ${CLAUDE_SKILL_DIR}/scripts/orchestrator resume --cache-dir {CACHE_DIR}
+cd ${CLAUDE_SKILL_DIR} && python3 -m scripts.orchestrator resume --cache-dir {CACHE_DIR}
 ```

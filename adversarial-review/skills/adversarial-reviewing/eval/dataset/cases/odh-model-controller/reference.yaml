@@ -1,7 +1,7 @@
 metadata:
   repo: opendatahub-io/odh-model-controller
   corpus_version: '1.0'
-  total_findings: 10
+  total_findings: 41
 findings:
 - id: ARCH-DOUBLE-START
   severity: Critical

@@ -386,6 +386,7 @@ def _generate_scope_file(source_root: str, output_path: str,
     skip_dirs = {
         "vendor", "node_modules", ".git", "__pycache__",
         "testdata", "bin", ".idea", ".vscode", "output",
+        ".adversarial-review-cache", ".cache", "artifacts",
     }
     skip_suffixes = ("_test.go", "zz_generated", ".patch")
     binary_exts = {
@@ -423,8 +424,7 @@ def _generate_scope_file(source_root: str, output_path: str,
             if not force and len(lines) >= MAX_SCOPE_FILES:
                 print(json.dumps({
                     "warning": "scope_truncated",
-                    "message": f"Scope file truncated at {MAX_SCOPE_FILES} files. "
-                               "Use --force to bypass.",
+                    "message": f"Scope file truncated at {MAX_SCOPE_FILES} files (this is normal for large repos).",
                 }), file=sys.stderr)
                 break
         else:

@@ -96,7 +96,7 @@ judges:
 
   - name: false_positive_rate
     description: |
-      Check that false positive rate stays under 30%.
+      Check that false positive rate stays under 20%.
       A finding is a false positive if it cannot be matched to any
       ground truth entry via file path or detection signal keywords.
     module: eval.judges.detection_judge

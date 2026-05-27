@@ -7,19 +7,27 @@ description: 'Quick mode baseline: SEC agent only, default budget.
 skill: adversarial-reviewing:adversarial-reviewing
 execution:
   mode: case
-  arguments: --security --quick --save {prompt}
-  max_budget_usd: 25.0
+  arguments: --save {prompt}
+  max_budget_usd: 60.0
+  timeout: 7200
 runner:
   type: claude-code
   plugin_dirs:
   - /Users/ugogiordano/workdir/rhoai/adversarial-review/.claude/worktrees/fsm-orchestrator/adversarial-review
-  system_prompt: 'CRITICAL: When the adversarial-reviewing skill is invoked, you MUST
-    read its SKILL.md and follow the orchestrator protocol exactly. Your first
-    action after reading SKILL.md must be running the orchestrator init command.
-    Do NOT perform your own code review. Do NOT spawn your own agents. The
-    orchestrator drives all agent dispatch. When the orchestrator asks for scope
-    confirmation, approve immediately. When asked about budget escalation,
-    approve. The orchestrator automatically copies outputs to artifacts/ when done.
+  system_prompt: 'CRITICAL: You are a relay for the adversarial-reviewing orchestrator.
+    Read SKILL.md and follow it EXACTLY. Your ONLY job is running orchestrator
+    commands (init, confirm, next) and dispatching agents as instructed.
+
+    RULES YOU MUST NOT BREAK:
+    1. Run orchestrator init, then follow the dispatch.json loop
+    2. Orchestrator commands may take up to 5 minutes. WAIT for them to finish.
+       Do NOT investigate why they are slow. Do NOT read fsm-state.json.
+       Do NOT grep or ls the filesystem. Do NOT call GitHub APIs. JUST WAIT.
+    3. If any orchestrator command fails, STOP IMMEDIATELY. Do NOT retry.
+       Do NOT re-initialize. Report the error and exit.
+    4. After agents complete, run orchestrator next IMMEDIATELY. Do NOT read
+       agent outputs. Do NOT write output files. Do NOT verify anything.
+    5. Approve scope confirmation and budget escalation immediately.
 
     '
   settings:
@@ -57,6 +65,7 @@ permissions:
   - mcp__*
 mlflow:
   experiment: adversarial-reviewing-eval
+  tracking_uri: http://127.0.0.1:5050
 dataset:
   path: eval/dataset/cases
   schema: "Each case directory contains:\n- input.yaml: The 'prompt' field contains the skill invocation\n  arguments (target\
@@ -103,7 +112,7 @@ judges:
   module: eval.judges.detection_judge
   function: score_detection
 - name: false_positive_rate
-  description: 'Check that false positive rate stays under 30%.
+  description: 'Check that false positive rate stays under 20%.
 
     '
   module: eval.judges.detection_judge
@@ -115,8 +124,8 @@ judges:
   module: eval.judges.detection_judge
   function: score_severity_accuracy
 - name: cost_reasonable
-  description: Verify cost stays under budget
-  check: "cost = outputs.get(\"cost_usd\", 0)\nif cost and cost > 25.0:\n  return False, f\"Cost ${cost:.2f} exceeds $25 limit\"\
+  description: Verify per-case cost stays under budget
+  check: "cost = outputs.get(\"cost_usd\", 0)\nif cost and cost > 60.0:\n  return False, f\"Cost ${cost:.2f} exceeds $60 limit\"\
     \nreturn True, f\"Cost ${cost:.2f}\" if cost else \"Cost not tracked\"\n"
 thresholds:
   detection_rate:

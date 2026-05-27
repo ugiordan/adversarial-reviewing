@@ -49,11 +49,11 @@ def score_detection(outputs=None, **kwargs):
 def score_false_positive_rate(outputs=None, **kwargs):
     """Complementary judge: scores false positive rate (lower is better).
 
-    Returns (bool, str) where bool is True if FP rate is under 30%.
+    Returns (bool, str) where bool is True if FP rate is under 20%.
     """
     metrics, err = _run_metrics(outputs)
     if err:
-        return (False, err) if "ground truth" in err else (True, err)
+        return (False, err) if "ground truth" in err.lower() else (True, err)
 
     fpr = metrics["false_positive_rate"]
     fp = metrics["false_positives"]
@@ -157,12 +157,28 @@ def _run_metrics(outputs):
 
     gt_path = Path(case_dir) / "reference.yaml" if case_dir else None
     if not gt_path or not gt_path.exists():
+        case_name = Path(case_dir).name if case_dir else ""
+        if case_name:
+            eval_dir = Path(__file__).resolve().parent.parent
+            candidate = eval_dir / "dataset" / "cases" / case_name / "reference.yaml"
+            if candidate.exists():
+                gt_path = candidate
+    if not gt_path or not gt_path.exists():
         return None, "No ground truth found in case directory"
 
     _metadata, gt_list = load_ground_truth(str(gt_path))
     gt_active = [g for g in gt_list if not g.get("duplicate_of")]
     if not gt_active:
         return None, "No ground truth entries (all empty or duplicates)"
+
+    if not outputs.get("stdout") and not outputs.get("files") and case_dir:
+        stdout_path = Path(case_dir) / "stdout.log"
+        if stdout_path.exists():
+            try:
+                outputs = dict(outputs)
+                outputs["stdout"] = stdout_path.read_text()
+            except (OSError, UnicodeDecodeError):
+                pass
 
     findings = _extract_findings(outputs)
     if not findings:
@@ -323,7 +339,7 @@ def _parse_structured_format(text):
         fid_m = re.match(r'Finding\s+ID:\s*(\S+)', block)
         if not fid_m:
             continue
-        sev_m = re.search(r'Severity:\s*(Critical|Important|Minor)', block, re.IGNORECASE)
+        sev_m = re.search(r'Severity:\s*(Critical|Important|High|Minor|Medium|Low)', block, re.IGNORECASE)
         if not sev_m:
             continue
         st_m = re.search(r'Source\s+Trust:\s*(\S+)', block)
@@ -331,7 +347,7 @@ def _parse_structured_format(text):
         lines_m = re.search(r'Lines?:\s*(.+?)(?:\n|$)', block)
         title_m = re.search(r'Title:\s*(.+?)(?:\n|$)', block)
         evidence_m = re.search(
-            r'Evidence:\s*(.+?)(?=\nRecommend|\nVerdict|\nFinding\s+ID:|\Z)',
+            r'Evidence:\s*(.+?)(?=\nImpact|\nRecommend|\nVerdict|\nFinding\s+ID:|\Z)',
             block, re.DOTALL,
         )
         if not title_m:
@@ -387,7 +403,7 @@ def _parse_markdown_format(text):
 
     findings = []
     header_pattern = re.compile(
-        r'^###\s+(F-\d+|SEC-\d+):\s*(.+?)$',
+        r'^###\s+([A-Z]+-\d+):\s*(.+?)$',
         re.MULTILINE
     )
     headers = list(header_pattern.finditer(text))

@@ -331,6 +331,7 @@ def main():
     parser.add_argument("--representation", help="IR representation label (R0-R5)")
     parser.add_argument("--model", help="Model used")
     parser.add_argument("--quiet", "-q", action="store_true", help="JSON output only")
+    parser.add_argument("--quick", action="store_true", help="Quick mode: exclude GT entries with scope_note")
     args = parser.parse_args()
 
     try:
@@ -340,7 +341,7 @@ def main():
         print(f"Error loading input: {e}", file=sys.stderr)
         sys.exit(1)
 
-    metrics = compute_metrics(findings, gt_list, args.tokens)
+    metrics = compute_metrics(findings, gt_list, args.tokens, quick_mode=args.quick)
 
     # Add run metadata
     if args.run_id:
