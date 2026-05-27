@@ -266,6 +266,41 @@ def _extract_text_from_stdout(stdout: str) -> str:
     return "\n".join(parts)
 
 
+def _extract_findings_from_subagents(case_dir: str) -> list[dict]:
+    """Extract findings from subagent JSONL transcripts as a last resort."""
+    subagent_dir = os.path.join(case_dir, "subagents")
+    if not os.path.isdir(subagent_dir):
+        return []
+    all_text = []
+    for fname in sorted(os.listdir(subagent_dir)):
+        if not fname.endswith(".jsonl"):
+            continue
+        fpath = os.path.join(subagent_dir, fname)
+        try:
+            with open(fpath) as f:
+                for line in f:
+                    try:
+                        msg = json.loads(line)
+                    except (json.JSONDecodeError, ValueError):
+                        continue
+                    m = msg.get("message", {})
+                    if m.get("role") != "assistant":
+                        continue
+                    content = m.get("content", [])
+                    if isinstance(content, list):
+                        for block in content:
+                            if isinstance(block, dict) and block.get("type") == "text":
+                                text = block.get("text", "")
+                                if "Finding ID:" in text or re.search(r'[A-Z]+-\d+', text):
+                                    all_text.append(text)
+        except (OSError, UnicodeDecodeError):
+            continue
+    if not all_text:
+        return []
+    combined = "\n\n".join(all_text)
+    return _parse_findings_from_text(combined)
+
+
 def _extract_findings(outputs):
     """Extract structured findings from agent output artifacts, deduped.
 
@@ -302,14 +337,24 @@ def _extract_findings(outputs):
             parsed = _parse_findings_from_text(text)
             if parsed:
                 all_raw = parsed
+    if not all_raw:
+        case_dir = outputs.get("case_dir", "")
+        if case_dir:
+            subagent_findings = _extract_findings_from_subagents(case_dir)
+            if subagent_findings:
+                all_raw = subagent_findings
 
     if not all_raw:
         return []
 
     seen_keys: set[str] = set()
+    seen_ids: set[str] = set()
     seen_locations: dict[str, list[int]] = {}
     deduped: list[dict] = []
     for f in all_raw:
+        fid = f.get("finding_id", "")
+        if fid and fid in seen_ids:
+            continue
         key, basename, first_line = _finding_dedup_key(f)
         if key in seen_keys:
             continue
@@ -318,6 +363,8 @@ def _extract_findings(outputs):
                    for ln in seen_locations[basename]):
                 continue
         seen_keys.add(key)
+        if fid:
+            seen_ids.add(fid)
         if first_line is not None and basename:
             seen_locations.setdefault(basename, []).append(first_line)
         deduped.append(f)

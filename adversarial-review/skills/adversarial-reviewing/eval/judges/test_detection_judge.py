@@ -103,7 +103,7 @@ class TestExtractFindings:
             "Evidence: Uses CFB\n"
         )
         content_b = (
-            "Finding ID: SEC-001\n"
+            "Finding ID: SEC-002\n"
             "Severity: Critical\n"
             "File: pkg/auth.go\n"
             "Lines: 48\n"
@@ -113,6 +113,27 @@ class TestExtractFindings:
         outputs = {"files": {"iter1.md": content_a, "challenge.md": content_b}}
         findings = _extract_findings(outputs)
         assert len(findings) == 2
+
+    def test_dedup_same_id_across_phases(self):
+        content_a = (
+            "Finding ID: SEC-001\n"
+            "Severity: Critical\n"
+            "File: pkg/cipher.go\n"
+            "Lines: 48\n"
+            "Title: Weak cipher\n"
+            "Evidence: Uses CFB\n"
+        )
+        content_b = (
+            "Finding ID: SEC-001\n"
+            "Severity: Critical\n"
+            "File: pkg/cipher.go\n"
+            "Lines: 48\n"
+            "Title: Weak cipher\n"
+            "Evidence: Uses CFB mode\n"
+        )
+        outputs = {"files": {"iter1.md": content_a, "iter2.md": content_b}}
+        findings = _extract_findings(outputs)
+        assert len(findings) == 1
 
     def test_no_dedup_distant_lines(self):
         content_a = (

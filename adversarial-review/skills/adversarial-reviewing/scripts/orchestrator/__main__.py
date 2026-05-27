@@ -93,7 +93,9 @@ def handle_init(argv: list[str], skill_dir: str):
         f"Budget: {config.budget_limit}\n"
         f"Max iterations: {config.max_iterations}\n"
         f"Target: {sanitized_target}\n\n"
-        f"Proceed with review?"
+        f"NEXT STEP: Run the orchestrator confirm command to approve this "
+        f"scope and start the review. The confirm command may take several "
+        f"minutes for large repos. Wait for it to complete."
     )
 
     save_state(state, cache_dir)
