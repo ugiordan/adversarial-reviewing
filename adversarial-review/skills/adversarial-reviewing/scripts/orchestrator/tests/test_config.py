@@ -45,9 +45,13 @@ class TestResolveConfig:
         cfg = resolve_config(args, skill_dir)
         assert cfg.profile == "code"
         assert len(cfg.agents) == 5
-        assert cfg.max_iterations == 2
-        # Budget comes from profiles/code/defaults.json which has budget: 0
-        assert cfg.budget_limit == 0
+        assert cfg.max_iterations == 3
+        assert cfg.budget_limit == DEFAULT_BUDGET
+
+    def test_budget_zero_without_no_budget_falls_back(self, skill_dir):
+        args = parse_args(["/tmp/target"])
+        cfg = resolve_config(args, skill_dir)
+        assert cfg.budget_limit > 0
 
     def test_quick_preset(self, skill_dir):
         args = parse_args(["--quick", "/tmp/target"])

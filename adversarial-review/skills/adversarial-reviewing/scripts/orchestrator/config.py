@@ -215,6 +215,15 @@ def resolve_config(args: argparse.Namespace, skill_dir: str) -> FsmConfig:
     if args.no_budget:
         budget = 0
 
+    if budget <= 0 and not args.no_budget:
+        import sys
+        print(json.dumps({
+            "warning": "budget_zero",
+            "message": f"Budget resolved to {budget} (profile defaults may be misconfigured). "
+                       f"Using DEFAULT_BUDGET ({DEFAULT_BUDGET}) instead.",
+        }), file=sys.stderr)
+        budget = DEFAULT_BUDGET
+
     # Declarative flag collection: bool flags are set when True,
     # string/list flags are set when non-empty.
     BOOL_FLAGS = [
