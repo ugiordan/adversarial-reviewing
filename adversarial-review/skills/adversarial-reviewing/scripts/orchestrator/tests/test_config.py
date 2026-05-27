@@ -3,6 +3,7 @@ import json
 import pytest
 from orchestrator.config import (
     parse_args, resolve_config, read_profile_config, _parse_config_yml,
+    _resolve_source_root,
     DEFAULT_BUDGET, QUICK_BUDGET, THOROUGH_BUDGET, SPECIALIST_FLAG_MAP,
 )
 
@@ -342,3 +343,43 @@ class TestFlagCompatibility:
         args = parse_args(["--security", "--quick", "/tmp/target"])
         assert args.security is True
         assert args.quick is True
+
+
+class TestResolveSourceRoot:
+    def test_direct_directory(self, tmp_path):
+        d = tmp_path / "repo"
+        d.mkdir()
+        assert _resolve_source_root(str(d)) == str(d)
+
+    def test_file_path_uses_parent(self, tmp_path):
+        d = tmp_path / "repo"
+        d.mkdir()
+        f = d / "main.go"
+        f.write_text("package main")
+        assert _resolve_source_root(str(f)) == str(d)
+
+    def test_natural_language_with_embedded_path(self, tmp_path):
+        d = tmp_path / "repo"
+        d.mkdir()
+        target = f"Review the changes in {d} for security issues"
+        assert _resolve_source_root(target) == str(d)
+
+    def test_multiple_paths_first_valid_wins(self, tmp_path):
+        d = tmp_path / "repo"
+        d.mkdir()
+        target = f"Compare /nonexistent/foo with {d}"
+        assert _resolve_source_root(target) == str(d)
+
+    def test_nonexistent_path_falls_back_to_cwd(self):
+        import os
+        result = _resolve_source_root("/nonexistent/path/to/nowhere")
+        assert result == os.path.realpath(os.getcwd())
+
+    def test_no_path_falls_back_to_cwd(self):
+        import os
+        result = _resolve_source_root("just some text")
+        assert result == os.path.realpath(os.getcwd())
+
+    def test_never_returns_empty(self):
+        result = _resolve_source_root("")
+        assert result
