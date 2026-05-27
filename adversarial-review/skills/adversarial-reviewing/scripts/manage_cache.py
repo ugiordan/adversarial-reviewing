@@ -445,36 +445,22 @@ def cmd_populate_context(args):
         }))
         sys.exit(0)
 
-    # F-005: Validate RESOLVED path is within expected bounds
+    # F-005: Validate RESOLVED path exists
     if not os.path.isdir(resolved):
         err_json(f"Resolved path does not exist: {resolved}")
         sys.exit(2)
 
-    try:
-        resolved_real = os.path.realpath(resolved)
-    except Exception:
-        resolved_real = resolved
-    try:
-        cwd_real = os.path.realpath(".")
-    except Exception:
-        cwd_real = os.getcwd()
-    tmpdir_val = os.environ.get("TMPDIR", "/tmp")
-    try:
-        tmpdir_real = os.path.realpath(tmpdir_val)
-    except Exception:
-        tmpdir_real = tmpdir_val
-
-    in_cwd = resolved_real == cwd_real or resolved_real.startswith(cwd_real + "/")
-    in_tmp = resolved_real == tmpdir_real or resolved_real.startswith(tmpdir_real + "/")
-    if not (in_cwd or in_tmp):
-        err_json(f"Resolved path outside workspace: {resolved_real}")
-        sys.exit(2)
+    # Context sources are explicitly user-provided via --context flag,
+    # so we allow absolute paths (unlike code files which must be in workspace).
 
     # Copy files to cache context directory (don't follow symlinks)
+    # Accept .md, .json, .yaml, .yml files (context can be structured data)
+    allowed_extensions = {".md", ".json", ".yaml", ".yml"}
     copy_count = 0
     for root, dirs, files in os.walk(resolved, followlinks=False):
         for fname in sorted(files):
-            if not fname.endswith(".md"):
+            ext = os.path.splitext(fname)[1].lower()
+            if ext not in allowed_extensions:
                 continue
             if fname == "README.md":
                 continue
