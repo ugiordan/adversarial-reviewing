@@ -33,15 +33,23 @@ from .types import State, FsmState, Delimiters, SAFE_ID_RE, PHASE_SELF_REFINEMEN
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        prog="orchestrator",
-        description="FSM orchestrator for adversarial-reviewing skill",
-    )
-    parser.add_argument(
-        "command", choices=["init", "next", "confirm", "resume"],
-        help="Subcommand to run",
-    )
-    args, remaining = parser.parse_known_args()
+    raw_args = sys.argv[1:]
+    commands = {"init", "next", "confirm", "resume"}
+    command = None
+    remaining = []
+    for i, arg in enumerate(raw_args):
+        if arg in commands and command is None:
+            command = arg
+            remaining = raw_args[:i] + raw_args[i + 1:]
+            break
+    if command is None:
+        if "--cache-dir" in raw_args:
+            command = "next"
+            remaining = raw_args
+        else:
+            print("usage: orchestrator {init,next,confirm,resume} [options]",
+                  file=sys.stderr)
+            sys.exit(2)
 
     skill_dir = _validated_skill_dir()
 
@@ -49,7 +57,7 @@ def main():
      "next": handle_next,
      "confirm": handle_confirm,
      "resume": handle_resume,
-     }[args.command](remaining, skill_dir)
+     }[command](remaining, skill_dir)
 
 
 def handle_init(argv: list[str], skill_dir: str):
