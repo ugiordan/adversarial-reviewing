@@ -264,10 +264,33 @@ def resolve_config(args: argparse.Namespace, skill_dir: str) -> FsmConfig:
         min_iterations=min(2, max_iter),
         flags=flags,
         target=os.path.abspath(args.target),
-        source_root=os.path.realpath(os.path.abspath(args.target)) if os.path.isdir(args.target) else os.path.realpath(os.getcwd()),
+        source_root=_resolve_source_root(args.target),
         specialist_flags=active_specialist_flags,
         topic=args.topic,
     )
+
+
+def _resolve_source_root(target: str) -> str:
+    """Resolve the source root from the target argument.
+
+    Handles: directory paths, file paths (uses parent dir), and strings
+    containing embedded paths (extracts the first valid directory).
+    Falls back to cwd only if no path can be extracted.
+    """
+    abs_target = os.path.realpath(os.path.abspath(target))
+    if os.path.isdir(abs_target):
+        return abs_target
+    if os.path.isfile(abs_target):
+        return os.path.dirname(abs_target)
+    import re
+    paths = re.findall(r'(/[^\s,;:"\']+)', target)
+    for p in paths:
+        resolved = os.path.realpath(p)
+        if os.path.isdir(resolved):
+            return resolved
+        if os.path.isfile(resolved):
+            return os.path.dirname(resolved)
+    return os.path.realpath(os.getcwd())
 
 
 def _load_defaults(profile_dir: str) -> dict:
