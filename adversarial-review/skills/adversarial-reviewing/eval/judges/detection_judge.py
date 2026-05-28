@@ -243,27 +243,17 @@ def _finding_dedup_key(finding: dict) -> tuple[str, str, int | None]:
 
 
 def _extract_text_from_stdout(stdout: str) -> str:
-    """Extract plain text from stdout, handling both raw text and JSONL formats."""
+    """Extract finding-relevant text from stdout.
+
+    For JSONL (stream-json) format: decode JSON escaped strings so that
+    \\n becomes real newlines and finding fields parse correctly.
+    For plain text: return as-is.
+    """
     if not stdout or not stdout.strip().startswith("{"):
         return stdout
-    parts = []
-    for line in stdout.splitlines():
-        try:
-            msg = json.loads(line)
-        except (json.JSONDecodeError, ValueError):
-            parts.append(line)
-            continue
-        m = msg.get("message", {})
-        content = m.get("content", [])
-        if isinstance(content, str):
-            parts.append(content)
-        elif isinstance(content, list):
-            for block in content:
-                if isinstance(block, dict) and block.get("type") == "text":
-                    parts.append(block.get("text", ""))
-                elif isinstance(block, dict) and block.get("type") == "tool_result":
-                    parts.append(str(block.get("content", "")))
-    return "\n".join(parts)
+    decoded = stdout.replace("\\\\n", "\n").replace("\\n", "\n")
+    decoded = decoded.replace("\\\\t", "\t").replace("\\t", "\t")
+    return decoded
 
 
 def _extract_findings_from_subagents(case_dir: str) -> list[dict]:
@@ -348,13 +338,9 @@ def _extract_findings(outputs):
         return []
 
     seen_keys: set[str] = set()
-    seen_ids: set[str] = set()
     seen_locations: dict[str, list[int]] = {}
     deduped: list[dict] = []
     for f in all_raw:
-        fid = f.get("finding_id", "")
-        if fid and fid in seen_ids:
-            continue
         key, basename, first_line = _finding_dedup_key(f)
         if key in seen_keys:
             continue
@@ -363,8 +349,6 @@ def _extract_findings(outputs):
                    for ln in seen_locations[basename]):
                 continue
         seen_keys.add(key)
-        if fid:
-            seen_ids.add(fid)
         if first_line is not None and basename:
             seen_locations.setdefault(basename, []).append(first_line)
         deduped.append(f)
@@ -409,7 +393,7 @@ def _parse_structured_format(text):
         block = block.strip()
         if not block:
             continue
-        fid_m = re.match(r'Finding\s+ID:\s*(\S+)', block)
+        fid_m = re.match(r'Finding\s+ID:\s*([A-Z]+-\d+)', block)
         if not fid_m:
             continue
         sev_m = re.search(r'Severity:\s*(Critical|Important|High|Minor|Medium|Low)', block, re.IGNORECASE)
