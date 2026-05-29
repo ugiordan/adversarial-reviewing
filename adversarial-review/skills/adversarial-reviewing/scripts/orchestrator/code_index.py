@@ -79,16 +79,23 @@ _SECURITY_KEYWORDS = {
 }
 
 
+_MAX_INDEX_TIME_S = 60.0
+
+
 def build_code_index(source_root: str, detected_language: str = "") -> str:
     """Build a compact code index from the source tree.
 
     Uses regex-based symbol extraction (works without external tools).
     Returns markdown with symbol definitions grouped by file.
+    Times out after 60 seconds and returns partial results.
     """
+    import time
+    _start = time.monotonic()
+
     if not os.path.isdir(source_root):
         return ""
 
-    symbols_by_file = _extract_symbols(source_root)
+    symbols_by_file = _extract_symbols(source_root, deadline=_start + _MAX_INDEX_TIME_S)
     if not symbols_by_file:
         return ""
 
@@ -104,15 +111,19 @@ def build_code_index(source_root: str, detected_language: str = "") -> str:
 
 
 def _extract_symbols(
-    source_root: str,
+    source_root: str, deadline: float = 0,
 ) -> dict[str, list[tuple[str, str, int, str]]]:
     """Walk source tree and extract symbol definitions.
 
     Returns {rel_path: [(name, kind, line_num, signature)]}.
+    Stops early if deadline (monotonic time) is exceeded.
     """
+    import time
     result: dict[str, list[tuple[str, str, int, str]]] = {}
 
     for root, dirs, files in os.walk(source_root):
+        if deadline and time.monotonic() > deadline:
+            break
         dirs[:] = sorted(d for d in dirs if d not in _SKIP_DIRS)
         for fname in sorted(files):
             if fname.startswith("."):

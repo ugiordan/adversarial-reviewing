@@ -933,6 +933,9 @@ def _build_validated_findings(cache_dir: str, agent_id: str) -> str:
     return "\n\n".join(result_parts)
 
 
+_dispatch_cache: dict[str, dict] = {}
+
+
 def _prepare_dispatch_directories(state, cache_dir, skill_dir, phase) -> list[tuple[str, str]]:
     """Prepare dispatch directories for all agents. Returns (agent_id, dispatch_path) tuples."""
     profile_dir = os.path.join(skill_dir, "profiles", state.config.profile)
@@ -950,58 +953,76 @@ def _prepare_dispatch_directories(state, cache_dir, skill_dir, phase) -> list[tu
 
     iteration = _current_phase_iteration(state)
     source_root = state.config.source_root or os.getcwd()
-    if phase == PHASE_SELF_REFINEMENT:
-        from .code_index import build_code_index
-        code_index = build_code_index(source_root, state.config.detected_language)
-        if code_index:
+
+    cached = _dispatch_cache.get(cache_dir)
+    if not cached:
+        import time
+        t0 = time.monotonic()
+        if phase == PHASE_SELF_REFINEMENT:
+            from .code_index import build_code_index
+            code_index = build_code_index(source_root, state.config.detected_language)
+            if code_index:
+                source_files = (
+                    "## Source Code\n\n"
+                    "Below is a static analysis index of the codebase. Each entry shows "
+                    "a real symbol definition with its file:line location. This data "
+                    "IS valid evidence for findings.\n\n"
+                    "If the index doesn't contain what you need, use Read/Grep to examine "
+                    "source files directly. If you cannot find evidence in either the "
+                    "index or the source, flag the finding as 'suspected but unverified.' "
+                    "Do NOT invent file paths, line numbers, or code.\n\n"
+                    f"Source root: {source_root}\n\n"
+                    f"{code_index}\n"
+                )
+            else:
+                source_files = _inline_source_files(cache_dir, max_tokens=250_000)
+        else:
             source_files = (
                 "## Source Code\n\n"
-                "Below is a static analysis index of the codebase. Each entry shows "
-                "a real symbol definition with its file:line location. This data "
-                "IS valid evidence for findings.\n\n"
-                "If the index doesn't contain what you need, use Read/Grep to examine "
-                "source files directly. If you cannot find evidence in either the "
-                "index or the source, flag the finding as 'suspected but unverified.' "
-                "Do NOT invent file paths, line numbers, or code.\n\n"
-                f"Source root: {source_root}\n\n"
-                f"{code_index}\n"
+                "Use Grep and Read tools to search the source root for patterns "
+                f"relevant to your task.\n\nSource root: {source_root}\n"
             )
-        else:
-            source_files = _inline_source_files(cache_dir, max_tokens=250_000)
-    else:
-        source_files = (
-            "## Source Code\n\n"
-            "Use Grep and Read tools to search the source root for patterns "
-            f"relevant to your task.\n\nSource root: {source_root}\n"
-        )
 
-    project_context_map: dict[str, str] = {}
-    hotspot_files_by_agent: dict[str, list[str]] = {}
-    if phase == PHASE_SELF_REFINEMENT:
-        from .project_map import build_project_map, load_hotspot_patterns, compute_hotspots
-        from .hotspots import _grep_pattern, _SKIP_DIRS as _HS_SKIP
-        project_map = build_project_map(source_root)
-        patterns_by_agent = load_hotspot_patterns(profile_dir)
-        for agent_cfg in state.config.agents:
-            agent_parts = [project_map] if project_map else []
-            agent_patterns = patterns_by_agent.get(agent_cfg.prefix, [])
-            agent_hit_files: set[str] = set()
-            if agent_patterns:
-                hotspots = compute_hotspots(
-                    source_root, agent_cfg.prefix, agent_patterns,
-                )
-                if hotspots:
-                    agent_parts.append(hotspots)
-                exclude = [f"--exclude-dir={d}" for d in _HS_SKIP]
-                for entry in agent_patterns:
-                    pat = entry.get("pattern", "")
-                    if pat:
-                        hits = _grep_pattern(source_root, pat, exclude, 50)
-                        for fpath, _, _ in hits:
-                            agent_hit_files.add(fpath)
-            hotspot_files_by_agent[agent_cfg.prefix] = sorted(agent_hit_files)
-            if agent_parts:
-                project_context_map[agent_cfg.prefix] = "\n\n".join(agent_parts)
+        project_context_map: dict[str, str] = {}
+        hotspot_files_by_agent: dict[str, list[str]] = {}
+        if phase == PHASE_SELF_REFINEMENT:
+            from .project_map import build_project_map, load_hotspot_patterns, compute_hotspots
+            from .hotspots import _grep_pattern, _SKIP_DIRS as _HS_SKIP
+            project_map = build_project_map(source_root)
+            patterns_by_agent = load_hotspot_patterns(profile_dir)
+            for agent_cfg in state.config.agents:
+                agent_parts = [project_map] if project_map else []
+                agent_patterns = patterns_by_agent.get(agent_cfg.prefix, [])
+                agent_hit_files: set[str] = set()
+                if agent_patterns:
+                    hotspots = compute_hotspots(
+                        source_root, agent_cfg.prefix, agent_patterns,
+                    )
+                    if hotspots:
+                        agent_parts.append(hotspots)
+                    exclude = [f"--exclude-dir={d}" for d in _HS_SKIP]
+                    for entry in agent_patterns:
+                        pat = entry.get("pattern", "")
+                        if pat:
+                            hits = _grep_pattern(source_root, pat, exclude, 50)
+                            for fpath, _, _ in hits:
+                                agent_hit_files.add(fpath)
+                hotspot_files_by_agent[agent_cfg.prefix] = sorted(agent_hit_files)
+                if agent_parts:
+                    project_context_map[agent_cfg.prefix] = "\n\n".join(agent_parts)
+
+        elapsed = time.monotonic() - t0
+        cached = {
+            "source_files": source_files,
+            "project_context_map": project_context_map,
+            "hotspot_files_by_agent": hotspot_files_by_agent,
+            "elapsed": elapsed,
+        }
+        _dispatch_cache[cache_dir] = cached
+    else:
+        source_files = cached["source_files"]
+        project_context_map = cached["project_context_map"]
+        hotspot_files_by_agent = cached["hotspot_files_by_agent"]
 
     lsp_guidance = _generate_lsp_guidance(state.config.detected_language)
     user_context = _load_user_context(
