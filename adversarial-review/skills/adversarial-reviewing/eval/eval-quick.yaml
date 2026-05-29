@@ -8,7 +8,7 @@ skill: adversarial-reviewing:adversarial-reviewing
 execution:
   mode: case
   arguments: --security --no-budget --save {prompt}
-  timeout: 3600
+  timeout: 5400
 runner:
   type: claude-code
   plugin_dirs:
