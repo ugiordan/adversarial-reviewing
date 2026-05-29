@@ -7,8 +7,7 @@ description: 'Quick mode baseline: SEC agent only, default budget.
 skill: adversarial-reviewing:adversarial-reviewing
 execution:
   mode: case
-  arguments: --security --save {prompt}
-  max_budget_usd: 30.0
+  arguments: --security --no-budget --save {prompt}
   timeout: 3600
 runner:
   type: claude-code
