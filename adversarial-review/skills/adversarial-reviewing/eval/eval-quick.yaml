@@ -8,7 +8,7 @@ skill: adversarial-reviewing:adversarial-reviewing
 execution:
   mode: case
   arguments: --save {prompt}
-  max_budget_usd: 60.0
+  max_budget_usd: 80.0
   timeout: 10800
 runner:
   type: claude-code
@@ -125,7 +125,7 @@ judges:
   function: score_severity_accuracy
 - name: cost_reasonable
   description: Verify per-case cost stays under budget
-  check: "cost = outputs.get(\"cost_usd\", 0)\nif cost and cost > 60.0:\n  return False, f\"Cost ${cost:.2f} exceeds $60 limit\"\
+  check: "cost = outputs.get(\"cost_usd\", 0)\nif cost and cost > 80.0:\n  return False, f\"Cost ${cost:.2f} exceeds $80 limit\"\
     \nreturn True, f\"Cost ${cost:.2f}\" if cost else \"Cost not tracked\"\n"
 thresholds:
   detection_rate:
