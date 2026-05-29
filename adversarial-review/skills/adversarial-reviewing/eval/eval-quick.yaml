@@ -9,7 +9,7 @@ execution:
   mode: case
   arguments: --save {prompt}
   max_budget_usd: 60.0
-  timeout: 7200
+  timeout: 10800
 runner:
   type: claude-code
   plugin_dirs:

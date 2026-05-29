@@ -933,7 +933,25 @@ def _build_validated_findings(cache_dir: str, agent_id: str) -> str:
     return "\n\n".join(result_parts)
 
 
-_dispatch_cache: dict[str, dict] = {}
+def _load_dispatch_cache(cache_dir: str) -> dict:
+    """Load dispatch cache from disk. Returns empty dict if not found."""
+    cache_path = os.path.join(cache_dir, "dispatch-cache.json")
+    if not os.path.isfile(cache_path):
+        return {}
+    try:
+        with open(cache_path) as f:
+            return json.loads(f.read())
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+def _save_dispatch_cache(cache_dir: str, data: dict) -> None:
+    """Save dispatch cache to disk."""
+    cache_path = os.path.join(cache_dir, "dispatch-cache.json")
+    try:
+        Path(cache_path).write_text(json.dumps(data))
+    except OSError:
+        pass
 
 
 def _prepare_dispatch_directories(state, cache_dir, skill_dir, phase) -> list[tuple[str, str]]:
@@ -954,7 +972,7 @@ def _prepare_dispatch_directories(state, cache_dir, skill_dir, phase) -> list[tu
     iteration = _current_phase_iteration(state)
     source_root = state.config.source_root or os.getcwd()
 
-    cached = _dispatch_cache.get(cache_dir)
+    cached = _load_dispatch_cache(cache_dir)
     if not cached:
         import time
         t0 = time.monotonic()
@@ -1018,7 +1036,7 @@ def _prepare_dispatch_directories(state, cache_dir, skill_dir, phase) -> list[tu
             "hotspot_files_by_agent": hotspot_files_by_agent,
             "elapsed": elapsed,
         }
-        _dispatch_cache[cache_dir] = cached
+        _save_dispatch_cache(cache_dir, cached)
     else:
         source_files = cached["source_files"]
         project_context_map = cached["project_context_map"]
