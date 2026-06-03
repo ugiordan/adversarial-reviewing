@@ -323,8 +323,8 @@ def _extract_findings(outputs):
     if not all_raw:
         stdout = outputs.get("stdout", "")
         if stdout:
-            text = _extract_text_from_stdout(stdout)
-            parsed = _parse_findings_from_text(text)
+            normalized = stdout.replace("\\n", "\n").replace("\\t", "\t")
+            parsed = _parse_findings_from_text(normalized)
             if parsed:
                 all_raw = parsed
     if not all_raw:
