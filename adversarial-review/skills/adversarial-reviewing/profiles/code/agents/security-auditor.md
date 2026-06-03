@@ -59,6 +59,9 @@ Beyond OWASP Top 10, check for these patterns common in Kubernetes operator code
 - Functions named `Random`/`Generate` that use `length / 2` or return fewer bytes than their name implies
 - Self-signed certificates with `IsCA: true` used as leaf server certs
 - Serial numbers generated from timestamps instead of crypto/rand
+- Cipher modes without authentication: CFB, CTR, OFB provide confidentiality but no integrity. Look for `NewCFBEncrypter`, `NewCTR`, `NewOFB` without accompanying HMAC/GCM. AES-GCM is the correct authenticated mode.
+- SHA1/MD5 password hashing: `{SHA}` prefix in htpasswd, `sha1.New()`, `md5.New()` for password storage. bcrypt is the correct choice. Look for `#nosec G401` and `#nosec G505` suppressions.
+- Weak TLS: `InsecureSkipVerify: true` or `MinVersion` not set to `tls.VersionTLS12` minimum.
 
 **Kubernetes admission webhooks:**
 - Webhook kubebuilder markers (`+kubebuilder:webhook`) that omit `update` from `verbs=`
