@@ -165,6 +165,19 @@ Focus on:
 Do NOT limit your review to the changed lines. The diff tells you WHERE to
 look; the impact graph tells you WHAT ELSE to check.
 
+## Code Navigation (cymbal)
+
+If `cymbal` is available on PATH, prefer it over grep for code exploration:
+- `cymbal outline <file>` lists all symbols in a file with line ranges
+- `cymbal investigate <symbol>` shows source, callers, and impact in one call
+- `cymbal trace <symbol>` follows dependencies downward (what does X call?)
+- `cymbal impact <symbol>` follows dependencies upward (what calls X?)
+- `cymbal search <keyword>` finds symbols matching a keyword
+
+These commands return focused, compact results that consume fewer tokens
+than equivalent grep + read chains. Use grep only for patterns cymbal
+can't match (regex patterns, non-symbol text, config files).
+
 ## User-Provided Context
 
 If `context.md` is present in your dispatch directory, it contains user-provided

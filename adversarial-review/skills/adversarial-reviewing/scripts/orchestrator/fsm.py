@@ -933,6 +933,81 @@ def _build_validated_findings(cache_dir: str, agent_id: str) -> str:
     return "\n\n".join(result_parts)
 
 
+AGENT_ARCHITECTURE_SECTIONS: dict[str, list[str]] = {
+    "SEC": ["rbac", "http_endpoints", "external_connections", "feature_gates", "security_findings"],
+    "PERF": ["prometheus_metrics", "operator_config", "runtime_dependencies"],
+    "CORR": ["http_endpoints", "feature_gates", "external_connections"],
+    "QUAL": ["dependencies", "dockerfiles", "kustomize_components"],
+    "ARCH": ["http_endpoints", "external_connections", "dependencies", "operator_config"],
+}
+
+
+def _load_architecture_context(cache_dir: str, agents: list) -> dict[str, str]:
+    """Load arch-analyzer output and build per-agent context."""
+    arch_dir = os.path.join(cache_dir, "architecture")
+    arch_path = os.path.join(arch_dir, "component-architecture.json")
+    findings_path = os.path.join(arch_dir, "security-findings.json")
+
+    if not os.path.isfile(arch_path):
+        return {}
+
+    try:
+        arch_data = json.loads(Path(arch_path).read_text())
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+    security_findings = []
+    if os.path.isfile(findings_path):
+        try:
+            security_findings = json.loads(Path(findings_path).read_text())
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    result: dict[str, str] = {}
+    for agent_cfg in agents:
+        prefix = agent_cfg.prefix
+        sections = AGENT_ARCHITECTURE_SECTIONS.get(prefix, [])
+        parts = [
+            f"## Architecture Analysis ({arch_data.get('component', 'unknown')})\n",
+            f"Repo: {arch_data.get('repo', 'unknown')}",
+        ]
+        for section in sections:
+            if section == "security_findings":
+                continue
+            data = arch_data.get(section)
+            if not data:
+                continue
+            if isinstance(data, list) and data:
+                parts.append(f"### {section.replace('_', ' ').title()} ({len(data)} items)")
+                for item in data[:30]:
+                    if isinstance(item, dict):
+                        name = item.get("name", item.get("path", item.get("file", "")))
+                        msg = item.get("message", item.get("description", ""))
+                        if name:
+                            line = f"- **{name}**"
+                            if msg:
+                                line += f": {msg[:120]}"
+                            parts.append(line)
+                    else:
+                        parts.append(f"- {str(item)[:150]}")
+                if len(data) > 30:
+                    parts.append(f"- ... and {len(data) - 30} more")
+
+        if security_findings and "security_findings" in sections:
+            sec_f = [f for f in security_findings
+                     if f.get("severity") in ("critical", "high", "medium")]
+            if sec_f:
+                parts.append(f"\n### Security Findings ({len(sec_f)} items)")
+                for f in sec_f[:20]:
+                    parts.append(
+                        f"- [{f.get('severity', '?').upper()}] {f.get('rule_id', '?')}: "
+                        f"{f.get('message', '')[:100]} ({f.get('file', '')}:{f.get('line', '')})"
+                    )
+
+        result[prefix] = "\n".join(parts)
+    return result
+
+
 def _load_dispatch_cache(cache_dir: str) -> dict:
     """Load dispatch cache from disk. Returns empty dict if not found."""
     cache_path = os.path.join(cache_dir, "dispatch-cache.json")
@@ -976,32 +1051,22 @@ def _prepare_dispatch_directories(state, cache_dir, skill_dir, phase) -> list[tu
     if not cached:
         import time
         t0 = time.monotonic()
-        if phase == PHASE_SELF_REFINEMENT:
-            from .code_index import build_code_index
-            code_index = build_code_index(source_root, state.config.detected_language)
-            if code_index:
-                source_files = (
-                    "## Source Code\n\n"
-                    "Below is a static analysis index of the codebase. Each entry shows "
-                    "a real symbol definition with its file:line location. This data "
-                    "IS valid evidence for findings.\n\n"
-                    "If the index doesn't contain what you need, use Read/Grep to examine "
-                    "source files directly. If you cannot find evidence in either the "
-                    "index or the source, flag the finding as 'suspected but unverified.' "
-                    "Do NOT invent file paths, line numbers, or code.\n\n"
-                    f"Source root: {source_root}\n\n"
-                    f"{code_index}\n"
-                )
-            else:
-                source_files = _inline_source_files(cache_dir, max_tokens=250_000)
-        else:
+
+        source_files = _inline_source_files(cache_dir, max_tokens=250_000)
+        if not source_files:
             source_files = (
                 "## Source Code\n\n"
-                "Use Grep and Read tools to search the source root for patterns "
-                f"relevant to your task.\n\nSource root: {source_root}\n"
+                "Use Grep, Read, and cymbal tools to explore the source root.\n"
+                "cymbal is preferred for code navigation (see common-instructions.md).\n\n"
+                f"Source root: {source_root}\n"
             )
 
         project_context_map: dict[str, str] = {}
+
+        arch_context = _load_architecture_context(cache_dir, state.config.agents)
+        for agent_cfg in state.config.agents:
+            if agent_cfg.prefix in arch_context:
+                project_context_map[agent_cfg.prefix] = arch_context[agent_cfg.prefix]
         hotspot_files_by_agent: dict[str, list[str]] = {}
         if phase == PHASE_SELF_REFINEMENT:
             from .project_map import build_project_map, load_hotspot_patterns, compute_hotspots

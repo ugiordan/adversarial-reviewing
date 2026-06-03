@@ -1,7 +1,7 @@
 ---
 name: review-specialist
 description: Code review specialist for adversarial review. Dispatched by the orchestrator with agent-specific instructions via dispatch directory.
-tools: [Read, Grep, Glob, Write, LSP]
+tools: [Read, Grep, Glob, Write, LSP, Bash]
 model: inherit
 ---
 

@@ -40,6 +40,7 @@ runner:
       - Bash(ls*)
       - Bash(grep*)
       - Bash(wc*)
+      - Bash(cymbal*)
       - Write(/var/folders/**)
       - Write(/private/var/folders/**)
       - Read(/tmp/**)

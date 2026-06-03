@@ -217,6 +217,8 @@ def handle_confirm(argv: list[str], skill_dir: str):
 
         _ensure_cache_directories(cache_dir)
 
+        _run_external_analyzers(source_root, cache_dir)
+
         from .config import detect_language
         detected = detect_language(source_root)
         if detected:
@@ -384,6 +386,49 @@ def _is_binary(path: str, chunk_size: int = 8192) -> bool:
         return b"\x00" in chunk
     except (OSError, IOError):
         return True
+
+
+def _run_external_analyzers(source_root: str, cache_dir: str) -> None:
+    """Run cymbal index and arch-analyzer if available. Best-effort, non-fatal."""
+    import shutil
+    import subprocess as _sp
+
+    cymbal_bin = shutil.which("cymbal")
+    if cymbal_bin:
+        try:
+            _sp.run(
+                [cymbal_bin, "index", source_root],
+                capture_output=True, timeout=30, cwd=source_root,
+            )
+        except (OSError, _sp.TimeoutExpired):
+            pass
+
+    arch_bin = shutil.which("arch-analyzer")
+    if not arch_bin:
+        candidate = os.path.expanduser(
+            "~/workdir/rhoai/architecture-analyzer/arch-analyzer"
+        )
+        if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+            arch_bin = candidate
+
+    if arch_bin:
+        arch_dir = os.path.join(cache_dir, "architecture")
+        os.makedirs(arch_dir, exist_ok=True)
+        try:
+            _sp.run(
+                [arch_bin, "analyze", "-output-dir", arch_dir, source_root],
+                capture_output=True, timeout=120, cwd=source_root,
+            )
+        except (OSError, _sp.TimeoutExpired):
+            pass
+        try:
+            _sp.run(
+                [arch_bin, "full-analysis", "-output-dir", arch_dir,
+                 "-domains", "security", source_root],
+                capture_output=True, timeout=120, cwd=source_root,
+            )
+        except (OSError, _sp.TimeoutExpired):
+            pass
 
 
 def _generate_scope_file(source_root: str, output_path: str,
