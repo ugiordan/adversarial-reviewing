@@ -100,6 +100,19 @@ List every file you opened with Read (with line range if partial).
 List every Grep pattern you ran with the hit count.
 List directories you know exist but did NOT examine.
 
+## Detection Pattern Compliance
+
+Your agent-instructions.md contains specific detection patterns for your
+specialty. You MUST systematically check EVERY listed pattern against the
+codebase. For each pattern:
+1. Search for it (use cymbal search, grep, or read relevant files)
+2. If found: produce a structured finding using the template
+3. If not found: note it in your coverage report as "checked, not present"
+
+Do NOT skip patterns because you already found "enough" findings. A
+pattern match that you investigate and dismiss is fine. A pattern you
+never checked is a coverage gap.
+
 ## Evidence Requirements
 
 Every finding MUST be backed by concrete code evidence:
