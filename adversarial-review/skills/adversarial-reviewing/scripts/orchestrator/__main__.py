@@ -442,6 +442,7 @@ def _generate_scope_file(source_root: str, output_path: str,
         "vendor", "node_modules", ".git", "__pycache__",
         "testdata", "bin", ".idea", ".vscode", "output",
         ".adversarial-review-cache", ".cache", "artifacts",
+        ".gopath-loader",
     }
     skip_suffixes = ("_test.go", "zz_generated", ".patch")
     binary_exts = {
