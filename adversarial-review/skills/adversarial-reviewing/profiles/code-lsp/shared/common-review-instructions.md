@@ -113,7 +113,76 @@ Do NOT skip patterns because you already found "enough" findings. A
 pattern match that you investigate and dismiss is fine. A pattern you
 never checked is a coverage gap.
 
+### Finding Atomicity
+
+Each finding MUST describe exactly ONE vulnerability. Do NOT combine
+multiple issues into a single finding, even if they are in the same file.
+
+Bad: "SEC-001: cipher.go has CFB mode without authentication and weak IV"
+Good: "SEC-001: CFB mode without authentication" + "SEC-002: Weak IV generation"
+
+One vulnerability per finding. One file reference per finding. This ensures
+each issue is independently verifiable and trackable.
+
+### Pre-Scan Pattern Hits (Default-to-Finding)
+
+If `pattern-hits.md` is present in your dispatch directory, it contains
+pre-computed grep results with code context for your detection patterns.
+
+**Default behavior: each pattern hit IS a finding unless you can prove
+otherwise.** The burden of proof is on dismissal, not on detection.
+
+For each hit:
+1. The code context is shown inline. Read it carefully.
+2. **DEFAULT: produce a finding.** Use the finding template. Set
+   Confidence: Low if you are unsure about severity or exploitability.
+3. **ONLY dismiss if ALL of these are true:**
+   - The code is in a test file, example, or dead code path
+   - There is a documented mitigation (admission webhook, proxy config)
+   - You have read the mitigation and verified it applies
+4. If you dismiss, you MUST explain WHY in your Coverage Report with
+   the specific file and line of the mitigation.
+
+If `detection-checklist.yaml` is present, it lists ALL your detection
+patterns with their pre-scan status (`hits_found` or `no_hits`). Use
+it as your checklist: verify you addressed every pattern with hits, and
+note patterns with no hits as "checked, not present" in your Coverage Report.
+
+### Iteration Coverage Feedback
+
+On iteration 2+, your `prior-findings.md` shows what you found before.
+Your `coverage-report.md` from the previous iteration lists patterns you
+checked. Compare these: any pattern with `hits_found` status that does
+NOT have a corresponding finding or explicit dismissal is a coverage gap.
+Address ALL gaps before submitting your iteration 2+ findings.
+
 ## Evidence Requirements
+
+### Finding Decontextualization
+
+Each finding MUST be self-contained and understandable without reading the
+full report or source file. The Evidence field must include:
+- The actual code snippet (2-5 lines) showing the vulnerability
+- The complete attack chain or failure scenario
+- What an attacker would do and what the impact would be
+
+Bad evidence: "cipher.go uses CFB mode (see line 69)"
+Good evidence: "cipher.go:69 creates `cipher.NewCFBEncrypter(block, iv)`.
+CFB provides confidentiality but no authentication. An attacker with
+network access can flip ciphertext bits to manipulate the decrypted
+session cookie without detection."
+
+### Confidence Calibration
+
+When you set Confidence: Low on a finding, explain what additional
+information would confirm or dismiss it. This makes low-confidence
+findings actionable:
+- "Confidence: Low. Would need to verify whether the proxy strips
+  this header before it reaches the handler."
+- "Confidence: Low. Impact depends on whether the NetworkPolicy
+  allows ingress from untrusted pods."
+
+### Code Evidence
 
 Every finding MUST be backed by concrete code evidence:
 - Cite the specific file, function, and line where the issue occurs

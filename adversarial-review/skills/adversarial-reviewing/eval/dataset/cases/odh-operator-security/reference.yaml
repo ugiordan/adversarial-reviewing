@@ -1,7 +1,7 @@
 metadata:
   repo: opendatahub-io/opendatahub-operator
   corpus_version: '3.4'
-  total_findings: 44
+  total_findings: 48
   categories:
     rbac: 4
     webhook: 2
@@ -730,4 +730,43 @@ findings:
   - committed
   - encoded
   - kubernetes
+  - secret
+- id: SEC-ARGO-AGGREGATE-EDIT
+  severity: Minor
+  category: rbac
+  file: opt/manifests/datasciencepipelines/argo/clusterrole.argo-aggregate-to-edit.yaml
+  title: Argo aggregate-to-edit ClusterRole grants clusterworkflowtemplates CRUD to all edit-role users
+  detection_signals:
+  - aggregate-to-edit
+  - argo
+  - ClusterRole
+  - clusterworkflowtemplates
+- id: SEC-TRUSTYAI-AGGREGATE
+  severity: Minor
+  category: rbac
+  file: opt/manifests/trustyai/rbac/trustyaiservice_viewer_role.yaml
+  title: TrustyAI viewer role uses aggregate-to-admin label granting view-only users admin aggregation
+  detection_signals:
+  - aggregate-to-admin
+  - trustyai
+  - viewer
+  - ClusterRole
+- id: SEC-OAUTH-FULL-SCOPE
+  severity: Important
+  category: oauth
+  file: internal/controller/services/gateway/resources/kube-auth-proxy-oauth-deployment.tmpl.yaml
+  title: OAuth2 proxy requests user:full scope granting broad OpenShift API access
+  detection_signals:
+  - user:full
+  - scope
+  - oauth
+  - OpenShift
+- id: SEC-PROVIDER-CA-UNVALIDATED
+  severity: Important
+  category: data_flow
+  file: api/services/v1alpha1/gateway_types.go
+  title: ProviderCASecretName field lacks validation allowing reference to any secret
+  detection_signals:
+  - ProviderCASecretName
+  - validation
   - secret

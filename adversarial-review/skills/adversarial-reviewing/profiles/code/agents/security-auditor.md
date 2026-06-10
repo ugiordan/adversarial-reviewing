@@ -75,7 +75,8 @@ Beyond OWASP Top 10, check for these patterns common in Kubernetes operator code
 - Flag these sub-resources as INDIVIDUAL findings: `pods/exec`, `pods/attach`, `secrets` with wildcard namespace, `nodes/proxy`, `serviceaccounts/token`. Each enables lateral movement or privilege escalation.
 
 **Cross-namespace data flow (confused deputy):**
-- User-controllable API field (from CR spec) used as namespace parameter in `client.Get`, `client.List`, or similar K8s API calls
+- User-controllable API field (from CR spec) used as namespace parameter in `client.Get`, `client.List`, `Client.Get`, `Client.List`, or similar K8s API calls
+- `corev1.ObjectReference` in CRD spec types: the `Namespace` field allows cross-namespace resource access. Trace from type definition through controller code to verify whether the namespace is validated.
 - Check whether admission webhooks or CEL validation rules restrict the allowed namespace values
 
 **TLS verification bypass:**
@@ -100,6 +101,40 @@ Beyond OWASP Top 10, check for these patterns common in Kubernetes operator code
 - Name fields without DNS-1123 or RFC validation
 - Fields controlling security behavior without admission webhook guards
 
+**Auth bypass tracing (MANDATORY for auth-related code):**
+- For EVERY HTTP handler or middleware, trace the complete auth check path from request entry to access decision. Verify NO code path skips the check.
+- `IsAllowedRequest` or `allowedPaths` pattern-based request bypass without strict validation
+- `WithAllowPaths` regex-based path matching that may be bypassed via URL encoding or path traversal
+- `InsecureSkipNonce` OIDC nonce verification disabled, weakening OAuth replay protection
+- `http.Get` with sensitive tokens in URL (id_token, access_token) exposing them in server logs and proxies
+- Look for MULTIPLE auth check paths: if a handler has both a "fast path" (cookie/header check) and a "slow path" (full OAuth flow), verify both paths enforce the same policy. Bypasses often hide in the fast path.
+
+**Data leaks and race conditions:**
+- `backendLogoutURL` or `discoverLogoutURL` that interpolate tokens into GET URLs
+- Fields like `cachedLogoutURL` accessed concurrently without mutex protection
+- `decodeState` or similar functions that silently ignore decode errors, processing corrupted state
+- `cookie_secret` or `client_secret` hardcoded in committed config files (not just Kubernetes Secrets)
+
+**Unpinned and unvalidated images:**
+- `RELATED_IMAGE_` environment variables or `getKubeAuthProxyImage` returning unpinned `:latest` tags for security-critical containers
+- `ubi-minimal` or `ubi9` base images without digest pinning in Dockerfiles
+- `runAsNonRoot: false` in development configurations (`DevSpace`, devcontainer) that may leak to production
+- `user:full` OAuth scope granting broad API access beyond what the application needs
+
+**RBAC mutation safety:**
+- `roleRef` field updates on ClusterRoleBindings (immutable after creation, update silently fails)
+
+**CI/CD supply chain (GitHub Actions):**
+- `pull_request_target` workflows that checkout PR code and execute it with write permissions or secrets. The PR author controls the code but the workflow has the target repo's permissions.
+- `workflow_dispatch` inputs interpolated into shell commands via `${{ inputs.* }}` enabling command injection by any user with write access
+- Unpinned action versions (`uses: actions/checkout@v4` instead of `@sha256:...`) enabling action supply chain attacks
+- Binary downloads without integrity verification (no checksum check after `curl`/`wget`)
+
+**Compound patterns (check for A AND B together):**
+- `IsCA: true` AND `ExtKeyUsageServerAuth` on the same certificate: CA cert with server auth EKU expands blast radius of key compromise
+- `system:authenticated` with `&&` and `||` in the same condition: operator precedence bugs silently bypass group filters
+- Admission webhook `Handle` function where ANY code path returns zero-value `admission.Response{}`: fall-through allows the operation
+
 **Annotation/label-driven SSRF (Kubernetes-specific confused deputy):**
 - Controllers that read URLs from CRD annotations or labels (`obj.Annotations[key]`,
   `obj.Labels[key]`) and make HTTP requests to those URLs. The annotation value is
@@ -122,7 +157,7 @@ When more files are listed than you can deeply review:
 2. Quick-scan before deep-read: grep for `panic(`, `system:authenticated`, `IsCA`, `rand.`, `:latest`, `[0]` without length check, `aggregate-to-edit`, `ssl-insecure`, `base64`, `verbs=`
 3. Full-read files with grep hits
 4. Skip boilerplate (`groupversion_info.go`, `zz_generated*.go`, `doc.go`) unless grep shows otherwise
-5. Include infrastructure artifacts: Dockerfiles, RBAC YAML (`config/rbac/`, `opt/manifests/**/rbac/`), Secret definitions, deployment templates (`.tmpl.yaml`), build config
+5. Include infrastructure artifacts: Dockerfiles, RBAC YAML (`config/rbac/`, `opt/manifests/**/rbac/`), Secret definitions, deployment templates (`.tmpl.yaml`), CI/CD workflows (`.github/workflows/`, `.tekton/`), build config
 
 ## File Context Awareness
 
@@ -173,7 +208,19 @@ Before submitting findings:
 4. Check infrastructure files (Dockerfile, Makefile, docker-compose) listed
    in project-map.md for supply chain and configuration issues.
 
-5. Count your findings. If fewer than 3, you likely stopped too early.
+5. If `.github/workflows/` or `.tekton/` exists, read ALL workflow files.
+   Check for `pull_request_target`, `workflow_dispatch` input injection,
+   unpinned actions, and binary downloads without integrity checks.
+
+6. If `opt/manifests/` exists, grep for `aggregate-to-edit` and
+   `aggregate-to-admin` across ALL subdirectories. Produce a finding
+   for EACH file that uses these labels, not a summary.
+
+7. If `contrib/`, `examples/`, or `deploy/` directories exist, scan for
+   hardcoded secrets, default credentials, and insecure example configs
+   that users may copy into production.
+
+8. Count your findings. If fewer than 3, you likely stopped too early.
    Re-examine the security-relevant files list.
 
 ## Finding Template

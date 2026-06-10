@@ -22,9 +22,11 @@ def _try_summarize_findings(cache_dir: str, skill_dir: str) -> str:
     script = os.path.join(skill_dir, "scripts", "summarize-findings.py")
     if not os.path.isfile(script):
         return ""
-    outputs_dir = os.path.join(cache_dir, "outputs")
+    resolution_file = os.path.join(cache_dir, "resolution-output.json")
+    if not os.path.isfile(resolution_file):
+        return ""
     try:
-        result = run_python_script(script, [outputs_dir], timeout=60)
+        result = run_python_script(script, [resolution_file], timeout=60)
         return result.get("summary", "")
     except (ScriptError, OSError) as e:
         print(json.dumps({
@@ -52,8 +54,11 @@ def _try_format_report_meta(cache_dir: str, skill_dir: str,
         args.extend(["--specialists", ",".join(specialists)])
     if iterations > 0:
         args.extend(["--iterations", str(iterations)])
-    if budget_limit > 0:
-        args.extend(["--budget-limit", str(budget_limit)])
+    budget_json = os.path.join(cache_dir, "budget.json")
+    if not os.path.isfile(budget_json):
+        Path(budget_json).write_text('{"consumed": 0, "remaining": 0}')
+    args.extend(["--budget-json", budget_json])
+    args.extend(["--budget-limit", str(budget_limit)])
     try:
         result = run_python_script(script, args, timeout=30)
         return result.get("meta", "")

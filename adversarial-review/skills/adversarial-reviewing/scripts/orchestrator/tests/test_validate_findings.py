@@ -14,6 +14,7 @@ from validate_findings import (
     validate_finding,
     parse_findings,
     validate_file,
+    check_pattern_coverage,
     SEVERITY_CEILING,
     SEVERITY_ORDER,
     REQUIRED_FIELDS,
@@ -393,3 +394,223 @@ class TestCLI:
             text=True,
         )
         assert proc.returncode == 1
+
+
+# ---------------------------------------------------------------------------
+# TestPatternCoverage
+# ---------------------------------------------------------------------------
+
+
+class TestPatternCoverage:
+    def _make_prescan(self, patterns):
+        return {"agent": "SEC", "patterns": patterns}
+
+    def test_no_gaps_when_finding_references_file(self):
+        prescan = self._make_prescan([{
+            "id": "crypto_1",
+            "category": "Crypto",
+            "grep": "NewCFBEncrypter",
+            "status": "hits_found",
+            "hits": [{"file": "cipher.go", "line": 45, "content": "code"}],
+        }])
+        output = (
+            "Finding ID: SEC-001\n"
+            "Severity: Critical\n"
+            "Source Trust: External\n"
+            "File: cipher.go\n"
+            "Title: CFB mode without authentication\n"
+            "Evidence: cipher.go:45 uses NewCFBEncrypter\n"
+        )
+        gaps = check_pattern_coverage(output, prescan)
+        assert gaps == []
+
+    def test_gap_when_pattern_not_addressed(self):
+        prescan = self._make_prescan([{
+            "id": "crypto_1",
+            "category": "Crypto",
+            "grep": "NewCFBEncrypter",
+            "status": "hits_found",
+            "hits": [{"file": "cipher.go", "line": 45, "content": "code"}],
+        }])
+        output = (
+            "Finding ID: SEC-001\n"
+            "Severity: Minor\n"
+            "Source Trust: Internal\n"
+            "File: oauthproxy.go\n"
+            "Title: Something else\n"
+            "Evidence: Different file\n"
+        )
+        gaps = check_pattern_coverage(output, prescan)
+        assert "crypto_1" in gaps
+
+    def test_no_gap_when_pattern_id_mentioned(self):
+        prescan = self._make_prescan([{
+            "id": "crypto_1",
+            "category": "Crypto",
+            "grep": "NewCFBEncrypter",
+            "status": "hits_found",
+            "hits": [{"file": "cipher.go", "line": 45, "content": "code"}],
+        }])
+        output = "Coverage Report:\n- crypto_1: checked, not an issue\n"
+        gaps = check_pattern_coverage(output, prescan)
+        assert gaps == []
+
+    def test_no_gap_when_grep_string_mentioned(self):
+        prescan = self._make_prescan([{
+            "id": "crypto_1",
+            "category": "Crypto",
+            "grep": "NewCFBEncrypter",
+            "status": "hits_found",
+            "hits": [{"file": "cipher.go", "line": 45, "content": "code"}],
+        }])
+        output = "Coverage Report:\n- NewCFBEncrypter: not a security issue in this context\n"
+        gaps = check_pattern_coverage(output, prescan)
+        assert gaps == []
+
+    def test_skips_no_hits_patterns(self):
+        prescan = self._make_prescan([{
+            "id": "crypto_1",
+            "category": "Crypto",
+            "grep": "NewCFBEncrypter",
+            "status": "no_hits",
+            "hits": [],
+        }])
+        output = "NO_FINDINGS_REPORTED"
+        gaps = check_pattern_coverage(output, prescan)
+        assert gaps == []
+
+    def test_empty_prescan(self):
+        gaps = check_pattern_coverage("some output", {})
+        assert gaps == []
+
+    def test_basename_matching(self):
+        prescan = self._make_prescan([{
+            "id": "crypto_1",
+            "category": "Crypto",
+            "grep": "sha1.New",
+            "status": "hits_found",
+            "hits": [{"file": "pkg/auth/htpasswd.go", "line": 23, "content": "sha1.New()"}],
+        }])
+        output = (
+            "Finding ID: SEC-001\n"
+            "Severity: Important\n"
+            "Source Trust: N/A\n"
+            "File: htpasswd.go\n"
+            "Title: SHA1 password hashing\n"
+            "Evidence: Uses sha1 for htpasswd\n"
+        )
+        gaps = check_pattern_coverage(output, prescan)
+        assert gaps == []
+
+
+# ---------------------------------------------------------------------------
+# TestPatternCoverageEdgeCases
+# ---------------------------------------------------------------------------
+
+
+class TestPatternCoverageEdgeCases:
+    def _make_prescan(self, patterns):
+        return {"agent": "SEC", "patterns": patterns}
+
+    def test_prescan_data_is_none(self):
+        gaps = check_pattern_coverage("output", None)
+        assert gaps == []
+
+    def test_prescan_patterns_is_none(self):
+        gaps = check_pattern_coverage("output", {"patterns": None})
+        assert gaps == []
+
+    def test_hit_missing_file_key(self):
+        prescan = self._make_prescan([{
+            "id": "crypto_1",
+            "grep": "NewCFBEncrypter",
+            "status": "hits_found",
+            "hits": [{"line": 45, "content": "code"}],
+        }])
+        output = "Some unrelated output\n"
+        gaps = check_pattern_coverage(output, prescan)
+        assert "crypto_1" in gaps
+
+    def test_case_insensitive_grep_match(self):
+        prescan = self._make_prescan([{
+            "id": "crypto_1",
+            "grep": "NewCFBEncrypter",
+            "status": "hits_found",
+            "hits": [{"file": "cipher.go", "line": 45, "content": "code"}],
+        }])
+        output = "Coverage: newcfbencrypter checked, not an issue\n"
+        gaps = check_pattern_coverage(output, prescan)
+        assert gaps == []
+
+    def test_multiple_patterns_partial_coverage(self):
+        prescan = self._make_prescan([
+            {"id": "crypto_1", "grep": "NewCFBEncrypter", "status": "hits_found",
+             "hits": [{"file": "cipher.go", "line": 45, "content": "code"}]},
+            {"id": "crypto_2", "grep": "sha1.New", "status": "hits_found",
+             "hits": [{"file": "htpasswd.go", "line": 23, "content": "code"}]},
+            {"id": "tls_1", "grep": "InsecureSkipVerify", "status": "hits_found",
+             "hits": [{"file": "config.go", "line": 10, "content": "code"}]},
+        ])
+        output = (
+            "Finding ID: SEC-001\nSeverity: Critical\nSource Trust: N/A\n"
+            "File: cipher.go\nTitle: CFB mode\nEvidence: found it\n"
+        )
+        gaps = check_pattern_coverage(output, prescan)
+        assert "crypto_1" not in gaps
+        assert "crypto_2" in gaps
+        assert "tls_1" in gaps
+
+    def test_finding_id_in_evidence_does_not_create_phantom(self):
+        """Evidence containing 'Finding ID:' should not break the parser."""
+        output = (
+            "Finding ID: SEC-001\n"
+            "Severity: Important\n"
+            "Source Trust: N/A\n"
+            "File: cipher.go\n"
+            "Title: CFB mode\n"
+            "Evidence: The log shows Finding ID: SEC-999 which is unrelated\n"
+        )
+        findings = parse_findings(output)
+        # Should parse exactly 1 finding, not 2
+        assert len(findings) == 1
+        assert findings[0]["finding_id"] == "SEC-001"
+
+    def test_empty_output_text(self):
+        prescan = self._make_prescan([{
+            "id": "crypto_1", "grep": "NewCFBEncrypter", "status": "hits_found",
+            "hits": [{"file": "cipher.go", "line": 45, "content": "code"}],
+        }])
+        gaps = check_pattern_coverage("", prescan)
+        assert "crypto_1" in gaps
+
+
+# ---------------------------------------------------------------------------
+# TestValidateFindingEdgeCases
+# ---------------------------------------------------------------------------
+
+
+class TestValidateFindingEdgeCases:
+    def test_finding_id_two_digits_rejected(self):
+        ok, errors = validate_finding(_make_finding(finding_id="SEC-01"))
+        assert ok is False
+
+    def test_finding_id_four_digits_rejected(self):
+        ok, errors = validate_finding(_make_finding(finding_id="SEC-0001"))
+        assert ok is False
+
+    def test_whitespace_only_evidence(self):
+        ok, errors = validate_finding(_make_finding(evidence="  \n\t  "))
+        assert ok is False
+
+    def test_whitespace_only_title(self):
+        ok, errors = validate_finding(_make_finding(title="  \n  "))
+        assert ok is False
+
+    def test_severity_case_insensitive_rejected(self):
+        """Severity must match exact case: 'critical' is invalid."""
+        ok, errors = validate_finding(_make_finding(severity="critical"))
+        assert ok is False
+
+    def test_source_trust_case_insensitive_rejected(self):
+        ok, errors = validate_finding(_make_finding(source_trust="external"))
+        assert ok is False

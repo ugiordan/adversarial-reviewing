@@ -106,7 +106,7 @@ def validate_cache(cache_dir: str, skill_dir: str, profile: str) -> dict:
 
 
 _MANAGE_CACHE_TIMEOUTS = {
-    "populate-code": 300,
+    "populate-code": 600,
     "populate-context": 120,
 }
 

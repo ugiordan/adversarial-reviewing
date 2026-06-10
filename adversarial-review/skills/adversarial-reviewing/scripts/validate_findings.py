@@ -18,6 +18,7 @@ Exit codes:
 import argparse
 import glob as glob_module
 import json
+import os
 import re
 import sys
 from typing import Dict, List, Tuple
@@ -255,6 +256,65 @@ def validate_file(path: str) -> dict:
         "errors": error_count,
         "details": details,
     }
+
+
+# ---------------------------------------------------------------------------
+# Pattern coverage check
+# ---------------------------------------------------------------------------
+
+
+def check_pattern_coverage(
+    output_text: str,
+    prescan_data: dict,
+) -> List[str]:
+    """Check if agent output addressed all pre-scan pattern hits.
+
+    For each pattern with status 'hits_found', checks whether the output
+    text references at least one of the hit files. A pattern is considered
+    addressed if:
+    1. Any hit file path appears in a finding's File: field, or
+    2. The pattern ID or grep string appears in the output/coverage report
+
+    Returns list of unaddressed pattern IDs.
+    """
+    if not isinstance(prescan_data, dict):
+        return []
+    patterns = prescan_data.get("patterns")
+    if not isinstance(patterns, list) or not patterns:
+        return []
+
+    findings = parse_findings(output_text)
+    finding_files = {f.get("file", "").strip() for f in findings}
+    output_lower = output_text.lower()
+
+    gaps: List[str] = []
+    for p in patterns:
+        if p.get("status") != "hits_found":
+            continue
+        hits = p.get("hits", [])
+        if not hits:
+            continue
+
+        pattern_id = p.get("id", "")
+        grep_str = p.get("grep", "")
+
+        if pattern_id and pattern_id.lower() in output_lower:
+            continue
+        if grep_str and grep_str.lower() in output_lower:
+            continue
+
+        hit_files = {h.get("file", "") for h in hits}
+        if hit_files & finding_files:
+            continue
+
+        hit_basenames = {os.path.basename(f) for f in hit_files if f}
+        finding_basenames = {os.path.basename(f) for f in finding_files if f}
+        if hit_basenames & finding_basenames:
+            continue
+
+        gaps.append(pattern_id)
+
+    return gaps
 
 
 # ---------------------------------------------------------------------------

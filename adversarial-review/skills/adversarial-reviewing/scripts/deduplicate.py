@@ -108,12 +108,27 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    try:
-        with open(args.findings_file) as f:
-            content = f.read()
-    except FileNotFoundError:
-        print(f"Error: File not found: {args.findings_file}", file=sys.stderr)
-        return 1
+    import os
+    target = args.findings_file
+    if os.path.isdir(target):
+        parts = []
+        for fname in sorted(os.listdir(target)):
+            if not fname.endswith(".md"):
+                continue
+            fpath = os.path.join(target, fname)
+            if os.path.isfile(fpath):
+                try:
+                    parts.append(open(fpath).read())
+                except (OSError, UnicodeDecodeError):
+                    continue
+        content = "\n\n".join(parts)
+    else:
+        try:
+            with open(target) as f:
+                content = f.read()
+        except FileNotFoundError:
+            print(f"Error: File not found: {target}", file=sys.stderr)
+            return 1
 
     findings = parse_findings(content)
     if not findings:

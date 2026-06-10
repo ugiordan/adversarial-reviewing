@@ -186,8 +186,43 @@ def _run_metrics(outputs):
         return None, f"No findings extracted from output. Ground truth has {len(gt_active)} entries."
 
     quick_mode = _detect_quick_mode(outputs)
-    metrics = compute_metrics(findings, gt_list, quick_mode=quick_mode)
+    agent_filter = _detect_agent_filter(outputs)
+    metrics = compute_metrics(findings, gt_list, quick_mode=quick_mode,
+                              agent_filter=agent_filter)
     return metrics, None
+
+
+def _detect_agent_filter(outputs):
+    """Detect which agent types are active from the skill arguments.
+
+    If only one specialist is active (e.g., --security), return that
+    agent's prefix so GT is filtered to only relevant entries.
+    """
+    eval_params = outputs.get("eval_params", {})
+    skill_args = eval_params.get("skill_args", "")
+
+    if not skill_args:
+        case_dir = outputs.get("case_dir", "")
+        if case_dir:
+            run_result = Path(case_dir).parent.parent / "run_result.json"
+            if run_result.exists():
+                try:
+                    rr = json.loads(run_result.read_text())
+                    skill_args = rr.get("eval_params", {}).get("skill_args", "")
+                except (json.JSONDecodeError, OSError):
+                    pass
+
+    agent_flags = {
+        "--security": "SEC",
+        "--performance": "PERF",
+        "--correctness": "CORR",
+        "--architecture": "ARCH",
+        "--quality": "QUAL",
+    }
+    active = [prefix for flag, prefix in agent_flags.items() if flag in skill_args]
+    if len(active) == 1:
+        return active[0]
+    return None
 
 
 def _detect_quick_mode(outputs):
@@ -245,12 +280,59 @@ def _finding_dedup_key(finding: dict) -> tuple[str, str, int | None]:
 def _extract_text_from_stdout(stdout: str) -> str:
     """Extract finding-relevant text from stdout.
 
-    For JSONL (stream-json) format: decode JSON escaped strings so that
-    \\n becomes real newlines and finding fields parse correctly.
+    For JSONL format: first try structured extraction of assistant text
+    and tool_result content. If that yields findings, use it. Otherwise
+    fall back to brute-force escape decoding which catches findings
+    embedded as escaped strings within tool call results.
     For plain text: return as-is.
     """
     if not stdout or not stdout.strip().startswith("{"):
         return stdout
+
+    text_parts = []
+    for line in stdout.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            msg = json.loads(line)
+        except (json.JSONDecodeError, ValueError):
+            continue
+
+        m = msg.get("message", {})
+        if m.get("role") == "assistant":
+            content = m.get("content", [])
+            if isinstance(content, list):
+                for block in content:
+                    if isinstance(block, dict):
+                        if block.get("type") == "text":
+                            text_parts.append(block.get("text", ""))
+                        elif block.get("type") == "tool_result":
+                            rc = block.get("content", "")
+                            if isinstance(rc, str):
+                                text_parts.append(rc)
+                            elif isinstance(rc, list):
+                                for rb in rc:
+                                    if isinstance(rb, dict) and rb.get("type") == "text":
+                                        text_parts.append(rb.get("text", ""))
+            elif isinstance(content, str):
+                text_parts.append(content)
+
+        if msg.get("role") == "tool":
+            content = msg.get("content", [])
+            if isinstance(content, list):
+                for block in content:
+                    if isinstance(block, dict) and block.get("type") == "text":
+                        t = block.get("text", "")
+                        if len(t) > 200:
+                            text_parts.append(t)
+            elif isinstance(content, str) and len(content) > 200:
+                text_parts.append(content)
+
+    structured = "\n\n".join(text_parts) if text_parts else ""
+    if structured and "Finding ID:" in structured:
+        return structured
+
     decoded = stdout.replace("\\\\n", "\n").replace("\\n", "\n")
     decoded = decoded.replace("\\\\t", "\t").replace("\\t", "\t")
     return decoded
@@ -291,6 +373,157 @@ def _extract_findings_from_subagents(case_dir: str) -> list[dict]:
     return _parse_findings_from_text(combined)
 
 
+def _extract_findings_from_save_target(outputs):
+    """Extract findings from the --save target directory.
+
+    When --save is used, the skill writes output files to the target repo.
+    The eval's input.yaml contains the prompt with the target path.
+    We look for adversarial-review output files (SEC-*.md, REPORT.md) there.
+    """
+    case_dir = outputs.get("case_dir", "")
+    if not case_dir:
+        return []
+
+    input_path = Path(case_dir) / "input.yaml"
+    if not input_path.exists():
+        return []
+
+    try:
+        import yaml
+        with open(input_path) as f:
+            data = yaml.safe_load(f) or {}
+        prompt = data.get("prompt", "")
+    except Exception:
+        return []
+
+    target_dir = ""
+    for part in prompt.split():
+        if os.path.isdir(part):
+            target_dir = part
+            break
+    if not target_dir:
+        return []
+
+    all_text = []
+    for pattern_dir in [
+        os.path.join(target_dir, "adversarial-review"),
+        os.path.join(target_dir, ".adversarial-review"),
+    ]:
+        if not os.path.isdir(pattern_dir):
+            continue
+        for fname in sorted(os.listdir(pattern_dir)):
+            if not fname.endswith(".md"):
+                continue
+            if "REPORT" in fname:
+                continue
+            fpath = os.path.join(pattern_dir, fname)
+            try:
+                content = Path(fpath).read_text(errors="replace")
+                if "Finding ID:" in content or re.search(r'[A-Z]+-\d+', content):
+                    all_text.append(content)
+            except OSError:
+                continue
+
+    if not all_text:
+        eval_params = outputs.get("eval_params", {})
+        skill_args = eval_params.get("skill_args", "")
+        if "--save" in skill_args and target_dir:
+            for fname in sorted(os.listdir(target_dir)):
+                if not fname.endswith(".md"):
+                    continue
+                if "SEC-" in fname or "REPORT" in fname:
+                    fpath = os.path.join(target_dir, fname)
+                    try:
+                        content = Path(fpath).read_text(errors="replace")
+                        if "Finding ID:" in content or re.search(r'[A-Z]+-\d+', content):
+                            all_text.append(content)
+                    except OSError:
+                        continue
+
+    if not all_text:
+        return []
+    combined = "\n\n".join(all_text)
+    return _parse_findings_from_text(combined)
+
+
+def _extract_findings_from_cache(outputs):
+    """Extract findings from the orchestrator's cache dispatch output files.
+
+    Searches stdout JSONL for the orchestrator cache directory path, then
+    reads SEC-*/output.md files from the dispatch/ subdirectory. These are
+    the agent's raw output files, always written regardless of relay behavior.
+    """
+    stdout = outputs.get("stdout", "")
+    if not stdout:
+        case_dir = outputs.get("case_dir", "")
+        if case_dir:
+            stdout_path = Path(case_dir) / "stdout.log"
+            if stdout_path.exists():
+                try:
+                    stdout = stdout_path.read_text(errors="replace")
+                except OSError:
+                    return []
+
+    cache_dir = ""
+    for m in re.finditer(r'adversarial-review-cache[/-][\w.-]+', stdout):
+        candidate = m.group(0)
+        possible = re.search(
+            r'([\w/.-]+' + re.escape(candidate) + r')',
+            stdout,
+        )
+        if possible:
+            path = possible.group(1)
+            if os.path.isdir(path):
+                cache_dir = path
+                break
+
+    if not cache_dir:
+        return []
+
+    dispatch_dir = os.path.join(cache_dir, "dispatch")
+    outputs_dir = os.path.join(cache_dir, "outputs")
+
+    all_text = []
+    for search in [outputs_dir, dispatch_dir]:
+        if not os.path.isdir(search):
+            continue
+        if search == dispatch_dir:
+            for subdir in sorted(os.listdir(search)):
+                output_path = os.path.join(search, subdir, "output.md")
+                if not os.path.isfile(output_path):
+                    continue
+                if "REPORT" in subdir:
+                    continue
+                try:
+                    content = Path(output_path).read_text(errors="replace")
+                    if len(content) > 100 and (
+                        "Finding ID:" in content or re.search(r'[A-Z]+-\d{3}', content)
+                    ):
+                        all_text.append(content)
+                except OSError:
+                    continue
+        else:
+            for fname in sorted(os.listdir(search)):
+                if not fname.endswith(".md") or "REPORT" in fname:
+                    continue
+                fpath = os.path.join(search, fname)
+                try:
+                    content = Path(fpath).read_text(errors="replace")
+                    if len(content) > 100 and (
+                        "Finding ID:" in content or re.search(r'[A-Z]+-\d{3}', content)
+                    ):
+                        all_text.append(content)
+                except OSError:
+                    continue
+        if all_text:
+            break
+
+    if not all_text:
+        return []
+    combined = "\n\n".join(all_text)
+    return _parse_findings_from_text(combined)
+
+
 def _extract_findings(outputs):
     """Extract structured findings from agent output artifacts, deduped.
 
@@ -298,24 +531,54 @@ def _extract_findings(outputs):
     same file within 5 lines of each other. When file:line is absent,
     falls back to finding_id (only collides within exact ID match).
 
-    REPORT files are excluded: they re-summarize agent findings with
-    different formatting, causing false inflation. If no agent findings
-    exist, falls back to REPORT and stdout.
+    File priority (to avoid inflation from reading all iteration files):
+    1. Merged output files ({PREFIX}-output.md) contain the final findings
+    2. If no merged files, fall back to the highest iteration file
+    3. REPORT files excluded (re-summarize with different formatting)
+    4. RED-TEAM files excluded (audit flags, not findings)
+    5. Per-iteration files excluded when merged output exists
     """
     files = outputs.get("files", {})
-    agent_findings = []
+    challenge_findings = []
+    iter_findings_by_num = {}
+    merged_findings = []
     report_findings = []
 
     for _path, content in sorted(files.items()):
         if not content or not isinstance(content, str):
             continue
+        basename = os.path.basename(_path) if _path else ""
+        if "REPORT" in basename or "report" in basename:
+            parsed = _parse_findings_from_text(content)
+            if parsed:
+                report_findings.extend(parsed)
+            continue
+        if "RED-TEAM" in basename or "red-team" in basename:
+            continue
         parsed = _parse_findings_from_text(content)
         if not parsed:
             continue
-        if "REPORT" in _path or "report" in _path:
-            report_findings.extend(parsed)
+        if "challenge" in basename.lower():
+            challenge_findings.extend(parsed)
+        elif "iter" in basename:
+            m = re.search(r'iter(\d+)', basename)
+            num = int(m.group(1)) if m else 0
+            iter_findings_by_num[num] = parsed
         else:
-            agent_findings.extend(parsed)
+            merged_findings.extend(parsed)
+
+    all_iter = []
+    for num in sorted(iter_findings_by_num):
+        all_iter.extend(iter_findings_by_num[num])
+
+    if challenge_findings and all_iter:
+        agent_findings = challenge_findings + all_iter
+    elif challenge_findings:
+        agent_findings = challenge_findings
+    elif all_iter:
+        agent_findings = all_iter
+    else:
+        agent_findings = merged_findings
 
     all_raw = agent_findings
     if not all_raw:
@@ -323,16 +586,25 @@ def _extract_findings(outputs):
     if not all_raw:
         stdout = outputs.get("stdout", "")
         if stdout:
-            normalized = stdout.replace("\\n", "\n").replace("\\t", "\t")
-            parsed = _parse_findings_from_text(normalized)
-            if parsed:
-                all_raw = parsed
+            extracted = _extract_text_from_stdout(stdout)
+            if extracted:
+                parsed = _parse_findings_from_text(extracted)
+                if parsed:
+                    all_raw = parsed
     if not all_raw:
         case_dir = outputs.get("case_dir", "")
         if case_dir:
             subagent_findings = _extract_findings_from_subagents(case_dir)
             if subagent_findings:
                 all_raw = subagent_findings
+    if not all_raw:
+        save_findings = _extract_findings_from_save_target(outputs)
+        if save_findings:
+            all_raw = save_findings
+    if not all_raw:
+        cache_findings = _extract_findings_from_cache(outputs)
+        if cache_findings:
+            all_raw = cache_findings
 
     if not all_raw:
         return []

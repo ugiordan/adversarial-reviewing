@@ -1,0 +1,179 @@
+name: adversarial-reviewing-all
+description: 'Full multi-agent eval with all 5 specialists (SEC, CORR, PERF, QUAL,
+  ARCH).
+
+  Scores against full ground truth corpus. Use this for comprehensive review quality
+  assessment.
+
+  '
+skill: adversarial-reviewing:adversarial-reviewing
+execution:
+  mode: case
+  arguments: --no-budget --save {prompt}
+  timeout: 10800
+runner:
+  type: claude-code
+  plugin_dirs:
+  - /Users/ugogiordano/workdir/rhoai/adversarial-review/adversarial-review
+  system_prompt: "CRITICAL: You are a relay for the adversarial-reviewing orchestrator.\n\
+    Read SKILL.md and follow it EXACTLY. Your ONLY job is running orchestrator\ncommands\
+    \ (init, confirm, next) and dispatching agents as instructed.\n\nRULES YOU MUST\
+    \ NOT BREAK:\n1. Run orchestrator init, then follow the dispatch.json loop.\n\
+    2. Orchestrator commands (especially confirm) may take up to 10 MINUTES\n   for\
+    \ large repos. This is NORMAL. WAIT for them to finish.\n   Do NOT investigate\
+    \ why they are slow. Do NOT read fsm-state.json.\n   Do NOT grep or ls the filesystem.\
+    \ Do NOT call GitHub APIs.\n   Do NOT run commands in the background with run_in_background.\n\
+    \   Do NOT wrap commands in python3 -c subprocess wrappers.\n   Run each orchestrator\
+    \ command as a DIRECT foreground Bash call\n   with timeout set to 600000 (10\
+    \ minutes). JUST WAIT.\n3. If any orchestrator command fails, STOP IMMEDIATELY.\
+    \ Do NOT retry.\n   Do NOT re-initialize. Do NOT re-run from a different directory.\n\
+    \   Do NOT wrap in subprocess. Report the error and exit.\n4. After agents complete,\
+    \ run orchestrator next IMMEDIATELY. Do NOT read\n   agent outputs. Do NOT write\
+    \ output files. Do NOT verify anything.\n5. Approve scope confirmation and budget\
+    \ escalation immediately.\n6. After the orchestrator reports done, copy ALL files\
+    \ from the\n   skill's artifacts/ directory into the workspace artifacts/ directory:\n\
+    \   cp artifacts/*.md {WORKSPACE_ARTIFACTS}/\n"
+  settings:
+    permissions:
+      allow:
+      - Bash(python3*)
+      - Bash(cd*)
+      - Bash(cat*)
+      - Bash(cp*)
+      - Bash(mkdir*)
+      - Bash(ls*)
+      - Bash(grep*)
+      - Bash(wc*)
+      - Bash(cymbal*)
+      - Write(/var/folders/**)
+      - Write(/private/var/folders/**)
+      - Read(/tmp/**)
+      - Read(/private/tmp/**)
+      - Write(/tmp/**)
+      - Write(/private/tmp/**)
+      - Edit(/var/folders/**)
+      - Edit(/private/var/folders/**)
+      - Edit(/tmp/**)
+      - Edit(/private/tmp/**)
+      - Write(artifacts/**)
+      additionalDirectories:
+      - /Users/ugogiordano/workdir/rhoai/opendatahub-io/opendatahub-operator
+      - /Users/ugogiordano/workdir/rhoai/opendatahub-io/kube-auth-proxy
+      - /Users/ugogiordano/workdir/rhoai/opendatahub-io/odh-model-controller
+      - /tmp
+      - /private/tmp
+models:
+  skill: claude-opus-4-6
+  judge: claude-opus-4-6
+permissions:
+  allow: []
+  deny:
+  - mcp__*
+mlflow:
+  experiment: adversarial-reviewing-eval
+  tracking_uri: http://127.0.0.1:5050
+dataset:
+  path: eval/dataset/cases
+  schema: "Each case directory contains:\n- input.yaml: The 'prompt' field contains\
+    \ the skill invocation\n  arguments (target repo path and flags).\n- reference.yaml:\
+    \ Ground truth corpus with verified security\n  findings, detection signals, and\
+    \ severity classifications.\n"
+outputs:
+- path: artifacts
+  schema: 'The adversarial-reviewing skill saves its report as a markdown
+
+    file via --save. The report contains structured findings with
+
+    Finding ID, Severity, Confidence, Source Trust, File, Lines,
+
+    Title, Evidence, and Recommended fix fields.
+
+    '
+traces:
+  stdout: true
+  stderr: true
+  events: false
+  metrics: true
+judges:
+- name: fsm_executed
+  description: Verify the FSM orchestrator was actually invoked (not ad-hoc review)
+  check: "import os, json\nfrom pathlib import Path\nstdout = outputs.get(\"stdout\"\
+    , \"\")\nif not stdout:\n    case_dir = outputs.get(\"case_dir\", \"\")\n    if\
+    \ case_dir:\n        p = Path(case_dir) / \"stdout.log\"\n        if p.exists():\n\
+    \            stdout = p.read_text(errors=\"replace\")\nif not stdout:\n    return\
+    \ False, \"No stdout available\"\n# Search both assistant text AND tool_use commands\
+    \ in JSONL\nsearch_text = stdout\nif stdout.strip().startswith(\"{\"):\n    parts\
+    \ = []\n    for line in stdout.splitlines():\n        try:\n            msg =\
+    \ json.loads(line)\n            m = msg.get(\"message\", {})\n            if m.get(\"\
+    role\") == \"assistant\":\n                content = m.get(\"content\", [])\n\
+    \                if isinstance(content, list):\n                    for block\
+    \ in content:\n                        if isinstance(block, dict):\n         \
+    \                   if block.get(\"type\") == \"text\":\n                    \
+    \            parts.append(block.get(\"text\", \"\"))\n                       \
+    \     elif block.get(\"type\") == \"tool_use\":\n                            \
+    \    cmd = block.get(\"input\", {})\n                                if isinstance(cmd,\
+    \ dict):\n                                    parts.append(cmd.get(\"command\"\
+    , \"\"))\n                elif isinstance(content, str):\n                   \
+    \ parts.append(content)\n        except (json.JSONDecodeError, ValueError):\n\
+    \            pass\n    search_text = \"\\n\".join(parts) if parts else stdout\n\
+    has_init = \"scripts.orchestrator init\" in search_text or \"orchestrator init\"\
+    \ in search_text\nhas_next = \"scripts.orchestrator next\" in search_text or \"\
+    orchestrator next\" in search_text\nhas_confirm = \"scripts.orchestrator confirm\"\
+    \ in search_text or \"orchestrator confirm\" in search_text\nif not has_init:\n\
+    \    return False, \"orchestrator init was never called - skill did not execute\"\
+    \nif not has_next and not has_confirm:\n    return False, \"orchestrator confirm/next\
+    \ never called - FSM protocol not followed\"\nreturn True, \"FSM orchestrator\
+    \ protocol was followed\"\n"
+- name: has_findings
+  description: Check that the review produced findings
+  check: "import os\nfrom pathlib import Path\n# Prefer artifact files (clean, no\
+    \ JSONL noise)\ncontent = \"\"\nfor k, v in outputs.get(\"files\", {}).items():\n\
+    \    if v and len(v) > 100 and \"output\" in k.lower() and \"REPORT\" not in k:\n\
+    \        content = v\n        break\nif not content:\n    content = outputs.get(\"\
+    artifacts_content\", \"\")\nif not content:\n    # Fallback to raw stdout decode\n\
+    \    stdout = outputs.get(\"stdout\", \"\")\n    if not stdout:\n        case_dir\
+    \ = outputs.get(\"case_dir\", \"\")\n        if case_dir:\n            p = Path(case_dir)\
+    \ / \"stdout.log\"\n            if p.exists():\n                stdout = p.read_text(errors=\"\
+    replace\")\n    if stdout:\n        decoded = stdout.replace(\"\\\\\\\\n\", \"\
+    \\n\").replace(\"\\\\n\", \"\\n\")\n        if \"Finding ID:\" in decoded:\n \
+    \           content = decoded\nif not content or len(content.strip()) < 200:\n\
+    \    return False, f\"No substantial output ({len(content) if content else 0}\
+    \ chars)\"\nif \"Finding ID:\" not in content and \"SEC-\" not in content:\n \
+    \   return False, \"Output exists but contains no structured findings\"\nreturn\
+    \ True, f\"Output has {len(content)} chars with structured findings\"\n"
+- name: detection_rate
+  description: 'Score detection accuracy against ground truth corpus.
+
+    Uses keyword matching and file path matching to map findings
+
+    to known vulnerabilities. Returns detection rate (0.0-1.0).
+
+    '
+  module: eval.judges.detection_judge
+  function: score_detection
+- name: false_positive_rate
+  description: 'Check that false positive rate stays under 20%.
+
+    '
+  module: eval.judges.detection_judge
+  function: score_false_positive_rate
+- name: severity_accuracy
+  description: 'Score severity classification accuracy for matched findings.
+
+    '
+  module: eval.judges.detection_judge
+  function: score_severity_accuracy
+- name: cost_reasonable
+  description: Verify per-case cost stays under budget
+  check: "import json\nfrom pathlib import Path\ncost = outputs.get(\"cost_usd\",\
+    \ 0)\n# Prefer per-case cost from case run_result.json\ncase_dir = outputs.get(\"\
+    case_dir\", \"\")\nif case_dir:\n    rr = Path(case_dir) / \"run_result.json\"\
+    \n    if rr.exists():\n        try:\n            data = json.loads(rr.read_text())\n\
+    \            case_cost = data.get(\"cost_usd\", 0)\n            if case_cost:\n\
+    \                cost = case_cost\n        except (json.JSONDecodeError, OSError):\n\
+    \            pass\nif cost and cost > 50.0:\n    return False, f\"Cost ${cost:.2f}\
+    \ exceeds $50 per-case limit\"\nreturn True, f\"Cost ${cost:.2f}\" if cost else\
+    \ \"Cost not tracked\"\n"
+thresholds:
+  detection_rate:
+    min_mean: 0.5

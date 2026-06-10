@@ -1,7 +1,7 @@
 metadata:
   repo: opendatahub-io/odh-model-controller
   corpus_version: '1.0'
-  total_findings: 41
+  total_findings: 46
 findings:
 - id: ARCH-DOUBLE-START
   severity: Critical
@@ -32,15 +32,18 @@ findings:
   - webhook
   - update
   - ValidateUpdate
-- id: SEC-RBAC-ESCALATE
+- id: SEC-RBAC-BROAD-PERMS
   severity: Important
   category: rbac
   file: config/rbac/role.yaml
-  title: ClusterRole grants explicit escalate verb
+  title: ClusterRole grants full CRUD on RBAC resources (clusterrolebindings, rolebindings, roles)
   detection_signals:
-  - escalate
+  - clusterrolebindings
+  - rolebindings
   - rbac
   - ClusterRole
+  - create
+  - delete
 - id: SEC-CROSS-NS-SECRET
   severity: Important
   category: data_flow
@@ -409,3 +412,54 @@ findings:
   - development
   - configuration
   - overrides
+- id: SEC-GHA-SCRIPT-INJECTION
+  severity: Important
+  category: supply_chain
+  file: .github/workflows/runtime-version-update.yml
+  title: GitHub Actions workflow_dispatch inputs interpolated in shell enabling command injection
+  detection_signals:
+  - workflow_dispatch
+  - command injection
+  - shell
+  - interpolat
+- id: SEC-RBAC-VIEWER-AGGREGATE
+  severity: Minor
+  category: rbac
+  file: config/rbac/account_viewer_role.yaml
+  title: Viewer role aggregates to admin/edit/view granting update on status and finalizers
+  detection_signals:
+  - aggregate-to-admin
+  - aggregate-to-edit
+  - aggregate-to-view
+  - viewer
+  - update
+- id: SEC-RBAC-EDITOR-AGGREGATE
+  severity: Minor
+  category: rbac
+  file: config/rbac/account_editor_role.yaml
+  title: Editor role aggregates to admin and edit granting full NIM account CRUD
+  detection_signals:
+  - aggregate-to-admin
+  - aggregate-to-edit
+  - editor
+  - NIM
+- id: SEC-CROSS-NS-CONFIGMAP
+  severity: Important
+  category: data_flow
+  file: api/nim/v1/account_types.go
+  title: ModelListConfig ObjectReference allows cross-namespace ConfigMap read
+  detection_signals:
+  - ObjectReference
+  - ModelListConfig
+  - cross-namespace
+  - ConfigMap
+- id: SEC-ISCA-CERT
+  severity: Minor
+  category: crypto
+  file: internal/controller/utils/cert.go
+  title: Self-signed CA certificate with IsCA true also carries ServerAuth EKU
+  detection_signals:
+  - IsCA
+  - ServerAuth
+  - ExtKeyUsage
+  - certificate

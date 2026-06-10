@@ -1,7 +1,7 @@
 metadata:
   repo: opendatahub-io/kube-auth-proxy
   corpus_version: '1.0'
-  total_findings: 39
+  total_findings: 48
 findings:
 - id: SEC-REDIS-TLS
   severity: Important
@@ -40,6 +40,56 @@ findings:
   - IsAllowedRequest
   - allowedPaths
   - bypass
+- id: SEC-SHA1-HTPASSWD
+  severity: Important
+  category: crypto
+  file: pkg/authentication/basic/htpasswd.go
+  title: SHA1 password hashing in htpasswd authentication
+  detection_signals:
+  - sha1
+  - SHA
+  - htpasswd
+  - bcrypt
+  - nosec G401
+  - nosec G505
+- id: SEC-OIDC-NONCE-SKIP
+  severity: Important
+  category: authentication
+  file: pkg/apis/options/providers.go
+  title: OIDC nonce verification disabled by default
+  detection_signals:
+  - InsecureSkipNonce
+  - nonce
+  - OIDC
+- id: SEC-LOGOUT-URL-LEAK
+  severity: Minor
+  category: data_flow
+  file: oauthproxy.go
+  title: Backend logout URL with id_token uses http.Get exposing token in logs
+  detection_signals:
+  - backendLogoutURL
+  - http.Get
+  - id_token
+  - nosec G107
+- id: SEC-LOGOUT-RACE
+  severity: Minor
+  category: data_flow
+  file: oauthproxy.go
+  title: Race condition on cachedLogoutURL field without synchronization
+  detection_signals:
+  - cachedLogoutURL
+  - race
+  - concurrent
+- id: SEC-OPENSHIFT-LOG-LEAK
+  severity: Minor
+  category: data_flow
+  file: providers/openshift.go
+  title: Token validation logs full API response body potentially exposing PII
+  detection_signals:
+  - response.Body
+  - log
+  - token
+  - PII
 - id: CORR-SHADOW-ATTRS
   severity: Important
   category: input_validation
@@ -345,6 +395,7 @@ findings:
   severity: Important
   file: pkg/authentication/basic/htpasswd.go
   title: HTPasswd supports SHA1 password hashing, which is cryptographically weak for password storage
+  duplicate_of: SEC-SHA1-HTPASSWD
   detection_signals:
   - htpasswd
   - supports
@@ -355,6 +406,7 @@ findings:
   severity: Important
   file: pkg/apis/options/providers.go
   title: OIDC nonce verification is disabled by default (InsecureSkipNonce defaults to true), weakening OAuth replay protection
+  duplicate_of: SEC-OIDC-NONCE-SKIP
   detection_signals:
   - InsecureSkipNonce
   - OIDC
@@ -391,3 +443,43 @@ findings:
   - digest
   - pinning
   - development
+- id: SEC-HARDCODED-SECRETS-LOCAL
+  severity: Minor
+  category: secrets
+  file: contrib/local-environment/oauth2-proxy.cfg
+  title: Hardcoded cookie and client secrets committed to git in local configs
+  detection_signals:
+  - cookie_secret
+  - client_secret
+  - hardcoded
+  - committed
+- id: SEC-CI-UNPINNED-BINARY
+  severity: Minor
+  category: supply_chain
+  file: .github/workflows/ci.yml
+  title: CI downloads unpinned binary without integrity verification
+  detection_signals:
+  - download
+  - unpinned
+  - integrity
+  - binary
+- id: SEC-GHA-RELEASE-INJECTION
+  severity: Important
+  category: supply_chain
+  file: .github/workflows/create-release.yml
+  title: Unsanitized workflow_dispatch input in shell command
+  detection_signals:
+  - workflow_dispatch
+  - shell
+  - injection
+  - unsanitized
+- id: SEC-UPSTREAM-TLS-MINVERSION
+  severity: Minor
+  category: tls
+  file: kube-rbac-proxy/cmd/kube-rbac-proxy/app/transport.go
+  title: Upstream TLS transport does not set MinVersion explicitly
+  detection_signals:
+  - MinVersion
+  - TLS
+  - transport
+  - upstream

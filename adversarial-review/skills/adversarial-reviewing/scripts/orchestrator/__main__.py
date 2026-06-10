@@ -34,7 +34,7 @@ from .types import State, FsmState, Delimiters, SAFE_ID_RE, PHASE_SELF_REFINEMEN
 
 def main():
     raw_args = sys.argv[1:]
-    commands = {"init", "next", "confirm", "resume"}
+    commands = {"init", "next", "confirm", "resume", "run-all"}
     command = None
     remaining = []
     for i, arg in enumerate(raw_args):
@@ -57,6 +57,7 @@ def main():
      "next": handle_next,
      "confirm": handle_confirm,
      "resume": handle_resume,
+     "run-all": handle_run_all,
      }[command](remaining, skill_dir)
 
 
@@ -224,6 +225,12 @@ def handle_confirm(argv: list[str], skill_dir: str):
         if detected:
             state.config.detected_language = detected
             _try_install_lsp(detected, skill_dir)
+
+        _run_pattern_prescan(
+            source_root, cache_dir, skill_dir,
+            state.config.profile, state.config.agents,
+            detected or "default",
+        )
 
         transition(state, State.POPULATE_CACHE)
         transition(state, State.SELF_REFINEMENT)
@@ -431,6 +438,25 @@ def _run_external_analyzers(source_root: str, cache_dir: str) -> None:
             pass
 
 
+def _run_pattern_prescan(
+    source_root: str,
+    cache_dir: str,
+    skill_dir: str,
+    profile: str,
+    agents: list,
+    language: str = "default",
+) -> None:
+    """Run detection pattern pre-scan against source tree. Best-effort, non-fatal."""
+    try:
+        from .pattern_scan import run_full_prescan, save_prescan
+        profile_dir = os.path.join(skill_dir, "profiles", profile)
+        results = run_full_prescan(source_root, profile_dir, agents, language)
+        if results:
+            save_prescan(results, cache_dir)
+    except Exception:
+        pass
+
+
 def _generate_scope_file(source_root: str, output_path: str,
                          force: bool = False) -> None:
     """Walk source_root and write file paths (one per line) to output_path.
@@ -442,7 +468,7 @@ def _generate_scope_file(source_root: str, output_path: str,
         "vendor", "node_modules", ".git", "__pycache__",
         "testdata", "bin", ".idea", ".vscode", "output",
         ".adversarial-review-cache", ".cache", "artifacts",
-        ".gopath-loader",
+        "gopath-loader", ".gopath-loader",
     }
     skip_suffixes = ("_test.go", "zz_generated", ".patch")
     binary_exts = {
@@ -499,6 +525,114 @@ def _find_skill_dir():
         f"SKILL.md not found in any parent directory starting from "
         f"{os.path.dirname(os.path.abspath(__file__))}"
     )
+
+
+def handle_run_all(argv: list[str], skill_dir: str):
+    """Run the full orchestrator pipeline without a relay.
+
+    Calls init, confirm, then loops: read dispatch.json, dispatch agents
+    via claude CLI, run next. Stops when dispatch.json has done=true.
+    """
+    import io
+    import logging
+    from .runner import dispatch_agents, read_dispatch, is_done
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(message)s",
+        stream=sys.stderr,
+    )
+    log = logging.getLogger("run-all")
+
+    model = "claude-opus-4-6"
+    remaining = []
+    i = 0
+    while i < len(argv):
+        if argv[i] == "--model" and i + 1 < len(argv):
+            model = argv[i + 1]
+            i += 2
+        else:
+            remaining.append(argv[i])
+            i += 1
+
+    log.info("Phase: init")
+    old_stdout = sys.stdout
+    sys.stdout = io.StringIO()
+    try:
+        handle_init(remaining, skill_dir)
+        init_output = sys.stdout.getvalue()
+    finally:
+        sys.stdout = old_stdout
+
+    cache_dir = ""
+    for line in init_output.strip().split("\n"):
+        try:
+            data = json.loads(line)
+            if "cache_dir" in data:
+                cache_dir = data["cache_dir"]
+                break
+        except (json.JSONDecodeError, ValueError):
+            continue
+
+    if not cache_dir:
+        cache_base = os.path.join(skill_dir, ".adversarial-review-cache")
+        if os.path.isdir(cache_base):
+            for d in sorted(
+                os.listdir(cache_base),
+                key=lambda x: os.path.getmtime(os.path.join(cache_base, x)),
+                reverse=True,
+            ):
+                full = os.path.join(cache_base, d)
+                if os.path.isdir(full) and os.path.isfile(
+                    os.path.join(full, "fsm-state.json")
+                ):
+                    cache_dir = full
+                    break
+
+    if not cache_dir:
+        fatal_error("Could not determine cache_dir after init")
+
+    log.info("Cache dir: %s", cache_dir)
+    log.info("Phase: confirm")
+    handle_confirm(["--cache-dir", cache_dir], skill_dir)
+
+    max_rounds = 20
+    for round_num in range(max_rounds):
+        dispatch = read_dispatch(cache_dir)
+        if not dispatch:
+            log.error("No dispatch.json found")
+            break
+        if is_done(dispatch):
+            log.info("Review complete (round %d)", round_num)
+            artifacts_dir = os.path.join(skill_dir, "artifacts")
+            if os.path.isdir(artifacts_dir):
+                log.info("Artifacts: %s", ", ".join(os.listdir(artifacts_dir)))
+            print(json.dumps({
+                "status": "done",
+                "cache_dir": cache_dir,
+                "rounds": round_num,
+            }))
+            return
+
+        phase = dispatch.get("phase", "?")
+        iteration = dispatch.get("iteration", "?")
+        agents = dispatch.get("agents", [])
+        log.info(
+            "Round %d: phase=%s iter=%s agents=%s",
+            round_num, phase, iteration,
+            [a["id"] for a in agents],
+        )
+
+        results = dispatch_agents(dispatch, skill_dir, model=model)
+        for agent_id, rc in results.items():
+            status = "OK" if rc == 0 else f"FAIL(exit={rc})"
+            log.info("  %s: %s", agent_id, status)
+
+        log.info("Phase: next")
+        handle_next(["--cache-dir", cache_dir], skill_dir)
+
+    log.error("Max rounds (%d) exceeded", max_rounds)
+    sys.exit(1)
 
 
 if __name__ == "__main__":

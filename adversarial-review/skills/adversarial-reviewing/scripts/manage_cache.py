@@ -294,27 +294,24 @@ def cmd_populate_code(args):
                 err_json(f"Source file not found: {rel_path}")
                 sys.exit(1)
 
-            # Post-hoc collision check
-            with open(abs_path, "rb") as rf:
-                if delimiter_hex.encode() in rf.read():
-                    err_json(f"Delimiter collision in {rel_path}")
-                    sys.exit(1)
-
             target_dir = os.path.join(cache_dir, "code", os.path.dirname(rel_path))
             target_file = os.path.join(cache_dir, "code", rel_path)
             os.makedirs(target_dir, exist_ok=True)
 
             try:
                 with open(abs_path, "rb") as bf:
-                    raw = bf.read(8192)
-                    if b"\x00" in raw:
+                    raw = bf.read()
+                    if b"\x00" in raw[:8192]:
                         continue
+                    if delimiter_hex.encode() in raw:
+                        err_json(f"Delimiter collision in {rel_path}")
+                        sys.exit(1)
+                content = raw.decode("utf-8", errors="replace")
                 with open(target_file, "w") as tf:
                     tf.write(f"===REVIEW_TARGET_{delimiter_hex}_START===\n")
                     tf.write(anti_instruction)
                     tf.write("\n\n")
-                    with open(abs_path, errors="replace") as sf:
-                        tf.write(sf.read())
+                    tf.write(content)
                     tf.write(f"\n===REVIEW_TARGET_{delimiter_hex}_END===\n")
             except (UnicodeDecodeError, OSError):
                 continue

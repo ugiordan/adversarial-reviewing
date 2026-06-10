@@ -1029,6 +1029,84 @@ def _save_dispatch_cache(cache_dir: str, data: dict) -> None:
         pass
 
 
+_prescan_cache: dict | None = None
+
+
+def _load_prescan_data(cache_dir: str) -> dict:
+    """Load pattern pre-scan results from disk. Cached in-process."""
+    global _prescan_cache
+    if _prescan_cache is not None:
+        return _prescan_cache
+    scan_path = os.path.join(cache_dir, "pattern-scan.yaml")
+    if not os.path.isfile(scan_path):
+        _prescan_cache = {}
+        return _prescan_cache
+    try:
+        import yaml
+        with open(scan_path) as f:
+            loaded = yaml.safe_load(f)
+        _prescan_cache = loaded if isinstance(loaded, dict) else {}
+    except Exception:
+        _prescan_cache = {}
+    return _prescan_cache
+
+
+def _get_agent_prescan(prescan_data: dict, agent_prefix: str) -> tuple[str, str]:
+    """Get pattern-hits markdown and detection-checklist YAML for an agent.
+
+    Returns (pattern_hits_md, checklist_yaml) strings. Empty if no prescan data.
+    """
+    if not isinstance(prescan_data, dict):
+        return "", ""
+    agent_data = prescan_data.get(agent_prefix)
+    if not isinstance(agent_data, dict):
+        return "", ""
+
+    patterns = agent_data.get("patterns")
+    if not isinstance(patterns, list) or not patterns:
+        return "", ""
+
+    hits_lines = []
+    has_any_hits = False
+    for p in patterns:
+        if not isinstance(p, dict):
+            continue
+        if p.get("status") == "hits_found" and p.get("hits"):
+            has_any_hits = True
+            hits_lines.append(f"### {p.get('id', '?')}: {p.get('grep', '?')}")
+            hits_lines.append(f"Category: {p.get('category', 'unknown')}")
+            if p.get("description"):
+                hits_lines.append(f"Description: {p['description']}")
+            hits_lines.append("")
+            for h in p.get("hits", []):
+                if not isinstance(h, dict):
+                    continue
+                hits_lines.append(
+                    f"- {h.get('file', '?')}:{h.get('line', '?')}: "
+                    f"`{h.get('content', '')}`"
+                )
+            hits_lines.append("")
+
+    pattern_hits_md = ""
+    if has_any_hits:
+        header = [
+            "## Pre-Scan Pattern Hits\n",
+            "These patterns from your Detection Patterns section matched in the source code.",
+            "You MUST investigate each hit and either:",
+            "1. Produce a finding (using the finding template), or",
+            "2. Explain why it is not an issue (in your Coverage Report under \"checked, not an issue\")\n",
+        ]
+        pattern_hits_md = "\n".join(header + hits_lines)
+
+    try:
+        import yaml
+        checklist_yaml = yaml.safe_dump(agent_data, default_flow_style=False, sort_keys=False)
+    except Exception:
+        checklist_yaml = ""
+
+    return pattern_hits_md, checklist_yaml
+
+
 def _prepare_dispatch_directories(state, cache_dir, skill_dir, phase) -> list[tuple[str, str]]:
     """Prepare dispatch directories for all agents. Returns (agent_id, dispatch_path) tuples."""
     profile_dir = os.path.join(skill_dir, "profiles", state.config.profile)
@@ -1112,6 +1190,8 @@ def _prepare_dispatch_directories(state, cache_dir, skill_dir, phase) -> list[tu
         cache_dir, state.binding_context_labels,
     )
 
+    prescan_data = _load_prescan_data(cache_dir)
+
     results = []
     for agent_cfg in state.config.agents:
         agent_file = agent_cfg.file or agent_map.get(agent_cfg.prefix, "")
@@ -1140,6 +1220,13 @@ def _prepare_dispatch_directories(state, cache_dir, skill_dir, phase) -> list[tu
                 state.iteration + 1,
             )
 
+        agent_pattern_hits = ""
+        agent_checklist = ""
+        if phase == PHASE_SELF_REFINEMENT and iteration <= 1:
+            agent_pattern_hits, agent_checklist = _get_agent_prescan(
+                prescan_data, agent_cfg.prefix,
+            )
+
         dispatch_path = prepare_dispatch_directory(
             cache_dir=cache_dir,
             agent_id=agent_cfg.prefix,
@@ -1154,6 +1241,8 @@ def _prepare_dispatch_directories(state, cache_dir, skill_dir, phase) -> list[tu
             lsp_guidance=lsp_guidance if iteration == 1 else "",
             coverage_report=coverage_report,
             user_context=user_context,
+            pattern_hits=agent_pattern_hits,
+            detection_checklist=agent_checklist,
         )
         results.append((agent_cfg.prefix, dispatch_path))
     return results
@@ -1670,8 +1759,57 @@ def _run_compliance_checks(state, cache_dir):
     for detail in size_result.warning_details:
         log_guardrail(state, "compliance", "output_size", "", "warning", detail)
 
+    _run_finding_validation(state, cache_dir, output_files)
+
     state.relay_compliance_rounds += 1
     state.active_retry = None
+
+
+def _run_finding_validation(state, cache_dir, output_files) -> None:
+    """Validate finding structure and pattern coverage. Logs warnings, never fatal."""
+    try:
+        scripts_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+        sys.path.insert(0, scripts_dir)
+        from validate_findings import validate_file, check_pattern_coverage
+        sys.path.pop(0)
+    except ImportError:
+        return
+
+    prescan_data = _load_prescan_data(cache_dir)
+    known_prefixes = [a.prefix for a in state.config.agents] if state.config else []
+
+    for output_file in output_files:
+        if "/dispatch/" in output_file:
+            continue
+        basename = os.path.basename(output_file)
+        agent_prefix = _extract_agent_prefix(basename, known_prefixes)
+
+        result = validate_file(output_file)
+        if result.get("errors", 0) > 0:
+            for detail in result.get("details", []):
+                if not detail.get("valid"):
+                    fid = detail.get("finding_id", "?")
+                    for err in detail.get("errors", []):
+                        log_guardrail(
+                            state, "compliance", "finding_schema",
+                            agent_prefix, "warning",
+                            f"{fid}: {err}",
+                        )
+
+        if prescan_data and agent_prefix:
+            agent_scan = prescan_data.get(agent_prefix, {})
+            if agent_scan:
+                try:
+                    content = Path(output_file).read_text(errors="replace")
+                except OSError:
+                    continue
+                gaps = check_pattern_coverage(content, agent_scan)
+                if gaps:
+                    log_guardrail(
+                        state, "compliance", "pattern_coverage_gap",
+                        agent_prefix, "warning",
+                        f"Unchecked patterns: {', '.join(gaps[:5])}",
+                    )
 
 
 # -- Budget helpers --

@@ -147,16 +147,83 @@ def match_finding_to_gt(finding, gt_list):
     return best_match, best_score
 
 
-def compute_metrics(findings, gt_list, token_count=None, quick_mode=False):
+def _filter_gt_by_agent(gt_list, agent_filter):
+    """Filter GT entries to those relevant to a specific agent.
+
+    Uses the 'agent' field if present, otherwise infers from ID prefix
+    and category.
+    """
+    agent = agent_filter.upper()
+    filtered = []
+    for g in gt_list:
+        if g.get("agent", "").upper() == agent:
+            filtered.append(g)
+            continue
+
+        gt_id = g.get("id", "")
+        prefix = gt_id.split("-")[0] if "-" in gt_id else ""
+        category = g.get("category", "").lower()
+
+        if agent == "SEC":
+            if prefix in _NON_SEC_PREFIXES:
+                continue
+            if prefix in _SEC_ID_PREFIXES:
+                filtered.append(g)
+            elif category in _SEC_CATEGORIES:
+                filtered.append(g)
+            elif prefix == "B2":
+                sub_prefix = gt_id.split("-")[1] if gt_id.count("-") >= 2 else ""
+                if sub_prefix in _SEC_ID_PREFIXES or category in _SEC_CATEGORIES:
+                    filtered.append(g)
+        elif agent == "PERF":
+            if prefix == "PERF" or category in ("performance", "cache", "memory"):
+                filtered.append(g)
+        elif agent == "CORR":
+            if prefix == "CORR" or category in ("correctness", "bounds_check", "error_handling"):
+                filtered.append(g)
+        elif agent == "ARCH":
+            if prefix == "ARCH" or category in ("architecture", "design"):
+                filtered.append(g)
+        elif agent == "QUAL":
+            if prefix == "QUAL" or category in ("quality", "naming", "style"):
+                filtered.append(g)
+        else:
+            if prefix == agent:
+                filtered.append(g)
+    return filtered
+
+
+_SEC_CATEGORIES = {
+    "crypto", "access_control", "rbac", "webhook",
+    "randomness", "tls", "oauth", "secrets", "supply_chain",
+    "authentication", "authorization",
+}
+
+_SEC_ID_PREFIXES = {
+    "SEC", "RBAC", "SSL", "AUTH", "OAUTH", "WEBHOOK", "UNPINNED",
+    "PODS", "HASH",
+}
+
+_NON_SEC_PREFIXES = {"CORR", "PERF", "QUAL", "ARCH"}
+
+
+def compute_metrics(findings, gt_list, token_count=None, quick_mode=False,
+                    agent_filter=None):
     """Compute all evaluation metrics.
 
     If quick_mode is True, GT entries with a scope_note field are excluded
     from the active set (they reference files outside the --quick scope
     and are expected misses).
+
+    If agent_filter is set (e.g., "SEC"), only GT entries that belong to
+    that agent's domain are included. For SEC: entries with SEC-* prefix,
+    security-related category, or security-related ID prefix.
     """
     gt_active = [g for g in gt_list if not g.get("duplicate_of")]
     if quick_mode:
         gt_active = [g for g in gt_active if not g.get("scope_note")]
+    if agent_filter:
+        gt_active = _filter_gt_by_agent(gt_active, agent_filter)
     gt_ids = {g["id"] for g in gt_active}
 
     matched_gt = {}  # gt_id -> (finding, score)

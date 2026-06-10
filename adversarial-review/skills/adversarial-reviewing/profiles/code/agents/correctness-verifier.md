@@ -72,6 +72,11 @@ When multiple files are in scope, actively look for contradictions between them.
 - Nil map writes panic. Check for `map[key] = value` where the map might not be initialized.
 - **Before reporting a panic/crash finding**: Read the full function body and verify there is no bounds check, nil check, or length guard ABOVE the flagged access. Guard clauses are often 1-3 lines before the access.
 
+**Nil pointer and edge case tracing:**
+- For each function that receives a pointer or interface parameter, trace the path where the value could be nil. Check if callers ever pass nil or if the value comes from a map lookup, type assertion, or optional field.
+- Latent nil dereferences: code that works in normal flow but panics on edge inputs (e.g., `RemoteAddr` being "@" instead of "ip:port", empty string splits, zero-length slices from API responses).
+- Type switch `case interface{}` matches ALL types and can cause panics when the matched value is not the expected concrete type.
+
 **Error propagation gaps:**
 - `fmt.Errorf` wrapping that drops the original error type, preventing `errors.Is()` or `errors.As()` classification
 - Functions returning `nil` error on partial success, swallowing failures in sub-operations that may be critical

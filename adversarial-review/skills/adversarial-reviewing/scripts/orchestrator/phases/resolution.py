@@ -50,8 +50,13 @@ def _build_votes_json(cache_dir: str) -> str | None:
     if not votes:
         return None
 
+    unique_agents = {v["agent"] for v in votes}
+    votes_data = {
+        "global_specialist_count": len(unique_agents),
+        "findings": votes,
+    }
     votes_path = os.path.join(cache_dir, "votes.json")
-    Path(votes_path).write_text(json.dumps(votes, indent=2))
+    Path(votes_path).write_text(json.dumps(votes_data, indent=2))
     return votes_path
 
 

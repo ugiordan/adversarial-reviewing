@@ -9,109 +9,39 @@ user-invocable: true
 
 # Adversarial Review
 
-This skill is driven by a Python orchestrator. You are a relay: run
-orchestrator commands and dispatch agents as instructed.
+This skill runs a multi-agent security review via a Python orchestrator.
 
 ## Quick start
 
-Run exactly this command first:
+Run exactly this command:
+
+```bash
+cd ${CLAUDE_SKILL_DIR} && python3 -m scripts.orchestrator run-all $ARGUMENTS
+```
+
+This runs the full review pipeline (init, confirm, self-refinement,
+challenge, red-team audit, report). No further action needed.
+
+The command will take 30-90 minutes depending on repo size. Wait for
+it to complete. Use `timeout: 600000` on the Bash tool call.
+
+## Output
+
+When complete, the command prints JSON with `{"status": "done"}`.
+Review artifacts are in `${CLAUDE_SKILL_DIR}/artifacts/`.
+
+## Legacy workflow
+
+If `run-all` is not available, fall back to the step-by-step protocol:
 
 ```bash
 cd ${CLAUDE_SKILL_DIR} && python3 -m scripts.orchestrator init $ARGUMENTS
 ```
 
-## Workflow
-
-```
-Orchestrator Progress:
-- [ ] Step 1: Run orchestrator init (parse JSON output)
-- [ ] Step 2: Read dispatch.json
-- [ ] Step 3: Execute dispatch plan
-- [ ] Step 4: Run orchestrator next
-- [ ] Step 5: Read dispatch.json again
-- [ ] Step 6: If done=true, verify artifacts and stop.
-```
-
-**Step 1: Initialize**
-
-```bash
-cd ${CLAUDE_SKILL_DIR} && python3 -m scripts.orchestrator init $ARGUMENTS
-```
-
-Parse the JSON output. Store `cache_dir`.
-
-**Step 2: Read dispatch plan**
-
-```bash
-cat {CACHE_DIR}/dispatch.json
-```
-
-**Step 3: Execute the dispatch plan**
-
-- **If `action` is `ask_user`**: Read `message_file`, show to user,
-  wait for approval. On approval:
-  ```bash
-  cd ${CLAUDE_SKILL_DIR} && python3 -m scripts.orchestrator confirm --cache-dir {CACHE_DIR}
-  ```
-
-- **If `dispatch_version` is `"3.0"` and `agents` is present**:
-  For each agent, dispatch via Agent tool with the agent's subagent_type
-  and dispatch_path. If `parallel` is true, dispatch all in one message.
-  
-  **CRITICAL: After all agents complete, run `orchestrator next`
-  IMMEDIATELY. Do NOT read agent outputs. Do NOT write output files.
-  Do NOT check dispatch directories. Do NOT verify anything.
-  The orchestrator handles all file management internally.**
-  
-  Example for one agent:
-  ```
-  Agent(subagent_type="review-specialist", prompt="{dispatch_path}")
-  ```
-
-- **If `dispatch_version` is `"2.0"` and `agents` is present** (legacy):
-  Read each agent's prompt_file, dispatch via Agent tool, write response
-  to output_file.
-
-**Step 4: Advance**
-
-```bash
-cd ${CLAUDE_SKILL_DIR} && python3 -m scripts.orchestrator next --cache-dir {CACHE_DIR}
-```
-
-**Step 5-6: Read dispatch.json. If done, verify artifacts and stop.**
-
-The orchestrator automatically copies all outputs to `artifacts/`.
-
-```bash
-ls artifacts/
-```
-
-## Rules
-
-Do not modify orchestrator commands. Do not modify agent prompts.
-Do not skip agents. Do not add your own analysis.
-Do not perform your own code review or spawn your own agents.
-Do not read files in the review target yourself.
-Do not explore the skill directory or read agent definition files.
-Do not read, write, copy, or verify agent output files.
-Do not list or check dispatch directories between steps.
-The orchestrator handles all file management. If it cannot run, abort.
+Then follow the dispatch.json loop (confirm, dispatch agents, next)
+until done=true.
 
 ## Error handling
 
-If an agent fails or times out, run `orchestrator next` normally.
-The orchestrator handles missing outputs gracefully.
-
-If any orchestrator command (init, confirm, next) fails or returns a
-non-zero exit code: STOP. Do not retry. Do not re-initialize. Do not
-attempt workarounds. Do not run the command from a different directory.
-Do not improvise a recovery. Report the error to the user and exit.
-
-Re-initializing after a failure creates a new cache with wrong paths
-and corrupts the entire review.
-
-## Crash recovery
-
-```bash
-cd ${CLAUDE_SKILL_DIR} && python3 -m scripts.orchestrator resume --cache-dir {CACHE_DIR}
-```
+If the command fails, report the error and exit. Do not retry.
+Do not re-initialize. Do not improvise recovery.

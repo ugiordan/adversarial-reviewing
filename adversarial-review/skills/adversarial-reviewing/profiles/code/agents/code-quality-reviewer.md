@@ -53,6 +53,12 @@ If you cannot verify the upstream context within the reviewed scope, mark the fi
 - YAML templates with placeholder strings (`<pagerduty_token>`, `<smtp_host>`) replaced via string manipulation at runtime
 - Embedding secrets into ConfigMaps via string replacement instead of using Secret references
 
+**Cross-file structural comparison:**
+- Files with near-identical structure that should be unified or generated (e.g., `oauth_session.go` and `jwt_session.go` with 90%+ overlap)
+- Trivial wrapper functions that add indirection without value (single-line functions that just call another function with the same args)
+- `context.TODO()` in production code paths (should be `context.Background()` or propagated from caller)
+- Map iteration where direct lookup would suffice (`for k := range m { if k == target }` instead of `m[target]`)
+
 ## Finding Template
 
 ```
