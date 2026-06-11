@@ -44,6 +44,58 @@ _TOO_BROAD = {
 }
 
 
+_INVESTIGATION_QUESTIONS: dict[str, list[str]] = {
+    "auth bypass": [
+        "Trace every code path from HTTP handler entry to this check. Is there ANY path that skips it?",
+        "What happens if the request path contains URL-encoded characters (%2F, %2e%2e)?",
+        "Does this check apply to ALL HTTP methods, or can an attacker use an unexpected method to bypass?",
+    ],
+    "path matching": [
+        "Can the regex be bypassed via URL encoding, double encoding, or path traversal (..)?",
+        "Does the path normalization happen BEFORE or AFTER this regex match?",
+    ],
+    "crypto": [
+        "Is this the ONLY cipher/hash used, or is there a stronger alternative in the same codebase?",
+        "What data does this protect? What is the impact if an attacker can manipulate it?",
+    ],
+    "race condition": [
+        "Is this field accessed from multiple goroutines? Check for go statements and handler registrations.",
+        "Is there a mutex protecting this access? Search for sync.Mutex in the same struct.",
+    ],
+    "cross-namespace": [
+        "Does ANY admission webhook or CEL validation restrict the namespace value?",
+        "Trace from the CRD spec field to the client.Get call. Is the namespace validated anywhere in between?",
+    ],
+    "webhook": [
+        "Trace ALL code paths through the Handle function. Does ANY path return a zero-value admission.Response?",
+        "Check the kubebuilder marker: does verbs= include update? If not, mutations bypass this webhook.",
+    ],
+    "rbac": [
+        "What resources does this role grant access to? Can a user with this role escalate to cluster-admin?",
+    ],
+    "tls": [
+        "Is MinVersion set? If not, the default allows TLS 1.0 which is deprecated.",
+        "Is InsecureSkipVerify controlled by a user-facing config flag? If so, can it be disabled in production?",
+    ],
+    "error handling": [
+        "What happens to the caller when this error is silently swallowed? Does it proceed with corrupted state?",
+    ],
+    "nil safety": [
+        "What input values cause this pointer/slice to be nil? Trace from the function's callers.",
+        "Is there a length/nil check ABOVE this access? Read 5 lines before the flagged line.",
+    ],
+}
+
+
+def _get_investigation_questions(category: str) -> list[str]:
+    """Get targeted investigation questions for a pattern category."""
+    cat_lower = category.lower()
+    for key, questions in _INVESTIGATION_QUESTIONS.items():
+        if key in cat_lower:
+            return questions
+    return []
+
+
 @dataclass
 class PatternDef:
     id: str
@@ -250,6 +302,14 @@ def format_pattern_hits_md(
         lines.append(f"### {result.pattern.id}: {result.pattern.grep_pattern}")
         lines.append(f"Category: {result.pattern.category}")
         lines.append(f"Description: {result.pattern.description}\n")
+
+        questions = _get_investigation_questions(result.pattern.category)
+        if questions:
+            lines.append("**Investigation questions (answer each before dismissing):**")
+            for q in questions:
+                lines.append(f"- {q}")
+            lines.append("")
+
         for hit in result.hits:
             lines.append(f"- {hit.file}:{hit.line}: `{hit.content}`")
             if source_root:
