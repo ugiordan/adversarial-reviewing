@@ -74,6 +74,25 @@ Beyond OWASP Top 10, check for these patterns common in Kubernetes operator code
 - `aggregate-to-edit` or `aggregate-to-admin` labels silently expand built-in roles. Produce a finding for EACH component, not just a summary. Scan `opt/manifests/**/rbac/` and `config/rbac/` explicitly.
 - Flag these sub-resources as INDIVIDUAL findings: `pods/exec`, `pods/attach`, `secrets` with wildcard namespace, `nodes/proxy`, `serviceaccounts/token`. Each enables lateral movement or privilege escalation.
 
+**RBAC combination analysis (cluster-admin equivalence):**
+- Collect ALL kubebuilder RBAC markers (`+kubebuilder:rbac`) and YAML ClusterRole rules for the operator's ServiceAccount. Compute the UNION of all grants.
+- Check if the composite permission set equals cluster-admin: `clusterrolebindings:*` + `securitycontextconstraints:create,use` = can self-escalate
+- `clusterserviceversions:delete` without `resourceNames:` restriction = can disable security operators (Compliance Operator, Gatekeeper, ACS)
+- Unscoped `resourceNames:` on sensitive resources (`securitycontextconstraints`, `clusterserviceversions`, `webhookconfigurations`) = wildcard access to cluster-critical objects
+
+**NetworkPolicy trust chain analysis:**
+- For each `NetworkPolicy` in the repo, trace the trust chain:
+  1. What namespaces does `namespaceSelector` allow traffic FROM? Check label matches.
+  2. What runs in those source namespaces? (notebooks, workbenches, user workloads)
+  3. If the source namespace runs untrusted/tenant workloads: flag as trust boundary violation (tenant code can reach control plane services)
+- Bare `namespaceSelector` without `podSelector` or `ports` restrictions: any pod in the matched namespace gets full access. Anyone who can set the matched labels on a namespace gains unrestricted ingress.
+- NetworkPolicies are additive. Check if MULTIPLE policies on the same pods create an unintended union of allowed traffic.
+
+**Deprecated/dead code as latent attack surface:**
+- CRD fields that exist in the API schema but have no reconcile path (latent attack surface: a future contributor may implement them without security review)
+- Deprecated API fields that could enable SSRF/RCE if re-implemented (e.g., `manifestsUri`, `devFlags`)
+- `pprof` or debug endpoints that are configurable but disabled by default. If the flag is plumbed through, an attacker with config access can enable profiling.
+
 **Cross-namespace data flow (confused deputy):**
 - User-controllable API field (from CR spec) used as namespace parameter in `client.Get`, `client.List`, `Client.Get`, `Client.List`, or similar K8s API calls
 - `corev1.ObjectReference` in CRD spec types: the `Namespace` field allows cross-namespace resource access. Trace from type definition through controller code to verify whether the namespace is validated.

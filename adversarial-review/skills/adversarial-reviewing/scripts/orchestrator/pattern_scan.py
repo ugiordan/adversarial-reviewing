@@ -84,6 +84,20 @@ _INVESTIGATION_QUESTIONS: dict[str, list[str]] = {
         "What input values cause this pointer/slice to be nil? Trace from the function's callers.",
         "Is there a length/nil check ABOVE this access? Read 5 lines before the flagged line.",
     ],
+    "rbac combination": [
+        "Collect ALL RBAC grants for this ServiceAccount (kubebuilder markers + YAML). Does the UNION equal cluster-admin?",
+        "Can this permission be used to disable security operators (Compliance Operator, Gatekeeper, ACS)?",
+        "Is resourceNames: scoped, or does it grant access to ALL resources of this type?",
+    ],
+    "networkpolicy": [
+        "What namespaces does namespaceSelector match? Do those namespaces run untrusted tenant workloads?",
+        "Is there a podSelector restricting which pods in the source namespace can connect?",
+        "Are ports restricted, or does this allow ALL ports?",
+    ],
+    "deprecated": [
+        "Is this field/endpoint still in the API schema or binary? Can it be activated by an attacker with config access?",
+        "If a future contributor re-implements this, what security impact would it have?",
+    ],
 }
 
 
