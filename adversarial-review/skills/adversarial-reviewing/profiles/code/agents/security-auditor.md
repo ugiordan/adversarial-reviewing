@@ -103,8 +103,8 @@ Beyond OWASP Top 10, check for these patterns common in Kubernetes operator code
 
 **Auth bypass tracing (MANDATORY for auth-related code):**
 - For EVERY HTTP handler or middleware, trace the complete auth check path from request entry to access decision. Verify NO code path skips the check.
-- `IsAllowedRequest` or `allowedPaths` pattern-based request bypass without strict validation
-- `WithAllowPaths` regex-based path matching that may be bypassed via URL encoding or path traversal
+- `IsAllowedRequest` or `allowedPaths` pattern-based request bypass without strict validation. IMPORTANT: even if the bypass is "by design" (user-configurable skip), ALWAYS produce a finding. User-configurable auth bypass without guardrails (no validation of which paths can be skipped, no admin-only restriction) is a security design risk. Severity: Important if any user can configure it, Minor if admin-only.
+- `WithAllowPaths` regex-based path matching that may be bypassed via URL encoding or path traversal. ALWAYS produce a finding: regex path matching in auth contexts is inherently fragile. Note whether path normalization occurs before or after the regex match.
 - `InsecureSkipNonce` OIDC nonce verification disabled, weakening OAuth replay protection
 - `http.Get` with sensitive tokens in URL (id_token, access_token) exposing them in server logs and proxies
 - Look for MULTIPLE auth check paths: if a handler has both a "fast path" (cookie/header check) and a "slow path" (full OAuth flow), verify both paths enforce the same policy. Bypasses often hide in the fast path.
