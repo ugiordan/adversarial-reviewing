@@ -159,6 +159,7 @@ def _process_self_refinement(state, cache_dir, skill_dir):
         return None
     _measure_budget(state, cache_dir, skill_dir)
     _run_post_self_refinement_scripts(state, cache_dir, skill_dir)
+    _run_coverage_gap_check(state, cache_dir)
     transition(state, State.CONVERGENCE_CHECK)
     save_state(state, cache_dir)
     telemetry.end_span(span, {"budget_consumed": state.budget_consumed})
@@ -1214,6 +1215,11 @@ def _prepare_dispatch_directories(state, cache_dir, skill_dir, phase) -> list[tu
             coverage_report = _collect_coverage_reports(
                 cache_dir, agent_cfg.prefix, phase, iteration,
             )
+            gap_report = _load_coverage_gaps(
+                cache_dir, agent_cfg.prefix, iteration - 1,
+            )
+            if gap_report:
+                coverage_report = gap_report + "\n\n" + coverage_report
         elif phase == PHASE_CHALLENGE_ROUND:
             coverage_report = _collect_coverage_reports(
                 cache_dir, agent_cfg.prefix, PHASE_SELF_REFINEMENT,
@@ -1981,6 +1987,66 @@ def _run_post_self_refinement_scripts(state, cache_dir, skill_dir):
     except Exception as e:
         log_guardrail(state, "post_self_refinement", "severity_check",
                       "", "warning", f"severity-check.py error: {e}")
+
+
+def _load_coverage_gaps(cache_dir: str, agent_prefix: str, iteration: int) -> str:
+    """Load programmatically generated coverage gap report for an agent."""
+    gap_path = os.path.join(
+        cache_dir, "coverage-gaps", f"{agent_prefix}-iter{iteration}.md",
+    )
+    if not os.path.isfile(gap_path):
+        return ""
+    try:
+        return Path(gap_path).read_text()
+    except OSError:
+        return ""
+
+
+def _run_coverage_gap_check(state, cache_dir):
+    """Programmatic coverage verification: compare pattern-hits against findings.
+
+    For each agent, checks if all pattern hits with status 'hits_found'
+    were addressed in the output (finding produced or grep string mentioned).
+    Writes gap reports to dispatch directories for the NEXT iteration.
+    """
+    from .coverage_check import check_coverage
+
+    iteration = _current_phase_iteration(state)
+    dispatch_base = os.path.join(cache_dir, "dispatch")
+    if not os.path.isdir(dispatch_base):
+        return
+
+    total_gaps = 0
+    for agent_cfg in state.config.agents:
+        dispatch_dir = os.path.join(
+            dispatch_base,
+            f"{agent_cfg.prefix}-self-refinement-iter{iteration}",
+        )
+        if not os.path.isdir(dispatch_dir):
+            continue
+
+        result = check_coverage(dispatch_dir, agent_cfg.prefix)
+        gaps = result.get("gaps", [])
+        gap_md = result.get("gap_report_md", "")
+
+        if gaps:
+            total_gaps += len(gaps)
+            log_guardrail(
+                state, "coverage", "pattern_gaps",
+                agent_cfg.prefix, "warning",
+                f"{len(gaps)} pattern hits not addressed "
+                f"({result['addressed']}/{result['total_patterns']} covered)",
+            )
+            gap_path = os.path.join(cache_dir, "coverage-gaps",
+                                    f"{agent_cfg.prefix}-iter{iteration}.md")
+            os.makedirs(os.path.dirname(gap_path), exist_ok=True)
+            Path(gap_path).write_text(gap_md)
+
+    if total_gaps > 0:
+        log_guardrail(
+            state, "coverage", "total_gaps", "",
+            "info", f"{total_gaps} total pattern gaps across all agents",
+        )
 
 
 def _run_pre_challenge_scripts(state, cache_dir, skill_dir):
