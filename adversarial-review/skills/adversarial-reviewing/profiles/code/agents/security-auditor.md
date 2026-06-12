@@ -80,11 +80,24 @@ Beyond OWASP Top 10, check for these patterns common in Kubernetes operator code
 - `clusterserviceversions:delete` without `resourceNames:` restriction = can disable security operators (Compliance Operator, Gatekeeper, ACS)
 - Unscoped `resourceNames:` on sensitive resources (`securitycontextconstraints`, `clusterserviceversions`, `webhookconfigurations`) = wildcard access to cluster-critical objects
 
-**NetworkPolicy trust chain analysis:**
-- For each `NetworkPolicy` in the repo, trace the trust chain:
-  1. What namespaces does `namespaceSelector` allow traffic FROM? Check label matches.
-  2. What runs in those source namespaces? (notebooks, workbenches, user workloads)
-  3. If the source namespace runs untrusted/tenant workloads: flag as trust boundary violation (tenant code can reach control plane services)
+**NetworkPolicy trust chain analysis (MUST follow all 5 steps):**
+
+Investigation procedure:
+1. Find all NetworkPolicies: `Grep "NetworkPolicy" or "networkingv1.NetworkPolicy"` across all files
+2. For each NetPol, extract the `namespaceSelector` label keys (e.g., `opendatahub.io/generated-namespace`)
+3. `Grep` for where those label keys are applied to namespaces (search for the label key string across the entire codebase). This is the critical step that connects the NetPol to the namespaces it allows.
+4. For each labeled namespace, identify whether it runs tenant/user workloads using these heuristics:
+   - Namespace names containing: `notebook`, `workbench`, `project`, `sandbox`, `user`, `tenant` = assume runs untrusted user code
+   - Namespaces created per-user or per-project (look for template patterns, namespace generators, dynamic creation) = tenant workloads
+   - If the operator creates namespaces for users to run arbitrary code (Jupyter notebooks, pipelines, model serving): those are tenant namespaces
+5. If a tenant namespace is allowed by the NetPol: flag as HIGH with the full evidence chain citing all files:
+   - NetPol definition (file:line)
+   - Label application (file:line)
+   - Namespace purpose (tenant workload type)
+
+Do NOT stop at step 1. A NetworkPolicy finding is incomplete without tracing WHERE the selector labels are applied and WHAT runs in those namespaces. The chain requires cross-file analysis.
+
+Additional patterns:
 - Bare `namespaceSelector` without `podSelector` or `ports` restrictions: any pod in the matched namespace gets full access. Anyone who can set the matched labels on a namespace gains unrestricted ingress.
 - NetworkPolicies are additive. Check if MULTIPLE policies on the same pods create an unintended union of allowed traffic.
 
@@ -143,11 +156,17 @@ Beyond OWASP Top 10, check for these patterns common in Kubernetes operator code
 **RBAC mutation safety:**
 - `roleRef` field updates on ClusterRoleBindings (immutable after creation, update silently fails)
 
-**CI/CD supply chain (GitHub Actions):**
+**CI/CD supply chain (GitHub Actions and Tekton):**
 - `pull_request_target` workflows that checkout PR code and execute it with write permissions or secrets. The PR author controls the code but the workflow has the target repo's permissions.
 - `workflow_dispatch` inputs interpolated into shell commands via `${{ inputs.* }}` enabling command injection by any user with write access
 - Unpinned action versions (`uses: actions/checkout@v4` instead of `@sha256:...`) enabling action supply chain attacks
 - Binary downloads without integrity verification (no checksum check after `curl`/`wget`)
+- Tekton `pipelineRef` with `resolver: git` and `revision: main` (mutable branch). Build pipeline resolved from a mutable ref allows compromised upstream to inject build steps. SLSA Level 2 requires pinning to immutable ref (commit SHA or tag).
+- Tekton task bundle refs without digest pinning (`bundle:` without `@sha256:`)
+
+**Unauthenticated service endpoints:**
+- `MetricsBindAddress` or `metrics-bind-address` bound to `0.0.0.0` or `:8080` without TLS (`SecureMetrics`) or authentication. Controller-runtime metrics expose Go runtime stats and reconciliation data. Check if a NetworkPolicy restricts access to Prometheus only.
+- Health probe endpoints (`healthz`, `readyz`) that expose internal state without auth (usually acceptable, but check what data they return)
 
 **Compound patterns (check for A AND B together):**
 - `IsCA: true` AND `ExtKeyUsageServerAuth` on the same certificate: CA cert with server auth EKU expands blast radius of key compromise

@@ -28,7 +28,8 @@ _SKIP_DIRS = {
 }
 _SKIP_SUFFIXES = ("_test.go", "_test.py", ".test.ts", ".test.js", ".spec.ts")
 
-_MAX_HITS_PER_PATTERN = 10
+_MAX_HITS_PER_PATTERN = 5
+_MAX_CONTEXT_HITS = 2
 
 _LANG_EXTENSIONS = {
     "go": ["*.go", "*.yaml", "*.yml"],
@@ -97,6 +98,15 @@ _INVESTIGATION_QUESTIONS: dict[str, list[str]] = {
     "deprecated": [
         "Is this field/endpoint still in the API schema or binary? Can it be activated by an attacker with config access?",
         "If a future contributor re-implements this, what security impact would it have?",
+    ],
+    "supply chain": [
+        "Is this pipeline/action ref pinned to an immutable ref (commit SHA, digest)? Or does it use a mutable ref (branch name, tag)?",
+        "Who controls the upstream repo/registry? If compromised, what build steps could be injected?",
+    ],
+    "unauthenticated": [
+        "Is this endpoint bound to 0.0.0.0 (all interfaces) or localhost only?",
+        "Is there a NetworkPolicy restricting which pods can reach this port?",
+        "Does this endpoint expose sensitive data (tenant names, resource counts, internal state)?",
     ],
 }
 
@@ -192,6 +202,12 @@ def extract_patterns(agent_instructions: str, agent_prefix: str) -> list[Pattern
     return patterns
 
 
+_NOISE_PATHS = {
+    "config/crd/", "rhoai-bundle/", "zz_generated",
+    "cmd/mcp-server/", "samples/", "examples/",
+}
+
+
 def _should_skip(filepath: str) -> bool:
     parts = filepath.split(os.sep)
     for d in _SKIP_DIRS:
@@ -202,6 +218,14 @@ def _should_skip(filepath: str) -> bool:
             return True
     if "pkg/mod/" in filepath:
         return True
+    return False
+
+
+def _is_noise_hit(filepath: str) -> bool:
+    """Check if a grep hit is from a noise file (CRD schemas, bundles, etc)."""
+    for noise in _NOISE_PATHS:
+        if noise in filepath:
+            return True
     return False
 
 
@@ -256,7 +280,7 @@ def _grep_pattern(
         if len(parts) < 3:
             continue
         filepath = parts[0].lstrip("./")
-        if _should_skip(filepath):
+        if _should_skip(filepath) or _is_noise_hit(filepath):
             continue
         try:
             lineno = int(parts[1])
@@ -324,9 +348,9 @@ def format_pattern_hits_md(
                 lines.append(f"- {q}")
             lines.append("")
 
-        for hit in result.hits:
+        for i, hit in enumerate(result.hits):
             lines.append(f"- {hit.file}:{hit.line}: `{hit.content}`")
-            if source_root:
+            if source_root and i < _MAX_CONTEXT_HITS:
                 context = _read_context(source_root, hit.file, hit.line, 3)
                 if context:
                     lines.append(f"  ```")
