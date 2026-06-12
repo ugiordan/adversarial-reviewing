@@ -22,10 +22,35 @@ _RETRY_DELAY = 10
 _MAX_RETRIES = 1
 
 
+_LIGHT_PHASES = {"report"}
+_LIGHT_ITERATIONS = {2, 3}
+
+
+def select_model(
+    phase: str,
+    iteration: int,
+    primary_model: str,
+    light_model: str | None = None,
+) -> str:
+    """Select the model for a given phase and iteration.
+
+    Uses light_model for iter2-3 self-refinement and report phases.
+    Uses primary_model for everything else (iter1, challenge, red-team).
+    """
+    if not light_model:
+        return primary_model
+    if phase in _LIGHT_PHASES:
+        return light_model
+    if "self-refinement" in phase and iteration in _LIGHT_ITERATIONS:
+        return light_model
+    return primary_model
+
+
 def dispatch_agents(
     dispatch: dict,
     skill_dir: str,
     model: str = "claude-opus-4-6",
+    light_model: str | None = None,
     timeout: int = _DEFAULT_TIMEOUT,
 ) -> dict[str, int]:
     """Dispatch all agents from a dispatch.json entry.
@@ -36,6 +61,13 @@ def dispatch_agents(
     if not agents:
         return {}
 
+    phase = dispatch.get("phase", "")
+    iteration = dispatch.get("iteration", 1)
+    effective_model = select_model(phase, iteration, model, light_model)
+
+    if effective_model != model:
+        logger.info("Using light model %s for %s iter%d", effective_model, phase, iteration)
+
     parallel = dispatch.get("parallel", False)
     results = {}
 
@@ -43,7 +75,7 @@ def dispatch_agents(
         with ThreadPoolExecutor(max_workers=len(agents)) as pool:
             futures = {
                 pool.submit(
-                    _dispatch_one, agent, skill_dir, model, timeout,
+                    _dispatch_one, agent, skill_dir, effective_model, timeout,
                 ): agent["id"]
                 for agent in agents
             }
@@ -57,7 +89,7 @@ def dispatch_agents(
     else:
         for agent in agents:
             results[agent["id"]] = _dispatch_one(
-                agent, skill_dir, model, timeout,
+                agent, skill_dir, effective_model, timeout,
             )
 
     return results

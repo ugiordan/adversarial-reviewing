@@ -545,16 +545,24 @@ def handle_run_all(argv: list[str], skill_dir: str):
     log = logging.getLogger("run-all")
 
     model = "claude-opus-4-6"
+    light_model = None
     remaining = []
     i = 0
     while i < len(argv):
         if argv[i] == "--model" and i + 1 < len(argv):
             model = argv[i + 1]
             i += 2
+        elif argv[i] == "--light-model" and i + 1 < len(argv):
+            light_model = argv[i + 1]
+            i += 2
         else:
             remaining.append(argv[i])
             i += 1
 
+    if light_model:
+        log.info("Models: primary=%s, light=%s (iter2-3, report)", model, light_model)
+    else:
+        log.info("Model: %s (all phases)", model)
     log.info("Phase: init")
     old_stdout = sys.stdout
     sys.stdout = io.StringIO()
@@ -623,7 +631,7 @@ def handle_run_all(argv: list[str], skill_dir: str):
             [a["id"] for a in agents],
         )
 
-        results = dispatch_agents(dispatch, skill_dir, model=model)
+        results = dispatch_agents(dispatch, skill_dir, model=model, light_model=light_model)
         for agent_id, rc in results.items():
             status = "OK" if rc == 0 else f"FAIL(exit={rc})"
             log.info("  %s: %s", agent_id, status)
