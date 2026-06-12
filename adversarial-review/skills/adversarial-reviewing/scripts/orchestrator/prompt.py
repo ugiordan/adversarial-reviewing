@@ -170,6 +170,12 @@ def prepare_dispatch_directory(
     if detection_checklist and detection_checklist.strip():
         Path(os.path.join(dispatch_dir, "detection-checklist.yaml")).write_text(detection_checklist)
 
+    draft_path = os.path.join(os.path.dirname(dispatch_dir), "..", "draft-findings.md")
+    if os.path.isfile(draft_path):
+        Path(os.path.join(dispatch_dir, "draft-findings.md")).write_text(
+            Path(draft_path).read_text()
+        )
+
     return dispatch_dir
 
 

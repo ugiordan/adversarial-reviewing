@@ -231,6 +231,7 @@ def handle_confirm(argv: list[str], skill_dir: str):
             state.config.profile, state.config.agents,
             detected or "default",
         )
+        _run_draft_findings(source_root, cache_dir, detected or "default")
 
         transition(state, State.POPULATE_CACHE)
         transition(state, State.SELF_REFINEMENT)
@@ -453,6 +454,18 @@ def _run_pattern_prescan(
         results = run_full_prescan(source_root, profile_dir, agents, language)
         if results:
             save_prescan(results, cache_dir)
+    except Exception:
+        pass
+
+
+def _run_draft_findings(source_root: str, cache_dir: str, language: str) -> None:
+    """Generate draft findings from deterministic analysis. Best-effort."""
+    try:
+        from .draft_findings import generate_drafts, format_drafts_md
+        drafts = generate_drafts(source_root, language)
+        if drafts:
+            md = format_drafts_md(drafts)
+            Path(os.path.join(cache_dir, "draft-findings.md")).write_text(md)
     except Exception:
         pass
 
