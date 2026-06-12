@@ -114,8 +114,10 @@ def _format_gap_report(gaps: list[dict], total: int, addressed: int) -> str:
         "## Coverage Gaps (Programmatically Verified)\n",
         f"Pattern coverage: {addressed}/{total} addressed. "
         f"**{len(gaps)} patterns with hits were NOT addressed.**\n",
-        "You MUST address each gap below. For each: produce a finding "
-        "OR explain with specific evidence why it is not an issue.\n",
+        "You MUST address each gap below by producing a finding.",
+        "Set Confidence: Low if you are unsure about severity.",
+        "Do NOT dismiss without reading the actual source file and citing",
+        "the specific mitigation (file:line) that makes it safe.\n",
     ]
 
     for gap in gaps:

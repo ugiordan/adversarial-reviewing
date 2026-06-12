@@ -1228,10 +1228,14 @@ def _prepare_dispatch_directories(state, cache_dir, skill_dir, phase) -> list[tu
 
         agent_pattern_hits = ""
         agent_checklist = ""
-        if phase == PHASE_SELF_REFINEMENT and iteration <= 1:
-            agent_pattern_hits, agent_checklist = _get_agent_prescan(
+        if phase == PHASE_SELF_REFINEMENT:
+            _, agent_checklist = _get_agent_prescan(
                 prescan_data, agent_cfg.prefix,
             )
+            if iteration <= 1:
+                agent_pattern_hits = _get_agent_prescan(
+                    prescan_data, agent_cfg.prefix,
+                )[0]
 
         dispatch_path = prepare_dispatch_directory(
             cache_dir=cache_dir,
