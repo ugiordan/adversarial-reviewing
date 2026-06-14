@@ -154,18 +154,59 @@ Every step requires explicit user confirmation. The orchestrator never pushes, f
 
 ## Architecture: FSM Orchestrator
 
-The review pipeline is driven by a deterministic Python FSM orchestrator (`scripts/orchestrator/`). The SKILL.md relay is thin (~80 lines): it runs orchestrator commands and dispatches agents. All orchestration decisions (phase transitions, convergence, budget) are made by Python, not the LLM.
+The review pipeline is driven by a deterministic Python FSM orchestrator (`scripts/orchestrator/`). All orchestration decisions (phase transitions, convergence, budget, coverage verification) are made by Python, not the LLM.
+
+### Direct Runner (`orchestrator run-all`)
+
+The `run-all` command runs the complete pipeline without a Claude Code relay session. It dispatches agents directly via `claude --print` CLI with retry logic and parallel support:
+
+```bash
+cd ${SKILL_DIR} && python3 -m scripts.orchestrator run-all \
+  --security --no-budget /path/to/repo
+```
+
+This eliminates relay non-determinism (100% agent success rate vs 60% with relay, zero retries, 55-69 min per review).
+
+Optional model routing for cost optimization:
+```bash
+python3 -m scripts.orchestrator run-all \
+  --model claude-opus-4-6 --light-model claude-sonnet-4-6 \
+  --security --no-budget /path/to/repo
+```
+
+Opus runs iter1 (discovery) and challenge (adversarial). Sonnet runs iter2-3 (refinement) and report (formatting).
+
+### Detection Pipeline
+
+Before agents run, deterministic Python analysis pre-computes evidence:
+
+1. **Pattern Pre-Scan** (`pattern_scan.py`): Extracts 119 grep-able patterns from agent instructions, runs them against the source tree, produces `pattern-hits.md` with inline code context and targeted investigation questions per category.
+
+2. **Draft Findings** (`draft_findings.py`): For high-confidence patterns (Tekton mutable refs, unauthenticated metrics, pprof endpoints, unpinned Dockerfiles), generates verified draft findings the agent confirms or rejects.
+
+3. **Coverage Verification** (`coverage_check.py`): After each iteration, programmatically compares pattern-hits against agent output. Unaddressed patterns become structured gap reports injected into the next iteration. No more relying on agent memory for coverage tracking.
 
 ### Dispatch v3.0: Custom Subagents
 
-Agents are dispatched as custom subagents via the Agent tool with restricted tool access (`Read`, `Grep`, `Glob`, `Write` only). Each agent receives a prepared dispatch directory containing:
+Agents are dispatched as custom subagents via `claude --print` with restricted tool access (`Read`, `Grep`, `Glob`, `Write`, `Bash` only). Each agent receives a prepared dispatch directory containing:
 - `dispatch-config.yaml`: phase, iteration, agent ID
-- `agent-instructions.md`: specialist role and detection patterns
-- `source-files.md`: inline source code (budget-capped at 150K tokens)
+- `agent-instructions.md`: specialist role and 119 detection patterns
+- `pattern-hits.md`: pre-computed grep results with code context
+- `draft-findings.md`: deterministic findings for agent verification
+- `detection-checklist.yaml`: structured pattern tracking
+- `source-files.md`: inline source code (budget-capped at 250K tokens)
 - `finding-template.md`: structured output format
 - `output.md`: agent writes findings here (self-persisting)
 
-This eliminates the relay output writing bottleneck and enforces read-only review behavior at the platform level.
+### Agent Detection Principles
+
+All agents follow five principles for finding quality:
+
+1. **Atomicity**: One vulnerability per finding, independently verifiable
+2. **Default-to-Finding**: Pattern hits are findings unless the agent proves otherwise with specific mitigation evidence
+3. **Coverage Feedback**: Iter2+ must address all programmatically-identified gaps
+4. **Decontextualization**: Evidence includes code snippet + attack chain, self-contained
+5. **Confidence Calibration**: Low-confidence findings explain what would confirm them
 
 ### Custom Subagents
 
@@ -192,19 +233,34 @@ Enable with `--red-team` flag.
 - Severity ceiling (severity cannot exceed source trust level)
 - Cross-finding dedup detection
 
+`coverage_check.py` runs after each self-refinement iteration:
+- Compares pattern-hits against agent output programmatically
+- Generates structured gap reports for unaddressed patterns
+- Injects gaps into the next iteration's dispatch directory
+- Eliminates variance from agent memory-based coverage summaries
+
+### Performance
+
+Benchmarked against a real security audit of opendatahub-operator:
+- **SEC detection**: 89% (17/19 ground truth findings on kube-auth-proxy)
+- **Benchmark match**: 80% (8/10 actionable findings from security audit)
+- **FP rate**: 7-12%
+- **Agent success rate**: 100% (direct runner)
+- **Review time**: 55-69 min (5-agent review)
+
 ## Profiles
 
 ### Code Profile (default)
 
 Source code review with file:line evidence.
 
-| Specialist | Flag | Focus Area |
-|-----------|------|------------|
-| Security Auditor | `--security` | Vulnerabilities, injection, auth, crypto, OWASP Top 10 |
-| Performance Analyst | `--performance` | Complexity, memory, I/O, caching, scalability |
-| Code Quality Reviewer | `--quality` | Maintainability, SOLID, patterns, readability |
-| Correctness Verifier | `--correctness` | Logic errors, edge cases, race conditions, invariants |
-| Architecture Reviewer | `--architecture` | Coupling, cohesion, boundaries, extensibility |
+| Specialist | Flag | Focus Area | Patterns |
+|-----------|------|------------|----------|
+| Security Auditor | `--security` | RBAC combination analysis, NetworkPolicy trust chains, auth bypass tracing, crypto, supply chain (Tekton/GHA), cross-namespace data flow, webhook completeness | 119 |
+| Performance Analyst | `--performance` | Informer cache sizing, reconciliation hot paths, N+1 API calls, resource leaks | 16 |
+| Code Quality Reviewer | `--quality` | Misleading names, cross-file duplicates, string manipulation, magic constants | 13 |
+| Correctness Verifier | `--correctness` | Operator precedence, nil path tracing, webhook completeness, error propagation | 24 |
+| Architecture Reviewer | `--architecture` | Controller sprawl, cache sizing, template deployment, component registration | 9 |
 
 ### Strategy Profile (`--profile strat`)
 
